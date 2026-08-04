@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "MAD MAX"
+description = "MAD MAX is a premium movie review and discovery platform — a modern, cinematic alternative to IMDB. It combines a rich movie database (powered by TMDB), text and video reviews, a social follow feed, personalized recommendations, OTT streaming links, and an industry professional networking section for actors, directors, and crew."
+version = "1.0.0"
+id = "artifacts/mad-max"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22520
+
+[services.development]
+run = "pnpm --filter @workspace/mad-max run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mad-max", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/mad-max/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22520"
+BASE_PATH = "/"

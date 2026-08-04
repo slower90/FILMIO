@@ -3,20 +3,37 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: MAD MAX - Movie Review & Discovery Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: movies
+    description: Movie search and details via TMDB
+  - name: reviews
+    description: User reviews for movies
+  - name: ratings
+    description: Movie ratings
+  - name: watchlist
+    description: User watchlist management
+  - name: users
+    description: User profiles and social follows
+  - name: feed
+    description: Social activity feed
+  - name: recommendations
+    description: Personalized movie recommendations
+  - name: professionals
+    description: Industry professional profiles
+  - name: chat
+    description: Direct messaging between users
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +41,937 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── MOVIES ──────────────────────────────────────────────────────────────────
+  /movies/search:
+    get:
+      operationId: searchMovies
+      tags: [movies]
+      summary: Search movies
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieSearchResult"
+
+  /movies/trending:
+    get:
+      operationId: getTrendingMovies
+      tags: [movies]
+      summary: Trending movies this week
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Trending movies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoviePagedResult"
+
+  /movies/genres:
+    get:
+      operationId: getMovieGenres
+      tags: [movies]
+      summary: List all movie genres
+      responses:
+        "200":
+          description: Genre list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenreListResult"
+
+  /movies/by-genre:
+    get:
+      operationId: getMoviesByGenre
+      tags: [movies]
+      summary: Get movies by genre
+      parameters:
+        - name: genreId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Movies in genre
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoviePagedResult"
+
+  /movies/{movieId}:
+    get:
+      operationId: getMovieDetails
+      tags: [movies]
+      summary: Movie details
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Movie detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /movies/{movieId}/credits:
+    get:
+      operationId: getMovieCredits
+      tags: [movies]
+      summary: Cast and crew for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieCredits"
+
+  /movies/{movieId}/watch-providers:
+    get:
+      operationId: getMovieWatchProviders
+      tags: [movies]
+      summary: Streaming platforms for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Watch providers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchProvidersResult"
+
+  /movies/{movieId}/videos:
+    get:
+      operationId: getMovieVideos
+      tags: [movies]
+      summary: Trailers and clips for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Videos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieVideosResult"
+
+  /movies/{movieId}/stats:
+    get:
+      operationId: getMovieStats
+      tags: [movies]
+      summary: Aggregated review stats for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Movie stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieStats"
+
+  # ─── REVIEWS ─────────────────────────────────────────────────────────────────
+  /reviews:
+    get:
+      operationId: listReviews
+      tags: [reviews]
+      summary: List reviews (filter by movieId or userId)
+      parameters:
+        - name: movieId
+          in: query
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [critic, audience, all]
+            default: all
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Reviews list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+    post:
+      operationId: createReview
+      tags: [reviews]
+      summary: Create a review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reviews/trending:
+    get:
+      operationId: getTrendingReviews
+      tags: [reviews]
+      summary: Most liked reviews recently
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Trending reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+
+  /reviews/{id}:
+    get:
+      operationId: getReview
+      tags: [reviews]
+      summary: Get a single review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateReview
+      tags: [reviews]
+      summary: Update a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteReview
+      tags: [reviews]
+      summary: Delete a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /reviews/{id}/like:
+    post:
+      operationId: likeReview
+      tags: [reviews]
+      summary: Toggle like on a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Like toggled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reviews/{id}/comments:
+    get:
+      operationId: listComments
+      tags: [reviews]
+      summary: List comments on a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: createComment
+      tags: [reviews]
+      summary: Add a comment on a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── RATINGS ─────────────────────────────────────────────────────────────────
+  /ratings:
+    post:
+      operationId: upsertRating
+      tags: [ratings]
+      summary: Create or update a movie rating
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingInput"
+      responses:
+        "200":
+          description: Rating saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rating"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ratings/movie/{movieId}:
+    get:
+      operationId: getMovieRating
+      tags: [ratings]
+      summary: Get aggregated rating for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Aggregated rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieRatingAggregate"
+
+  /ratings/my/{movieId}:
+    get:
+      operationId: getMyMovieRating
+      tags: [ratings]
+      summary: Get current user's rating for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User's rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rating"
+        "404":
+          description: Not rated yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── WATCHLIST ────────────────────────────────────────────────────────────────
+  /watchlist:
+    get:
+      operationId: getWatchlist
+      tags: [watchlist]
+      summary: Get current user's watchlist
+      responses:
+        "200":
+          description: Watchlist
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WatchlistEntry"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: addToWatchlist
+      tags: [watchlist]
+      summary: Add a movie to watchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchlistInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistEntry"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /watchlist/{movieId}:
+    delete:
+      operationId: removeFromWatchlist
+      tags: [watchlist]
+      summary: Remove a movie from watchlist
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateWatchlistEntry
+      tags: [watchlist]
+      summary: Update watchlist entry status
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchlistUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistEntry"
+
+  # ─── USERS ────────────────────────────────────────────────────────────────────
+  /users/me:
+    get:
+      operationId: getMyProfile
+      tags: [users]
+      summary: Get current user's profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateMyProfile
+      tags: [users]
+      summary: Update current user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}:
+    get:
+      operationId: getUserProfile
+      tags: [users]
+      summary: Get a user's public profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}/follow:
+    post:
+      operationId: followUser
+      tags: [users]
+      summary: Follow a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Now following
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FollowResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: unfollowUser
+      tags: [users]
+      summary: Unfollow a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Unfollowed
+
+  /users/{id}/stats:
+    get:
+      operationId: getUserStats
+      tags: [users]
+      summary: Get user stats (reviews count, followers, following, watchlist size)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStats"
+
+  # ─── FEED ─────────────────────────────────────────────────────────────────────
+  /feed:
+    get:
+      operationId: getFeed
+      tags: [feed]
+      summary: Social feed of reviews from followed users
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Feed items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── RECOMMENDATIONS ──────────────────────────────────────────────────────────
+  /recommendations:
+    get:
+      operationId: getRecommendations
+      tags: [recommendations]
+      summary: Personalized movie recommendations
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MovieSummary"
+
+  # ─── PROFESSIONALS ────────────────────────────────────────────────────────────
+  /professionals/me:
+    get:
+      operationId: getMyProfessionalProfile
+      tags: [professionals]
+      summary: Get my professional profile
+      responses:
+        "200":
+          description: Professional profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalProfile"
+        "404":
+          description: Not set up yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createProfessionalProfile
+      tags: [professionals]
+      summary: Create professional profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalProfileInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateProfessionalProfile
+      tags: [professionals]
+      summary: Update professional profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalProfileUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalProfile"
+
+  /professionals/search:
+    get:
+      operationId: searchProfessionals
+      tags: [professionals]
+      summary: Search industry professionals
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Professional profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProfessionalProfile"
+
+  /professionals/{id}:
+    get:
+      operationId: getProfessionalProfile
+      tags: [professionals]
+      summary: Get a professional's public profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Professional profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── CHAT ─────────────────────────────────────────────────────────────────────
+  /chat/conversations:
+    get:
+      operationId: listConversations
+      tags: [chat]
+      summary: List my conversations
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createConversation
+      tags: [chat]
+      summary: Start a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /chat/conversations/{id}/messages:
+    get:
+      operationId: listMessages
+      tags: [chat]
+      summary: Get messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+    post:
+      operationId: sendMessage
+      tags: [chat]
+      summary: Send a message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "201":
+          description: Sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +979,659 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    # ── Movie schemas ──
+    MovieSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        posterPath:
+          type: ["string", "null"]
+        backdropPath:
+          type: ["string", "null"]
+        overview:
+          type: string
+        releaseDate:
+          type: string
+        voteAverage:
+          type: number
+        genreIds:
+          type: array
+          items:
+            type: integer
+      required: [id, title, overview, releaseDate, voteAverage, genreIds]
+
+    MovieDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        overview:
+          type: string
+        posterPath:
+          type: ["string", "null"]
+        backdropPath:
+          type: ["string", "null"]
+        releaseDate:
+          type: string
+        runtime:
+          type: ["integer", "null"]
+        genres:
+          type: array
+          items:
+            $ref: "#/components/schemas/Genre"
+        voteAverage:
+          type: number
+        voteCount:
+          type: integer
+        tagline:
+          type: ["string", "null"]
+        status:
+          type: string
+        budget:
+          type: integer
+        revenue:
+          type: integer
+        imdbId:
+          type: ["string", "null"]
+      required: [id, title, overview, releaseDate, voteAverage, voteCount, genres, budget, revenue]
+
+    Genre:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required: [id, name]
+
+    GenreListResult:
+      type: object
+      properties:
+        genres:
+          type: array
+          items:
+            $ref: "#/components/schemas/Genre"
+      required: [genres]
+
+    MoviePagedResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MovieSummary"
+        page:
+          type: integer
+        totalPages:
+          type: integer
+        totalResults:
+          type: integer
+      required: [results, page, totalPages, totalResults]
+
+    MovieSearchResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/MovieSummary"
+        page:
+          type: integer
+        totalPages:
+          type: integer
+        totalResults:
+          type: integer
+      required: [results, page, totalPages, totalResults]
+
+    CastMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        character:
+          type: string
+        profilePath:
+          type: ["string", "null"]
+        order:
+          type: integer
+      required: [id, name, character, order]
+
+    CrewMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        job:
+          type: string
+        department:
+          type: string
+        profilePath:
+          type: ["string", "null"]
+      required: [id, name, job, department]
+
+    MovieCredits:
+      type: object
+      properties:
+        cast:
+          type: array
+          items:
+            $ref: "#/components/schemas/CastMember"
+        crew:
+          type: array
+          items:
+            $ref: "#/components/schemas/CrewMember"
+      required: [cast, crew]
+
+    WatchProvider:
+      type: object
+      properties:
+        providerId:
+          type: integer
+        providerName:
+          type: string
+        logoPath:
+          type: string
+      required: [providerId, providerName, logoPath]
+
+    WatchProvidersResult:
+      type: object
+      properties:
+        flatrate:
+          type: array
+          items:
+            $ref: "#/components/schemas/WatchProvider"
+        rent:
+          type: array
+          items:
+            $ref: "#/components/schemas/WatchProvider"
+        buy:
+          type: array
+          items:
+            $ref: "#/components/schemas/WatchProvider"
+        link:
+          type: ["string", "null"]
+      required: [flatrate, rent, buy]
+
+    VideoResult:
+      type: object
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+        site:
+          type: string
+        type:
+          type: string
+        official:
+          type: boolean
+      required: [id, key, name, site, type, official]
+
+    MovieVideosResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/VideoResult"
+      required: [results]
+
+    MovieStats:
+      type: object
+      properties:
+        movieId:
+          type: integer
+        averageRating:
+          type: number
+        totalRatings:
+          type: integer
+        totalReviews:
+          type: integer
+        criticReviews:
+          type: integer
+        audienceReviews:
+          type: integer
+        ratingDistribution:
+          type: array
+          items:
+            type: object
+            properties:
+              score:
+                type: integer
+              count:
+                type: integer
+            required: [score, count]
+      required: [movieId, averageRating, totalRatings, totalReviews, criticReviews, audienceReviews, ratingDistribution]
+
+    # ── Review schemas ──
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        movieId:
+          type: integer
+        content:
+          type: string
+        rating:
+          type: ["integer", "null"]
+        isCriticReview:
+          type: boolean
+        verifiedWatch:
+          type: boolean
+        likesCount:
+          type: integer
+        isLikedByMe:
+          type: boolean
+        commentsCount:
+          type: integer
+        movieTitle:
+          type: ["string", "null"]
+        moviePosterPath:
+          type: ["string", "null"]
+        authorName:
+          type: ["string", "null"]
+        authorAvatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, userId, movieId, content, isCriticReview, verifiedWatch, likesCount, isLikedByMe, commentsCount, createdAt, updatedAt]
+
+    ReviewInput:
+      type: object
+      properties:
+        movieId:
+          type: integer
+        content:
+          type: string
+          minLength: 10
+        rating:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        isCriticReview:
+          type: boolean
+          default: false
+        verifiedWatch:
+          type: boolean
+          default: false
+      required: [movieId, content]
+
+    ReviewUpdate:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 10
+        rating:
+          type: ["integer", "null"]
+          minimum: 1
+          maximum: 10
+        verifiedWatch:
+          type: boolean
+
+    LikeResult:
+      type: object
+      properties:
+        liked:
+          type: boolean
+        likesCount:
+          type: integer
+      required: [liked, likesCount]
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        reviewId:
+          type: integer
+        content:
+          type: string
+        authorName:
+          type: ["string", "null"]
+        authorAvatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, userId, reviewId, content, createdAt]
+
+    CommentInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required: [content]
+
+    # ── Rating schemas ──
+    Rating:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        movieId:
+          type: integer
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, userId, movieId, score, createdAt, updatedAt]
+
+    RatingInput:
+      type: object
+      properties:
+        movieId:
+          type: integer
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+      required: [movieId, score]
+
+    MovieRatingAggregate:
+      type: object
+      properties:
+        movieId:
+          type: integer
+        averageScore:
+          type: number
+        totalRatings:
+          type: integer
+        weightedScore:
+          type: number
+      required: [movieId, averageScore, totalRatings, weightedScore]
+
+    # ── Watchlist schemas ──
+    WatchlistEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        movieId:
+          type: integer
+        status:
+          type: string
+          enum: [want_to_watch, watched]
+        movieTitle:
+          type: ["string", "null"]
+        moviePosterPath:
+          type: ["string", "null"]
+        movieReleaseDate:
+          type: ["string", "null"]
+        addedAt:
+          type: string
+      required: [id, userId, movieId, status, addedAt]
+
+    WatchlistInput:
+      type: object
+      properties:
+        movieId:
+          type: integer
+        status:
+          type: string
+          enum: [want_to_watch, watched]
+          default: want_to_watch
+        movieTitle:
+          type: string
+        moviePosterPath:
+          type: ["string", "null"]
+        movieReleaseDate:
+          type: ["string", "null"]
+      required: [movieId]
+
+    WatchlistUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [want_to_watch, watched]
+      required: [status]
+
+    # ── User schemas ──
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        clerkId:
+          type: string
+        username:
+          type: ["string", "null"]
+        displayName:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        isProfessional:
+          type: boolean
+        credibilityScore:
+          type: number
+        followersCount:
+          type: integer
+        followingCount:
+          type: integer
+        reviewsCount:
+          type: integer
+        isFollowedByMe:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, clerkId, isProfessional, credibilityScore, followersCount, followingCount, reviewsCount, isFollowedByMe, createdAt]
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        username:
+          type: string
+        displayName:
+          type: string
+        bio:
+          type: string
+        avatarUrl:
+          type: string
+
+    UserStats:
+      type: object
+      properties:
+        reviewsCount:
+          type: integer
+        ratingsCount:
+          type: integer
+        followersCount:
+          type: integer
+        followingCount:
+          type: integer
+        watchlistCount:
+          type: integer
+        credibilityScore:
+          type: number
+      required: [reviewsCount, ratingsCount, followersCount, followingCount, watchlistCount, credibilityScore]
+
+    FollowResult:
+      type: object
+      properties:
+        following:
+          type: boolean
+        followersCount:
+          type: integer
+      required: [following, followersCount]
+
+    # ── Professional schemas ──
+    ProfessionalProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        headshotUrl:
+          type: ["string", "null"]
+        demoReelUrl:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        roles:
+          type: array
+          items:
+            type: string
+        skills:
+          type: array
+          items:
+            type: string
+        agencyContact:
+          type: ["string", "null"]
+        availabilityStatus:
+          type: string
+          enum: [available, not_available, open_to_projects]
+        verified:
+          type: boolean
+        imdbLink:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, userId, roles, skills, availabilityStatus, verified, createdAt]
+
+    ProfessionalProfileInput:
+      type: object
+      properties:
+        displayName:
+          type: string
+        headshotUrl:
+          type: string
+        demoReelUrl:
+          type: string
+        bio:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        skills:
+          type: array
+          items:
+            type: string
+        agencyContact:
+          type: string
+        availabilityStatus:
+          type: string
+          enum: [available, not_available, open_to_projects]
+        imdbLink:
+          type: string
+      required: [roles]
+
+    ProfessionalProfileUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+        headshotUrl:
+          type: string
+        demoReelUrl:
+          type: string
+        bio:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        skills:
+          type: array
+          items:
+            type: string
+        agencyContact:
+          type: string
+        availabilityStatus:
+          type: string
+          enum: [available, not_available, open_to_projects]
+        imdbLink:
+          type: string
+
+    # ── Chat schemas ──
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserProfile"
+        lastMessage:
+          type: ["string", "null"]
+        lastMessageAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, participants, createdAt]
+
+    ConversationInput:
+      type: object
+      properties:
+        participantId:
+          type: string
+      required: [participantId]
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        senderId:
+          type: string
+        content:
+          type: string
+        senderName:
+          type: ["string", "null"]
+        senderAvatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, conversationId, senderId, content, createdAt]
+
+    ChatMessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required: [content]
