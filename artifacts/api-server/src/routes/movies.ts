@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, ratingsTable, reviewsTable } from "@workspace/db";
-import { and, avg, count, eq, sql } from "drizzle-orm";
+import { avg, count, eq, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -36,6 +36,32 @@ const mapMovie = (m: any) => ({
   genreIds: m.genre_ids ?? [],
 });
 
+/** Fetch up to maxPages pages in parallel and return a flat deduplicated array */
+const tmdbFetchMultiPage = async (
+  path: string,
+  maxPages: number,
+  extraParams: Record<string, string | number> = {},
+): Promise<ReturnType<typeof mapMovie>[]> => {
+  const pages = Array.from({ length: Math.min(maxPages, 5) }, (_, i) => i + 1);
+  const results = await Promise.all(
+    pages.map((page) => tmdbFetch(path, { ...extraParams, page }).catch(() => null)),
+  );
+  const seen = new Set<number>();
+  const movies: ReturnType<typeof mapMovie>[] = [];
+  for (const data of results) {
+    if (!data) continue;
+    for (const m of data.results ?? []) {
+      if (!seen.has(m.id)) {
+        seen.add(m.id);
+        movies.push(mapMovie(m));
+      }
+    }
+  }
+  return movies;
+};
+
+// ─── Collection endpoints (must come before /:movieId) ───────────────────────
+
 // GET /movies/search
 router.get("/movies/search", async (req, res): Promise<void> => {
   const q = req.query.q as string;
@@ -53,9 +79,16 @@ router.get("/movies/search", async (req, res): Promise<void> => {
   });
 });
 
-// GET /movies/trending
+// GET /movies/trending?maxPages=3
 router.get("/movies/trending", async (req, res): Promise<void> => {
   const page = Number(req.query.page) || 1;
+  const maxPages = Number(req.query.maxPages) || 1;
+
+  if (maxPages > 1) {
+    const results = await tmdbFetchMultiPage("/trending/movie/week", maxPages);
+    res.json({ results, page: 1, totalPages: 500, totalResults: results.length });
+    return;
+  }
   const data = await tmdbFetch("/trending/movie/week", { page });
   res.json({
     results: (data.results ?? []).map(mapMovie),
@@ -65,20 +98,45 @@ router.get("/movies/trending", async (req, res): Promise<void> => {
   });
 });
 
+// GET /movies/popular?maxPages=3
+router.get("/movies/popular", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 3;
+  const results = await tmdbFetchMultiPage("/movie/popular", maxPages);
+  res.json({ results, totalResults: results.length });
+});
+
+// GET /movies/top-rated?maxPages=3
+router.get("/movies/top-rated", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 3;
+  const results = await tmdbFetchMultiPage("/movie/top_rated", maxPages);
+  res.json({ results, totalResults: results.length });
+});
+
 // GET /movies/genres
 router.get("/movies/genres", async (_req, res): Promise<void> => {
   const data = await tmdbFetch("/genre/movie/list");
   res.json({ genres: data.genres ?? [] });
 });
 
-// GET /movies/by-genre
+// GET /movies/by-genre?genreId=X&maxPages=2
 router.get("/movies/by-genre", async (req, res): Promise<void> => {
   const genreId = Number(req.query.genreId);
   const page = Number(req.query.page) || 1;
+  const maxPages = Number(req.query.maxPages) || 1;
   if (!genreId) {
     res.status(400).json({ error: "genreId is required" });
     return;
   }
+
+  if (maxPages > 1) {
+    const results = await tmdbFetchMultiPage("/discover/movie", maxPages, {
+      with_genres: genreId,
+      sort_by: "popularity.desc",
+    });
+    res.json({ results, totalResults: results.length });
+    return;
+  }
+
   const data = await tmdbFetch("/discover/movie", {
     with_genres: genreId,
     sort_by: "popularity.desc",
@@ -92,11 +150,20 @@ router.get("/movies/by-genre", async (req, res): Promise<void> => {
   });
 });
 
-// GET /movies/:movieId/credits — must be before /:movieId
+// ─── Per-movie sub-routes (must come before bare /:movieId) ──────────────────
+
+// GET /movies/:movieId/recommendations
+router.get("/movies/:movieId/recommendations", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
+  const id = parseInt(raw, 10);
+  const maxPages = Number(req.query.maxPages) || 2;
+  const results = await tmdbFetchMultiPage(`/movie/${id}/recommendations`, maxPages);
+  res.json({ results, totalResults: results.length });
+});
+
+// GET /movies/:movieId/credits
 router.get("/movies/:movieId/credits", async (req, res): Promise<void> => {
-  const raw = Array.isArray(req.params.movieId)
-    ? req.params.movieId[0]
-    : req.params.movieId;
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
   const data = await tmdbFetch(`/movie/${id}/credits`);
   res.json({
@@ -122,37 +189,30 @@ router.get("/movies/:movieId/credits", async (req, res): Promise<void> => {
 });
 
 // GET /movies/:movieId/watch-providers
-router.get(
-  "/movies/:movieId/watch-providers",
-  async (req, res): Promise<void> => {
-    const raw = Array.isArray(req.params.movieId)
-      ? req.params.movieId[0]
-      : req.params.movieId;
-    const id = parseInt(raw, 10);
-    const data = await tmdbFetch(`/movie/${id}/watch/providers`);
-    const regionData =
-      data.results?.US ??
-      data.results?.[Object.keys(data.results ?? {})[0]] ??
-      {};
-    const mapProvider = (p: any) => ({
-      providerId: p.provider_id,
-      providerName: p.provider_name,
-      logoPath: p.logo_path ?? "",
-    });
-    res.json({
-      flatrate: (regionData.flatrate ?? []).map(mapProvider),
-      rent: (regionData.rent ?? []).map(mapProvider),
-      buy: (regionData.buy ?? []).map(mapProvider),
-      link: regionData.link ?? null,
-    });
-  },
-);
+router.get("/movies/:movieId/watch-providers", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
+  const id = parseInt(raw, 10);
+  const data = await tmdbFetch(`/movie/${id}/watch/providers`);
+  const regionData =
+    data.results?.US ??
+    data.results?.[Object.keys(data.results ?? {})[0]] ??
+    {};
+  const mapProvider = (p: any) => ({
+    providerId: p.provider_id,
+    providerName: p.provider_name,
+    logoPath: p.logo_path ?? "",
+  });
+  res.json({
+    flatrate: (regionData.flatrate ?? []).map(mapProvider),
+    rent: (regionData.rent ?? []).map(mapProvider),
+    buy: (regionData.buy ?? []).map(mapProvider),
+    link: regionData.link ?? null,
+  });
+});
 
 // GET /movies/:movieId/videos
 router.get("/movies/:movieId/videos", async (req, res): Promise<void> => {
-  const raw = Array.isArray(req.params.movieId)
-    ? req.params.movieId[0]
-    : req.params.movieId;
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
   const data = await tmdbFetch(`/movie/${id}/videos`);
   const results = (data.results ?? []).map((v: any) => ({
@@ -168,9 +228,7 @@ router.get("/movies/:movieId/videos", async (req, res): Promise<void> => {
 
 // GET /movies/:movieId/stats
 router.get("/movies/:movieId/stats", async (req, res): Promise<void> => {
-  const raw = Array.isArray(req.params.movieId)
-    ? req.params.movieId[0]
-    : req.params.movieId;
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const movieId = parseInt(raw, 10);
 
   const [ratingStats] = await db
@@ -194,7 +252,6 @@ router.get("/movies/:movieId/stats", async (req, res): Promise<void> => {
     .from(reviewsTable)
     .where(eq(reviewsTable.movieId, movieId));
 
-  // Rating distribution 1-10
   const distribution = await db
     .select({
       score: ratingsTable.score,
@@ -221,11 +278,9 @@ router.get("/movies/:movieId/stats", async (req, res): Promise<void> => {
   });
 });
 
-// GET /movies/:movieId
+// GET /movies/:movieId  ← bare route always last
 router.get("/movies/:movieId", async (req, res): Promise<void> => {
-  const raw = Array.isArray(req.params.movieId)
-    ? req.params.movieId[0]
-    : req.params.movieId;
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
   const data = await tmdbFetch(`/movie/${id}`);
   if (!data || data.success === false) {
