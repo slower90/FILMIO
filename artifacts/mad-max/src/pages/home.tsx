@@ -116,7 +116,7 @@ export default function Home() {
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section
         ref={heroRef}
-        className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden"
+        className="relative pt-24 pb-8 md:pt-32 md:pb-10 overflow-hidden"
       >
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-[50vw] h-[50vh] bg-primary/10 rounded-full blur-[120px] mix-blend-screen" />
