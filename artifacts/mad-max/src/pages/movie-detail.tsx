@@ -15,13 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RatingStars } from "@/components/rating-stars";
 import { ReviewCard } from "@/components/review-card";
-import { Clock, Calendar, Star, PlayCircle, Plus } from "lucide-react";
+import { Clock, Calendar, Star, Play, Plus } from "lucide-react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 // ── OMDb combined ratings ─────────────────────────────────────────────────────
@@ -157,7 +157,8 @@ export default function MovieDetail() {
   const trailer = videos?.results?.find(
     (v) => v.type === "Trailer" && v.site === "YouTube",
   );
-  const cast = credits?.cast?.slice(0, 10) || [];
+  const cast = credits?.cast?.slice(0, 20) || [];
+  const [trailerOpen, setTrailerOpen] = useState(false);
 
   if (loadingMovie) {
     return (
@@ -174,100 +175,126 @@ export default function MovieDetail() {
     <div className="min-h-screen bg-background pb-20">
       <Navbar />
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div className="relative h-[60vh] md:h-[70vh] w-full">
-        <div className="absolute inset-0 mask-fade-b">
+      {/* ── Hero: full backdrop banner (click to play trailer) ───────────── */}
+      <div
+        className={`relative h-[56vh] md:h-[68vh] w-full group/banner ${trailer ? "cursor-pointer" : ""}`}
+        onClick={() => trailer && setTrailerOpen(true)}
+        onKeyDown={(e) => {
+          if (trailer && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            setTrailerOpen(true);
+          }
+        }}
+        role={trailer ? "button" : undefined}
+        tabIndex={trailer ? 0 : undefined}
+        aria-label={trailer ? `Play ${movie.title} trailer` : undefined}
+      >
+        <div className="absolute inset-0">
           <img
             src={tmdbBackdropUrl(movie.backdropPath || movie.posterPath)}
             alt={movie.title}
-            className="w-full h-full object-cover opacity-40"
+            className="w-full h-full object-cover object-top"
           />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-background/60" />
 
-        <div className="container mx-auto px-4 h-full relative z-10 flex flex-col justify-end pb-10">
-          <div className="flex flex-col md:flex-row gap-8 items-end">
-            <img
-              src={tmdbPosterUrl(movie.posterPath)}
-              alt={movie.title}
-              className="w-32 md:w-48 lg:w-64 rounded-md shadow-2xl border border-border/50 hidden md:block box-glow"
-            />
+        {/* Centered play button over the backdrop */}
+        {trailer && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-black/50 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center transition-all duration-300 group-hover/banner:scale-110 group-hover/banner:bg-primary/80 group-hover/banner:border-primary shadow-2xl">
+              <Play className="w-9 h-9 md:w-11 md:h-11 fill-white text-white ml-1" />
+            </div>
+          </div>
+        )}
+      </div>
 
-            <div className="flex-1 space-y-4">
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold uppercase tracking-tight text-glow">
-                {movie.title}
-              </h1>
-
-              {movie.tagline && (
-                <p className="text-lg md:text-xl text-primary font-medium italic">
-                  "{movie.tagline}"
-                </p>
+      {/* Trailer modal */}
+      {trailer && (
+        <Dialog open={trailerOpen} onOpenChange={setTrailerOpen}>
+          <DialogContent className="max-w-5xl p-0 overflow-hidden bg-black border-border">
+            <DialogHeader className="sr-only">
+              <DialogTitle>{movie.title} — Trailer</DialogTitle>
+            </DialogHeader>
+            <div className="aspect-video w-full">
+              {trailerOpen && (
+                <iframe
+                  src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1`}
+                  title={`${movie.title} trailer`}
+                  className="w-full h-full"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                />
               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
-              <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                {movie.releaseDate && (
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(movie.releaseDate).getFullYear()}
-                  </span>
-                )}
-                {movie.runtime && (
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4" /> {movie.runtime} min
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5 text-primary">
-                  <Star className="w-4 h-4 fill-primary" />
-                  {movie.voteAverage.toFixed(1)}{" "}
-                  <span className="text-muted-foreground">({movie.voteCount})</span>
+      {/* ── Movie info: poster + title + meta, right below the banner ────── */}
+      <div className="container mx-auto px-4 relative z-10 -mt-24 md:-mt-32">
+        <div className="flex flex-col md:flex-row gap-8 items-end">
+          <img
+            src={tmdbPosterUrl(movie.posterPath)}
+            alt={movie.title}
+            className="w-32 md:w-44 lg:w-56 rounded-md shadow-2xl border border-border/50 hidden md:block box-glow shrink-0"
+          />
+
+          <div className="flex-1 space-y-4 pb-1">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold uppercase tracking-tight text-glow">
+              {movie.title}
+            </h1>
+
+            {movie.tagline && (
+              <p className="text-lg md:text-xl text-primary font-medium italic">
+                "{movie.tagline}"
+              </p>
+            )}
+
+            <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              {movie.releaseDate && (
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  {new Date(movie.releaseDate).getFullYear()}
                 </span>
-              </div>
+              )}
+              {movie.runtime && (
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4" /> {movie.runtime} min
+                </span>
+              )}
+              <span className="flex items-center gap-1.5 text-primary">
+                <Star className="w-4 h-4 fill-primary" />
+                {movie.voteAverage.toFixed(1)}{" "}
+                <span className="text-muted-foreground">({movie.voteCount})</span>
+              </span>
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                {movie.genres?.map((g) => (
-                  <span
-                    key={g.id}
-                    className="px-3 py-1 rounded-full border border-border bg-background/50 text-xs font-display uppercase tracking-widest"
-                  >
-                    {g.name}
-                  </span>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {movie.genres?.map((g) => (
+                <span
+                  key={g.id}
+                  className="px-3 py-1 rounded-full border border-border bg-background/50 text-xs font-display uppercase tracking-widest"
+                >
+                  {g.name}
+                </span>
+              ))}
+            </div>
 
-              <div className="flex flex-wrap gap-4 pt-4">
-                {trailer && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="lg" className="gap-2">
-                        <PlayCircle className="w-5 h-5" />
-                        Watch Trailer
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-border">
-                      <DialogHeader className="sr-only">
-                        <DialogTitle>Trailer</DialogTitle>
-                      </DialogHeader>
-                      <div className="aspect-video w-full">
-                        <iframe
-                          src={`https://www.youtube.com/embed/${trailer.key}?autoplay=1`}
-                          className="w-full h-full"
-                          allow="autoplay; encrypted-media"
-                          allowFullScreen
-                        />
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
+            {movie.overview && (
+              <p className="text-base text-foreground/80 leading-relaxed max-w-3xl line-clamp-3">
+                {movie.overview}
+              </p>
+            )}
 
-                <Button size="lg" variant="secondary" className="gap-2">
-                  <Plus className="w-5 h-5" />
-                  Watchlist
-                </Button>
+            <div className="flex flex-wrap gap-4 pt-2">
+              <Button size="lg" variant="secondary" className="gap-2">
+                <Plus className="w-5 h-5" />
+                Watchlist
+              </Button>
 
-                <Button size="lg" variant="outline" className="gap-2">
-                  Rate & Review
-                </Button>
-              </div>
+              <Button size="lg" variant="outline" className="gap-2">
+                Rate & Review
+              </Button>
             </div>
           </div>
         </div>
@@ -285,16 +312,19 @@ export default function MovieDetail() {
             <p className="text-lg text-foreground/80 leading-relaxed">{movie.overview}</p>
           </section>
 
-          {/* Cast */}
+          {/* Cast — compact horizontal carousel */}
           {cast.length > 0 && (
             <section>
               <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-4 border-b border-border pb-2">
-                Cast
+                Cast &amp; Crew
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-thin snap-x">
                 {cast.map((person) => (
-                  <div key={person.id} className="group cursor-pointer">
-                    <div className="aspect-[2/3] w-full rounded overflow-hidden mb-2 bg-muted">
+                  <div
+                    key={person.id}
+                    className="group cursor-pointer shrink-0 w-24 md:w-28 snap-start"
+                  >
+                    <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden mb-2 bg-muted border border-border/50 group-hover:border-primary transition-colors">
                       {person.profilePath ? (
                         <img
                           src={tmdbPosterUrl(person.profilePath)}
@@ -302,15 +332,15 @@ export default function MovieDetail() {
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-[10px]">
                           No Image
                         </div>
                       )}
                     </div>
-                    <p className="font-bold text-sm leading-tight group-hover:text-primary transition-colors">
+                    <p className="font-bold text-xs leading-tight text-center group-hover:text-primary transition-colors line-clamp-2">
                       {person.name}
                     </p>
-                    <p className="text-xs text-muted-foreground line-clamp-1">
+                    <p className="text-[11px] text-muted-foreground text-center line-clamp-2">
                       {person.character}
                     </p>
                   </div>
