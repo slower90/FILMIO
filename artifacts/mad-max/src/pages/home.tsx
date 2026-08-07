@@ -59,6 +59,39 @@ function useGenreRow(id: number) {
   });
 }
 
+// Indian cinema rows (origin country IN, optionally by original language)
+const INDIAN_ROWS = [
+  { language: "",   name: "🇮🇳 Trending in India" },
+  { language: "hi", name: "🎬 Bollywood Blockbusters" },
+  { language: "ta", name: "🌶️ Tamil & Kollywood" },
+  { language: "te", name: "💥 Telugu / Tollywood" },
+] as const;
+
+async function fetchIndian(language: string): Promise<RowMovie[]> {
+  const res = await fetch(
+    `/api/movies/indian?maxPages=2${language ? `&language=${language}` : ""}`,
+  );
+  if (!res.ok) return [];
+  const d = await res.json();
+  return d.results ?? [];
+}
+
+function IndianRow({ language, name }: { language: string; name: string }) {
+  const { data, isLoading } = useQuery<RowMovie[]>({
+    queryKey: ["home-indian", language],
+    queryFn: () => fetchIndian(language),
+    staleTime: 10 * 60 * 1000,
+  });
+  return (
+    <MovieRow
+      title={name}
+      movies={data ?? []}
+      isLoading={isLoading}
+      className="border-b border-border/30"
+    />
+  );
+}
+
 // TMDB genre IDs
 const GENRE_ROWS = [
   { id: 28,   name: "⚔️ Action Hits" },
@@ -109,6 +142,11 @@ export default function Home() {
           isLoading={loadingTrending}
           className="border-b border-border/30"
         />
+
+        {/* India-first rows */}
+        {INDIAN_ROWS.map((r) => (
+          <IndianRow key={r.language} language={r.language} name={r.name} />
+        ))}
 
         <MovieRow
           title="🎬 New in Cinemas"

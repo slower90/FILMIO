@@ -202,6 +202,20 @@ router.get("/movies/top-rated", async (req, res): Promise<void> => {
   res.json({ results, totalResults: results.length });
 });
 
+// GET /movies/indian?language=hi&maxPages=2 — Indian-origin movies (optionally by original language)
+router.get("/movies/indian", async (req, res): Promise<void> => {
+  const language = String(req.query.language ?? "").trim();
+  const maxPages = Number(req.query.maxPages) || 2;
+  const params: Record<string, string | number> = {
+    with_origin_country: "IN",
+    region: "IN",
+    sort_by: "popularity.desc",
+  };
+  if (language) params.with_original_language = language;
+  const results = await tmdbFetchMultiPage("/discover/movie", maxPages, params);
+  res.json({ results, totalResults: results.length });
+});
+
 // GET /movies/genres
 router.get("/movies/genres", async (_req, res): Promise<void> => {
   const data = await tmdbFetch("/genre/movie/list");
