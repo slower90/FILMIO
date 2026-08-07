@@ -1,3 +1,5 @@
 - [TMDB auth method](tmdb-auth.md) — v3 API keys need api_key query param, not Bearer token Authorization header
 - [Button asChild pattern](button-aschild.md) — use React.cloneElement, not @radix-ui/react-slot (causes duplicate React copy in Vite)
 - [DB schema rebuild](db-schema-rebuild.md) — after adding tables to lib/db/src/schema/, run pnpm run typecheck:libs before api-server typecheck
+- [GSAP animations](gsap-animations.md) — ScrollTrigger rows + GSAP hover + momentum scroll in movie-row.tsx; PageFade in App.tsx
+- [tmdbPosterUrl full-URL fix](tmdb-auth.md) — tmdbPosterUrl() checks for http:// prefix to pass through AniList/Jikan CDN URLs unchanged

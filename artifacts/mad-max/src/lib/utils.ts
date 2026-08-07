@@ -7,6 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 export function tmdbPosterUrl(path?: string | null) {
   if (!path) return "https://via.placeholder.com/500x750/111111/444444?text=NO+POSTER";
+  // Full URLs (e.g. AniList/Jikan poster CDNs) — pass through unchanged
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
   return `https://image.tmdb.org/t/p/w500${path}`;
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import gsap from "gsap";
 import { ClerkProvider, SignIn, SignUp, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -129,6 +130,17 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+// Fades the page in on every route change
+function PageFade({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    gsap.fromTo(ref.current, { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.out" });
+  }, [location]);
+  return <div ref={ref}>{children}</div>;
+}
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -144,6 +156,7 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        <PageFade>
         <Switch>
           <Route path="/" component={Home} />
 
@@ -170,6 +183,7 @@ function ClerkProviderWithRoutes() {
             </div>
           </Route>
         </Switch>
+        </PageFade>
       </QueryClientProvider>
     </ClerkProvider>
   );
