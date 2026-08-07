@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
+import { HeroCarousel, type HeroMovie } from "@/components/hero-carousel";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { useUser } from "@clerk/react";
-import { useRef, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -83,12 +82,6 @@ function GenreRow({ id, name }: { id: number; name: string }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Home() {
-  const { isSignedIn, isLoaded, user } = useUser();
-  const heroRef  = useRef<HTMLElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subRef   = useRef<HTMLParagraphElement>(null);
-  const ctaRef   = useRef<HTMLDivElement>(null);
-
   const { data: trendingMovies,  isLoading: loadingTrending  } = useMovieCategory("trending",     "trending",     3);
   const { data: popularMovies,   isLoading: loadingPopular   } = useMovieCategory("popular",      "popular",      3);
   const { data: topRatedMovies,  isLoading: loadingTopRated  } = useMovieCategory("top-rated",    "top-rated",    3);
@@ -100,83 +93,12 @@ export default function Home() {
     staleTime: 15 * 60 * 1000,
   });
 
-  // Hero entrance animation
-  useEffect(() => {
-    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-    tl.fromTo(titleRef.current, { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.7 })
-      .fromTo(subRef.current,   { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 }, "-=0.35")
-      .fromTo(ctaRef.current,   { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, "-=0.3");
-    return () => { tl.kill(); };
-  }, []);
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section
-        ref={heroRef}
-        className="relative pt-24 pb-8 md:pt-32 md:pb-10 overflow-hidden"
-      >
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-[50vw] h-[50vh] bg-primary/10 rounded-full blur-[120px] mix-blend-screen" />
-          <div className="absolute bottom-0 right-0 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[100px] mix-blend-screen" />
-        </div>
-
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h1
-            ref={titleRef}
-            className="text-5xl md:text-7xl lg:text-8xl font-display font-bold uppercase tracking-tighter mb-6 leading-none"
-            style={{ opacity: 0 }}
-          >
-            The serious film <br />
-            <span className="text-primary text-glow">Lover&apos;s Network</span>
-          </h1>
-
-          <p
-            ref={subRef}
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
-            style={{ opacity: 0 }}
-          >
-            Track what you watch. Follow trusted critics. Connect with
-            industry professionals. Discover cinema without the noise.
-          </p>
-
-          <div ref={ctaRef} className="flex flex-wrap gap-4 justify-center" style={{ opacity: 0 }}>
-            {isLoaded && isSignedIn ? (
-              <>
-                <Button asChild size="lg" className="font-display uppercase tracking-wider px-8">
-                  <Link href="/watchlist">My Watchlist</Link>
-                </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="lg"
-                  className="font-display uppercase tracking-wider px-8"
-                >
-                  <Link href="/discover">
-                    Discover More <ArrowRight className="ml-2 w-4 h-4" />
-                  </Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button asChild size="lg" className="font-display uppercase tracking-wider px-8">
-                  <Link href="/sign-up">Create Free Account</Link>
-                </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="lg"
-                  className="font-display uppercase tracking-wider px-8"
-                >
-                  <Link href="/genres">Browse Genres</Link>
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
+      {/* ── Hero Carousel: Top 10 Trending ───────────────────────────────── */}
+      <HeroCarousel movies={(trendingMovies ?? []) as HeroMovie[]} />
 
       {/* ── Carousels ─────────────────────────────────────────────────────── */}
       <div className="border-t border-border/30">
