@@ -29,10 +29,9 @@ const FEEDS = [
     url: "https://www.hollywoodreporter.com/feed/",
     category: "film" as const,
   },
-  // ANN primary feed; fall back to alternate if this fails
   {
-    name: "Anime News Network",
-    url: "https://www.animenewsnetwork.com/all/rss.xml",
+    name: "Anime Corner",
+    url: "https://animecorner.me/feed/",
     category: "anime" as const,
   },
 ];

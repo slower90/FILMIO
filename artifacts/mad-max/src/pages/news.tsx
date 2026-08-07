@@ -122,7 +122,7 @@ export default function News() {
           News
         </h1>
         <p className="text-muted-foreground text-lg">
-          Film & anime news from Variety, Hollywood Reporter, and Anime News Network.
+          Film & anime news from Variety, Hollywood Reporter, and Anime Corner.
         </p>
         {data?.fetchedAt && (
           <p className="text-xs text-muted-foreground mt-2">
