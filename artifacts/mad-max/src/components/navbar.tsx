@@ -248,7 +248,7 @@ function SideDrawer({ open, onClose }: DrawerProps) {
           ].map(({ id, label }) => (
             <button
               key={id}
-              onClick={() => go(`/genres?focus=${id}`)}
+              onClick={() => go(`/genre/${id}`)}
               className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
             >
               <span className="font-display uppercase tracking-widest">{label}</span>

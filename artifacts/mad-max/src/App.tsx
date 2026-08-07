@@ -20,6 +20,7 @@ import Professionals from '@/pages/professionals';
 import ProfessionalDetail from '@/pages/professional-detail';
 import Chat from '@/pages/chat';
 import Genres from '@/pages/genres';
+import GenrePage from '@/pages/genre';
 import Anime from '@/pages/anime';
 import News from '@/pages/news';
 
@@ -173,6 +174,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/professionals/:id" component={ProfessionalDetail} />
           <Route path="/chat" component={Chat} />
           <Route path="/genres" component={Genres} />
+          <Route path="/genre/:id" component={GenrePage} />
           <Route path="/anime" component={Anime} />
           <Route path="/news" component={News} />
 

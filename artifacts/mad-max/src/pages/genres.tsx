@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { Film, ChevronRight } from "lucide-react";
@@ -72,6 +72,14 @@ function GenreMoviesRow({ genre }: { genre: Genre }) {
             isLoading={isLoading}
             className="py-6"
           />
+          <div className="px-6 pb-4">
+            <Link
+              href={`/genre/${genre.id}`}
+              className="text-xs font-display uppercase tracking-widest text-primary hover:underline"
+            >
+              View all {genre.name} →
+            </Link>
+          </div>
         </div>
       )}
     </div>
@@ -79,6 +87,16 @@ function GenreMoviesRow({ genre }: { genre: Genre }) {
 }
 
 export default function Genres() {
+  // Legacy links used /genres?focus=<id> — redirect them to the dedicated genre page
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    const focus = new URLSearchParams(search).get("focus");
+    if (focus && Number(focus) > 0) {
+      setLocation(`/genre/${focus}`, { replace: true });
+    }
+  }, [search, setLocation]);
+
   const { data: genresData, isLoading } = useQuery<{ genres: Genre[] }>({
     queryKey: ["all-genres"],
     queryFn: async () => {

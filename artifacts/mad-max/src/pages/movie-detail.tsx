@@ -1,4 +1,4 @@
-import { useParams } from "wouter";
+import { Link, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   useGetMovieDetails,
@@ -271,12 +271,13 @@ export default function MovieDetail() {
 
             <div className="flex flex-wrap gap-2">
               {movie.genres?.map((g) => (
-                <span
+                <Link
                   key={g.id}
-                  className="px-3 py-1 rounded-full border border-border bg-background/50 text-xs font-display uppercase tracking-widest"
+                  href={`/genre/${g.id}`}
+                  className="px-3 py-1 rounded-full border border-border bg-background/50 text-xs font-display uppercase tracking-widest hover:border-primary hover:text-primary transition-colors"
                 >
                   {g.name}
-                </span>
+                </Link>
               ))}
             </div>
 
