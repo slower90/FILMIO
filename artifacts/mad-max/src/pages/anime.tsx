@@ -163,7 +163,7 @@ export default function Anime() {
       <section className="pt-32 pb-10 text-center px-4 border-b border-border/50 bg-card/10">
         <div className="container mx-auto max-w-3xl">
           <p className="text-primary font-display uppercase tracking-widest text-sm mb-4">
-            Powered by MyAnimeList
+            Powered by AniList
           </p>
           <h1 className="text-5xl md:text-7xl font-display font-bold uppercase tracking-tighter mb-4 text-glow">
             Anime
