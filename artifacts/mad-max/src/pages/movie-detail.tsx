@@ -566,7 +566,7 @@ export default function MovieDetail() {
       {(filteredRecs.length > 0 || loadingRecs) && (
         <div className="mt-12 border-t border-border/50">
           <MovieRow
-            title="You Might Also Like"
+            title="🎯 Recommended Movies — You Might Also Like"
             movies={filteredRecs}
             isLoading={loadingRecs}
           />
