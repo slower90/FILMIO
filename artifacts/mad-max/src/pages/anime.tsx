@@ -84,40 +84,50 @@ function AnimeRow({
   filter: string;
   type?: string;
 }) {
-  const { data, isLoading } = useQuery<{ results: AnimeItem[] }>({
+  const { data, isLoading, isError } = useQuery<{ results: AnimeItem[] }>({
     queryKey: ["anime-row", filter, type],
     queryFn: async () => {
       const res = await fetch(`/api/anime/top?filter=${filter}&type=${type}&limit=25`);
-      if (!res.ok) throw new Error("Failed to fetch anime");
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Failed to fetch anime");
+      }
       return res.json();
     },
     staleTime: 10 * 60 * 1000,
+    retry: 1,
   });
 
-  // Use MovieRow but with anime's full-URL posters via the posterUrl helper
-  const movies: RowMovie[] = (data?.results ?? []).map(animeToRowMovie);
-
-  // We need a custom row since clicking should go to MAL, not /movies/:id
-  // Use inline scroll implementation
   const items = data?.results ?? [];
 
   return (
     <section className="py-10 border-b border-border/30">
       <div className="container mx-auto px-4">
         <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-5">{title}</h2>
-        <div
-          className="flex gap-3 overflow-x-auto scroll-smooth pb-3"
-          style={{ scrollbarWidth: "none" }}
-        >
-          {isLoading
-            ? Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="flex-none w-32 md:w-36">
-                  <div className="aspect-[2/3] rounded bg-muted animate-pulse" />
-                  <div className="mt-2 h-3 w-3/4 rounded bg-muted animate-pulse" />
-                </div>
-              ))
-            : items.map((anime) => <AnimeCard key={anime.id} anime={anime} />)}
-        </div>
+        {isError ? (
+          <div className="py-6 px-4 border border-dashed border-border/50 rounded-md text-center text-muted-foreground text-sm">
+            <Tv className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p>MyAnimeList is temporarily unavailable. Check back soon.</p>
+          </div>
+        ) : (
+          <div
+            className="flex gap-3 overflow-x-auto scroll-smooth pb-3"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {isLoading
+              ? Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="flex-none w-32 md:w-36">
+                    <div className="aspect-[2/3] rounded bg-muted animate-pulse" />
+                    <div className="mt-2 h-3 w-3/4 rounded bg-muted animate-pulse" />
+                  </div>
+                ))
+              : items.length === 0
+              ? (
+                <p className="text-muted-foreground text-sm py-4">No results available right now.</p>
+              )
+              : items.map((anime) => <AnimeCard key={anime.id} anime={anime} />)}
+          </div>
+        )}
       </div>
     </section>
   );

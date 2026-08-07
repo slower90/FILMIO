@@ -2,7 +2,14 @@ import { Router, type IRouter } from "express";
 import Parser from "rss-parser";
 
 const router: IRouter = Router();
-const parser = new Parser({ timeout: 12_000 });
+const parser = new Parser({
+  timeout: 12_000,
+  headers: {
+    "User-Agent":
+      "Mozilla/5.0 (compatible; MAD-MAX-News/1.0; +https://madmax.replit.app)",
+    Accept: "application/rss+xml, application/xml, text/xml, */*",
+  },
+});
 
 interface NewsItem {
   id: string;
