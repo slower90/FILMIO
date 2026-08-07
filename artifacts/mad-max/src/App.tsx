@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from '@clerk/react';
+import { ClerkProvider, SignIn, SignUp, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-import { Switch, Route, Redirect, useLocation, Router as WouterRouter } from 'wouter';
+import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -18,6 +18,9 @@ import Profile from '@/pages/profile';
 import Professionals from '@/pages/professionals';
 import ProfessionalDetail from '@/pages/professional-detail';
 import Chat from '@/pages/chat';
+import Genres from '@/pages/genres';
+import Anime from '@/pages/anime';
+import News from '@/pages/news';
 
 // Setup QueryClient
 const queryClient = new QueryClient({
@@ -56,11 +59,11 @@ const clerkAppearance = {
     logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
   },
   variables: {
-    colorPrimary: "hsl(38 92% 50%)", // amber
+    colorPrimary: "hsl(38 92% 50%)",
     colorForeground: "hsl(0 0% 98%)",
     colorMutedForeground: "hsl(240 5% 60%)",
     colorDanger: "hsl(0 84% 60%)",
-    colorBackground: "hsl(240 10% 6%)", // card bg
+    colorBackground: "hsl(240 10% 6%)",
     colorInput: "hsl(240 10% 12%)",
     colorInputForeground: "hsl(0 0% 98%)",
     colorNeutral: "hsl(240 10% 12%)",
@@ -143,7 +146,7 @@ function ClerkProviderWithRoutes() {
         <ClerkQueryClientCacheInvalidator />
         <Switch>
           <Route path="/" component={Home} />
-          
+
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
 
@@ -156,7 +159,10 @@ function ClerkProviderWithRoutes() {
           <Route path="/professionals" component={Professionals} />
           <Route path="/professionals/:id" component={ProfessionalDetail} />
           <Route path="/chat" component={Chat} />
-          
+          <Route path="/genres" component={Genres} />
+          <Route path="/anime" component={Anime} />
+          <Route path="/news" component={News} />
+
           <Route>
             <div className="min-h-screen bg-background flex flex-col items-center justify-center">
               <h1 className="text-4xl font-display uppercase tracking-widest mb-4">404 - Not Found</h1>

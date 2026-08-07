@@ -24,6 +24,58 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+// ── OMDb combined ratings ─────────────────────────────────────────────────────
+
+interface OmdbRatings {
+  imdbRating: string | null;
+  imdbVotes: string | null;
+  rottenTomatoes: string | null;
+  metacritic: string | null;
+  imdbNorm: number | null; // /100
+  rtNorm: number | null;
+  metacriticNorm: number | null;
+}
+
+async function fetchOmdbRatings(imdbId: string): Promise<OmdbRatings | null> {
+  const res = await fetch(`/api/movies/omdb?imdbId=${encodeURIComponent(imdbId)}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+function madMaxScore(
+  tmdbAvg: number,
+  omdb: OmdbRatings | null | undefined,
+): number | null {
+  const scores: number[] = [];
+  // TMDB: voteAverage is /10 → normalise to /100
+  if (tmdbAvg > 0) scores.push(tmdbAvg * 10);
+  if (omdb?.imdbNorm != null) scores.push(omdb.imdbNorm);
+  if (omdb?.rtNorm != null) scores.push(omdb.rtNorm);
+  if (omdb?.metacriticNorm != null) scores.push(omdb.metacriticNorm);
+  if (scores.length === 0) return null;
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) / 10; // back to /10
+}
+
+function RatingPill({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | null;
+  color: string;
+}) {
+  if (!value) return null;
+  return (
+    <div className="flex flex-col items-center gap-1 min-w-[70px]">
+      <span className={`text-xl md:text-2xl font-display font-bold ${color}`}>{value}</span>
+      <span className="text-[10px] text-muted-foreground uppercase tracking-widest text-center">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 // ── Fetchers for non-spec endpoints ──────────────────────────────────────────
 
 async function fetchMovieRecommendations(movieId: number): Promise<RowMovie[]> {
@@ -69,6 +121,17 @@ export default function MovieDetail() {
     { movieId, type: "audience" },
     { query: { enabled: !!movieId } },
   );
+
+  // OMDb combined ratings (needs imdbId from movie detail)
+  const imdbId = (movie as any)?.imdbId as string | null | undefined;
+  const { data: omdb } = useQuery<OmdbRatings | null>({
+    queryKey: ["omdb", imdbId],
+    queryFn: () => fetchOmdbRatings(imdbId!),
+    enabled: !!imdbId,
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+
+  const combinedScore = madMaxScore(movie?.voteAverage ?? 0, omdb);
 
   // "You Might Also Like" — TMDB recommendations for this movie
   const { data: recommendations, isLoading: loadingRecs } = useQuery<RowMovie[]>({
@@ -302,6 +365,63 @@ export default function MovieDetail() {
 
         {/* Right: Sidebar — Rating + Providers + Details */}
         <div className="space-y-8">
+
+          {/* ── Combined Ratings panel ─────────────────────────────────── */}
+          {(omdb || movie.voteAverage > 0) && (
+            <div className="bg-card border border-border rounded-md p-6">
+              <h3 className="font-display uppercase tracking-wider font-bold text-lg mb-2">
+                All Ratings
+              </h3>
+
+              {/* MAD MAX Score — unified average */}
+              {combinedScore != null && (
+                <div className="flex items-end gap-2 mb-5">
+                  <span className="text-5xl font-display font-bold text-primary text-glow">
+                    {combinedScore.toFixed(1)}
+                  </span>
+                  <div className="mb-1">
+                    <span className="text-muted-foreground font-display text-lg">/ 10</span>
+                    <p className="text-[10px] uppercase tracking-widest text-primary font-bold">
+                      MAD MAX Score
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Individual source ratings */}
+              <div className="flex flex-wrap gap-4 border-t border-border/50 pt-4">
+                {movie.voteAverage > 0 && (
+                  <RatingPill
+                    label="TMDB"
+                    value={`${movie.voteAverage.toFixed(1)}/10`}
+                    color="text-blue-400"
+                  />
+                )}
+                <RatingPill
+                  label="IMDb"
+                  value={omdb?.imdbRating ? `${omdb.imdbRating}/10` : null}
+                  color="text-yellow-400"
+                />
+                <RatingPill
+                  label="Rotten Tomatoes"
+                  value={omdb?.rottenTomatoes ?? null}
+                  color="text-red-400"
+                />
+                <RatingPill
+                  label="Metacritic"
+                  value={omdb?.metacritic ? `${omdb.metacritic}/100` : null}
+                  color="text-green-400"
+                />
+              </div>
+
+              {omdb?.imdbVotes && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  IMDb: {omdb.imdbVotes} votes
+                </p>
+              )}
+            </div>
+          )}
+
           {stats && (
             <div className="bg-card border border-border rounded-md p-6">
               <h3 className="font-display uppercase tracking-wider font-bold text-lg mb-4">

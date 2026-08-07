@@ -62,6 +62,96 @@ const tmdbFetchMultiPage = async (
 
 // ─── Collection endpoints (must come before /:movieId) ───────────────────────
 
+// GET /movies/search-multi?q=  — TMDB multi-search (movies + TV + people)
+router.get("/movies/search-multi", async (req, res): Promise<void> => {
+  const q = req.query.q as string;
+  const page = Number(req.query.page) || 1;
+  if (!q) {
+    res.status(400).json({ error: "q is required" });
+    return;
+  }
+  const data = await tmdbFetch("/search/multi", { query: q, page });
+  const results = (data.results ?? []).map((r: any) => ({
+    id: r.id,
+    mediaType: r.media_type, // "movie" | "tv" | "person"
+    title: r.title ?? r.name ?? "",
+    posterPath: r.poster_path ?? r.profile_path ?? null,
+    releaseDate: r.release_date ?? r.first_air_date ?? "",
+    voteAverage: r.vote_average ?? 0,
+    overview: r.overview ?? r.known_for_department ?? "",
+  }));
+  res.json({ results, page: data.page ?? 1, totalPages: data.total_pages ?? 1 });
+});
+
+// GET /movies/new-releases?maxPages=2
+router.get("/movies/new-releases", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 2;
+  const results = await tmdbFetchMultiPage("/movie/now_playing", maxPages);
+  res.json({ results, totalResults: results.length });
+});
+
+// GET /movies/omdb?imdbId=tt...  or  ?title=...&year=...
+router.get("/movies/omdb", async (req, res): Promise<void> => {
+  const key = process.env.OMDB_API_KEY;
+  if (!key) {
+    res.status(503).json({ error: "OMDB_API_KEY not configured" });
+    return;
+  }
+  const { imdbId, title, year } = req.query as Record<string, string>;
+  if (!imdbId && !title) {
+    res.status(400).json({ error: "imdbId or title is required" });
+    return;
+  }
+
+  const url = new URL("https://www.omdbapi.com/");
+  url.searchParams.set("apikey", key);
+  url.searchParams.set("tomatoes", "true");
+  if (imdbId) url.searchParams.set("i", imdbId);
+  else {
+    url.searchParams.set("t", title);
+    if (year) url.searchParams.set("y", year);
+  }
+
+  const omdbRes = await fetch(url.toString());
+  if (!omdbRes.ok) {
+    res.status(502).json({ error: "OMDb request failed" });
+    return;
+  }
+  const d = await omdbRes.json();
+  if (d.Response === "False") {
+    res.status(404).json({ error: d.Error ?? "Not found" });
+    return;
+  }
+
+  // Parse Ratings array
+  const ratings: Record<string, string> = {};
+  for (const r of d.Ratings ?? []) {
+    ratings[r.Source] = r.Value;
+  }
+
+  const parseScore = (raw: string | undefined, outOf: number): number | null => {
+    if (!raw || raw === "N/A") return null;
+    const n = parseFloat(raw.replace(/[^0-9.]/g, ""));
+    if (isNaN(n)) return null;
+    return Math.round((n / outOf) * 100);
+  };
+
+  const imdb = parseScore(d.imdbRating, 10);
+  const rt = parseScore(ratings["Rotten Tomatoes"], 100);
+  const meta = parseScore(d.Metascore, 100);
+
+  res.json({
+    imdbRating: d.imdbRating !== "N/A" ? d.imdbRating : null,
+    imdbVotes: d.imdbVotes !== "N/A" ? d.imdbVotes : null,
+    rottenTomatoes: ratings["Rotten Tomatoes"] ?? null,
+    metacritic: d.Metascore !== "N/A" ? d.Metascore : null,
+    // All normalised to /100 for computing MAD MAX Score
+    imdbNorm: imdb,
+    rtNorm: rt,
+    metacriticNorm: meta,
+  });
+});
+
 // GET /movies/search
 router.get("/movies/search", async (req, res): Promise<void> => {
   const q = req.query.q as string;

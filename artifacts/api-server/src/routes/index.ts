@@ -7,6 +7,8 @@ import watchlistRouter from "./watchlist";
 import usersRouter from "./users";
 import professionalsRouter from "./professionals";
 import chatRouter from "./chat";
+import animeRouter from "./anime";
+import newsRouter from "./news";
 
 const router: IRouter = Router();
 
@@ -18,5 +20,7 @@ router.use(watchlistRouter);
 router.use(usersRouter);
 router.use(professionalsRouter);
 router.use(chatRouter);
+router.use(animeRouter);
+router.use(newsRouter);
 
 export default router;

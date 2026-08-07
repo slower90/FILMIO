@@ -9,24 +9,63 @@ import { useUser } from "@clerk/react";
 import { useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 
-// ── Direct API fetchers for non-spec endpoints ────────────────────────────────
+// ── Direct API fetchers ───────────────────────────────────────────────────────
 
-async function fetchMovieCategory(path: string, maxPages: number): Promise<RowMovie[]> {
-  const res = await fetch(`/api/movies/${path}?maxPages=${maxPages}`);
+async function fetchCategory(path: string, maxPages: number): Promise<RowMovie[]> {
+  const url = path.startsWith("/api/")
+    ? `${path}?maxPages=${maxPages}`
+    : `/api/movies/${path}?maxPages=${maxPages}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${path}`);
   const data = await res.json();
   return data.results ?? [];
 }
 
+async function fetchGenre(genreId: number, maxPages = 2): Promise<RowMovie[]> {
+  const res = await fetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=${maxPages}`);
+  if (!res.ok) return [];
+  const d = await res.json();
+  return d.results ?? [];
+}
+
 function useMovieCategory(key: string, path: string, maxPages = 3) {
   return useQuery<RowMovie[]>({
     queryKey: ["movies", key, maxPages],
-    queryFn: () => fetchMovieCategory(path, maxPages),
-    staleTime: 5 * 60 * 1000, // 5 min
+    queryFn: () => fetchCategory(path, maxPages),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
+function useGenreRow(id: number, name: string) {
+  return useQuery<RowMovie[]>({
+    queryKey: ["home-genre", id],
+    queryFn: () => fetchGenre(id, 2),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+// TMDB genre IDs
+const GENRE_ROWS = [
+  { id: 28,   name: "Action Hits" },
+  { id: 18,   name: "Award-Winning Drama" },
+  { id: 35,   name: "Laugh Out Loud Comedy" },
+  { id: 27,   name: "Horror & Thrills" },
+  { id: 878,  name: "Science Fiction" },
+] as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
+
+function GenreRow({ id, name }: { id: number; name: string }) {
+  const { data, isLoading } = useGenreRow(id, name);
+  return (
+    <MovieRow
+      title={name}
+      movies={data ?? []}
+      isLoading={isLoading}
+      className="border-b border-border/30"
+    />
+  );
+}
 
 export default function Home() {
   const { isSignedIn, isLoaded } = useUser();
@@ -34,26 +73,13 @@ export default function Home() {
 
   const { data: trendingReviews } = useGetTrendingReviews({ limit: 4 });
 
-  const { data: trendingMovies, isLoading: loadingTrending } = useMovieCategory(
-    "trending",
-    "trending",
-    3,
-  );
-  const { data: popularMovies, isLoading: loadingPopular } = useMovieCategory(
-    "popular",
-    "popular",
-    3,
-  );
-  const { data: topRatedMovies, isLoading: loadingTopRated } = useMovieCategory(
-    "top-rated",
-    "top-rated",
-    3,
-  );
+  const { data: trendingMovies, isLoading: loadingTrending } = useMovieCategory("trending", "trending", 3);
+  const { data: popularMovies, isLoading: loadingPopular } = useMovieCategory("popular", "popular", 3);
+  const { data: topRatedMovies, isLoading: loadingTopRated } = useMovieCategory("top-rated", "top-rated", 3);
+  const { data: newReleases, isLoading: loadingNew } = useMovieCategory("new-releases", "new-releases", 2);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      setLocation("/discover");
-    }
+    if (isLoaded && isSignedIn) setLocation("/discover");
   }, [isLoaded, isSignedIn, setLocation]);
 
   if (!isLoaded || isSignedIn) return null;
@@ -76,18 +102,16 @@ export default function Home() {
               lover's network
             </span>
           </h1>
-
           <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-10 font-medium">
             Track what you watch. Follow trusted critics. Connect with industry
             professionals. Discover cinema without the noise.
           </p>
-
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" asChild className="w-full sm:w-auto">
               <Link href="/sign-up">Create Free Account</Link>
             </Button>
             <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
-              <Link href="/search">Explore Movies</Link>
+              <Link href="/genres">Browse Genres</Link>
             </Button>
           </div>
         </div>
@@ -96,24 +120,34 @@ export default function Home() {
       {/* ── Movie Rows ───────────────────────────────────────────────────── */}
       <div className="border-t border-border/50 bg-card/20">
         <MovieRow
-          title="Trending This Week"
+          title="🔥 Trending This Week"
           movies={trendingMovies ?? []}
           isLoading={loadingTrending}
           className="border-b border-border/30"
         />
-
         <MovieRow
-          title="Popular Right Now"
+          title="🎬 New in Cinemas"
+          movies={newReleases ?? []}
+          isLoading={loadingNew}
+          className="border-b border-border/30"
+        />
+        <MovieRow
+          title="📈 Popular Right Now"
           movies={popularMovies ?? []}
           isLoading={loadingPopular}
           className="border-b border-border/30"
         />
-
         <MovieRow
-          title="All-Time Classics"
+          title="⭐ All-Time Classics"
           movies={topRatedMovies ?? []}
           isLoading={loadingTopRated}
+          className="border-b border-border/30"
         />
+
+        {/* Per-genre rows */}
+        {GENRE_ROWS.map((g) => (
+          <GenreRow key={g.id} id={g.id} name={g.name} />
+        ))}
       </div>
 
       {/* ── Featured Reviews ─────────────────────────────────────────────── */}
@@ -164,15 +198,34 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Industry CTA ─────────────────────────────────────────────────── */}
+      <section className="py-16 bg-card border-t border-border">
+        <div className="container mx-auto px-4 text-center max-w-3xl">
+          <h2 className="text-3xl font-display font-bold uppercase tracking-wider mb-3">
+            For Industry Professionals
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            Directors, actors, cinematographers — build your verified profile, share
+            your reel, and connect directly with other film-industry professionals.
+            Messages are end-to-end encrypted.
+          </p>
+          <Button variant="outline" size="lg" asChild>
+            <Link href="/professionals">Explore the Industry Network</Link>
+          </Button>
+        </div>
+      </section>
+
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer className="py-12 border-t border-border bg-card text-center">
         <div className="container mx-auto px-4">
-          <p className="font-display font-bold text-2xl tracking-widest text-primary mb-4">
-            MAD MAX
-          </p>
-          <p className="text-muted-foreground text-sm uppercase tracking-wider">
-            For the love of cinema.
-          </p>
+          <p className="font-display font-bold text-2xl tracking-widest text-primary mb-4">MAD MAX</p>
+          <div className="flex justify-center gap-6 text-sm text-muted-foreground mb-4">
+            <Link href="/genres" className="hover:text-primary transition-colors">Genres</Link>
+            <Link href="/anime" className="hover:text-primary transition-colors">Anime</Link>
+            <Link href="/news" className="hover:text-primary transition-colors">News</Link>
+            <Link href="/professionals" className="hover:text-primary transition-colors">Industry</Link>
+          </div>
+          <p className="text-muted-foreground text-sm uppercase tracking-wider">For the love of cinema.</p>
         </div>
       </footer>
     </div>

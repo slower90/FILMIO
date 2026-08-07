@@ -1,99 +1,127 @@
+import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
-import { useGetTrendingMovies, useGetRecommendations, useGetMovieGenres, useGetMoviesByGenre } from "@workspace/api-client-react";
-import { MovieCard } from "@/components/movie-card";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { MovieRow, type RowMovie } from "@/components/movie-row";
+import { Link } from "wouter";
+import { useUser } from "@clerk/react";
+
+// Genre row IDs and names for logged-in users
+const GENRE_ROWS = [
+  { id: 28,   name: "⚔️ Action" },
+  { id: 18,   name: "🎭 Drama" },
+  { id: 35,   name: "😂 Comedy" },
+  { id: 27,   name: "👻 Horror" },
+  { id: 878,  name: "🚀 Science Fiction" },
+  { id: 16,   name: "🎨 Animation" },
+  { id: 53,   name: "😱 Thriller" },
+  { id: 10749, name: "❤️ Romance" },
+] as const;
+
+async function fetchCategory(path: string, maxPages = 3): Promise<RowMovie[]> {
+  const res = await fetch(`/api/movies/${path}?maxPages=${maxPages}`);
+  if (!res.ok) return [];
+  const d = await res.json();
+  return d.results ?? [];
+}
+
+async function fetchGenre(genreId: number): Promise<RowMovie[]> {
+  const res = await fetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=2`);
+  if (!res.ok) return [];
+  const d = await res.json();
+  return d.results ?? [];
+}
+
+function GenreRow({ id, name }: { id: number; name: string }) {
+  const { data, isLoading } = useQuery<RowMovie[]>({
+    queryKey: ["discover-genre", id],
+    queryFn: () => fetchGenre(id),
+    staleTime: 10 * 60 * 1000,
+  });
+  return (
+    <MovieRow
+      title={name}
+      movies={data ?? []}
+      isLoading={isLoading}
+      className="border-b border-border/30"
+    />
+  );
+}
 
 export default function Discover() {
-  const { data: trending } = useGetTrendingMovies({ page: 1 });
-  const { data: recommendations } = useGetRecommendations({ limit: 12 });
-  const { data: genresResult } = useGetMovieGenres();
-  
-  // Just show two genre rows for now
-  const genre1 = genresResult?.genres?.[0];
-  const genre2 = genresResult?.genres?.[1];
-  
-  const { data: g1Movies } = useGetMoviesByGenre(
-    { genreId: genre1?.id || 0 }, 
-    { query: { enabled: !!genre1 } }
-  );
-  
-  const { data: g2Movies } = useGetMoviesByGenre(
-    { genreId: genre2?.id || 0 }, 
-    { query: { enabled: !!genre2 } }
-  );
+  const { user } = useUser();
+
+  const { data: trending, isLoading: loadingTrending } = useQuery<RowMovie[]>({
+    queryKey: ["discover-trending"],
+    queryFn: () => fetchCategory("trending", 3),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: newReleases, isLoading: loadingNew } = useQuery<RowMovie[]>({
+    queryKey: ["discover-new-releases"],
+    queryFn: () => fetchCategory("new-releases", 2),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: popular, isLoading: loadingPopular } = useQuery<RowMovie[]>({
+    queryKey: ["discover-popular"],
+    queryFn: () => fetchCategory("popular", 3),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: topRated, isLoading: loadingTopRated } = useQuery<RowMovie[]>({
+    queryKey: ["discover-top-rated"],
+    queryFn: () => fetchCategory("top-rated", 3),
+    staleTime: 5 * 60 * 1000,
+  });
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <Navbar />
-      
-      <main className="container mx-auto px-4 pt-24 space-y-16">
-        
-        {/* Hero recommendations */}
-        {recommendations && recommendations.length > 0 && (
-          <section>
-            <h1 className="text-3xl font-display font-bold uppercase tracking-wider mb-6 text-glow">For You</h1>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
-              {recommendations.slice(0, 6).map(movie => (
-                <MovieCard key={movie.id} movie={movie} />
-              ))}
-            </div>
-          </section>
-        )}
 
-        {/* Trending Horizontal */}
-        <section>
-          <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-6 flex items-center gap-2">
-            Trending Now <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          </h2>
-          <ScrollArea className="w-full whitespace-nowrap pb-4">
-            <div className="flex w-max space-x-4 md:space-x-6">
-              {trending?.results?.map(movie => (
-                <div key={movie.id} className="w-[140px] md:w-[200px] shrink-0">
-                  <MovieCard movie={movie} />
-                </div>
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </section>
+      {/* Welcome banner */}
+      <div className="pt-24 pb-4 px-4 container mx-auto">
+        <h1 className="text-4xl md:text-5xl font-display font-bold uppercase tracking-tighter text-glow">
+          {user?.firstName ? `Welcome back, ${user.firstName}.` : "Discover"}
+        </h1>
+        <p className="text-muted-foreground mt-2 text-lg">
+          Your personalised cinema feed.{" "}
+          <Link href="/genres" className="text-primary hover:underline">
+            Browse all genres →
+          </Link>
+        </p>
+      </div>
 
-        {/* Genre Rows */}
-        {genre1 && g1Movies && (
-          <section>
-            <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-6">
-              Best in {genre1.name}
-            </h2>
-            <ScrollArea className="w-full whitespace-nowrap pb-4">
-              <div className="flex w-max space-x-4 md:space-x-6">
-                {g1Movies.results?.slice(0, 10).map(movie => (
-                  <div key={movie.id} className="w-[140px] md:w-[200px] shrink-0">
-                    <MovieCard movie={movie} />
-                  </div>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </section>
-        )}
+      {/* Category rows */}
+      <div className="mt-6 bg-card/10 border-t border-border/50">
+        <MovieRow
+          title="🔥 Trending This Week"
+          movies={trending ?? []}
+          isLoading={loadingTrending}
+          className="border-b border-border/30"
+        />
+        <MovieRow
+          title="🎬 New in Cinemas"
+          movies={newReleases ?? []}
+          isLoading={loadingNew}
+          className="border-b border-border/30"
+        />
+        <MovieRow
+          title="📈 Popular Right Now"
+          movies={popular ?? []}
+          isLoading={loadingPopular}
+          className="border-b border-border/30"
+        />
+        <MovieRow
+          title="⭐ All-Time Classics"
+          movies={topRated ?? []}
+          isLoading={loadingTopRated}
+          className="border-b border-border/30"
+        />
 
-        {genre2 && g2Movies && (
-          <section>
-            <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-6">
-              {genre2.name} Essentials
-            </h2>
-            <ScrollArea className="w-full whitespace-nowrap pb-4">
-              <div className="flex w-max space-x-4 md:space-x-6">
-                {g2Movies.results?.slice(0, 10).map(movie => (
-                  <div key={movie.id} className="w-[140px] md:w-[200px] shrink-0">
-                    <MovieCard movie={movie} />
-                  </div>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </section>
-        )}
-      </main>
+        {/* Genre rows */}
+        {GENRE_ROWS.map((g) => (
+          <GenreRow key={g.id} id={g.id} name={g.name} />
+        ))}
+      </div>
     </div>
   );
 }
