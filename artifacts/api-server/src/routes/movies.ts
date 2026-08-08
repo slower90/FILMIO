@@ -6,6 +6,13 @@ const router: IRouter = Router();
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
+type FetchResponse = {
+  ok: boolean;
+  status: number;
+  text: () => Promise<string>;
+  json: () => Promise<any>;
+};
+
 const tmdbFetch = async (
   path: string,
   params: Record<string, string | number> = {},
@@ -17,7 +24,7 @@ const tmdbFetch = async (
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, String(v));
   }
-  const res = await fetch(url.toString());
+  const res = (await fetch(url.toString())) as unknown as FetchResponse;
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`TMDB ${res.status}: ${path} — ${body.slice(0, 200)}`);
@@ -112,7 +119,7 @@ router.get("/movies/omdb", async (req, res): Promise<void> => {
     if (year) url.searchParams.set("y", year);
   }
 
-  const omdbRes = await fetch(url.toString());
+  const omdbRes = (await fetch(url.toString())) as unknown as FetchResponse;
   if (!omdbRes.ok) {
     res.status(502).json({ error: "OMDb request failed" });
     return;
