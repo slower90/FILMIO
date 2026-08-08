@@ -1,6 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import * as pinoHttpModule from "pino-http";
+import pinoHttpRaw from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
@@ -11,7 +11,7 @@ import {
 import { logger } from "./lib/logger";
 import router from "./routes";
 
-const pinoHttp = pinoHttpModule as unknown as typeof pinoHttpModule.default;
+const pinoHttp: any = pinoHttpRaw;
 
 const app: Express = express();
 
@@ -19,14 +19,14 @@ app.use(
   pinoHttp({
     logger,
     serializers: {
-      req(req) {
+      req(req: any) {
         return {
           id: req.id,
           method: req.method,
           url: req.url?.split("?")[0],
         };
       },
-      res(res) {
+      res(res: any) {
         return {
           statusCode: res.statusCode,
         };
