@@ -1,6 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
+import * as pinoHttpModule from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
@@ -10,6 +10,8 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import { logger } from "./lib/logger";
 import router from "./routes";
+
+const pinoHttp = pinoHttpModule as unknown as typeof pinoHttpModule.default;
 
 const app: Express = express();
 
