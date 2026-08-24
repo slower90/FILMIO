@@ -1,17 +1,25 @@
 import { Navbar } from "@/components/navbar";
 import { useParams, Link } from "wouter";
-import { useGetProfessionalProfile, useCreateConversation } from "@workspace/api-client-react";
+import { getGetProfessionalProfileQueryKey, useGetProfessionalProfile, useCreateConversation } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { BadgeCheck, PlayCircle, Mail, MessageSquare, ExternalLink, Briefcase } from "lucide-react";
 import { useUser } from "@clerk/react";
+import { useEffect, useState } from "react";
+
+type Portfolio = { workHistory?: Array<{ id: number; projectName: string; role: string; year: number | null; collaborators: string[]; description?: string | null }>; publicAuditions?: Array<{ id: number; title: string; description?: string | null; fileName: string; contentType: string }> };
 
 export default function ProfessionalDetail() {
   const { id } = useParams();
   const proId = parseInt(id || "0", 10);
   const { user } = useUser();
   const createConversation = useCreateConversation();
+  const [portfolio, setPortfolio] = useState<Portfolio>({});
 
-  const { data: pro, isLoading } = useGetProfessionalProfile(proId, { query: { enabled: !!proId } });
+  const { data: pro, isLoading } = useGetProfessionalProfile(proId, { query: { queryKey: getGetProfessionalProfileQueryKey(proId), enabled: !!proId } });
+  useEffect(() => {
+    if (!proId) return;
+    fetch(`/api/professionals/${proId}`).then((response) => response.ok ? response.json() : null).then((data) => data && setPortfolio(data)).catch(() => undefined);
+  }, [proId]);
 
   const handleMessage = () => {
     if (!pro || !user) return;
@@ -127,6 +135,37 @@ export default function ProfessionalDetail() {
                 </div>
               </section>
             )}
+            {portfolio.workHistory && portfolio.workHistory.length > 0 && (
+              <section>
+                <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-6 pb-2 border-b border-border">Selected Work</h2>
+                <div className="space-y-3">
+                  {portfolio.workHistory.map((work) => (
+                    <article key={work.id} className="rounded-md border border-border bg-card p-5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 className="font-display text-xl uppercase tracking-wide">{work.projectName}</h3>
+                        {work.year && <span className="text-sm text-muted-foreground">{work.year}</span>}
+                      </div>
+                      <p className="mt-1 font-medium text-primary">{work.role}</p>
+                      {work.collaborators?.length > 0 && <p className="mt-2 text-sm text-muted-foreground">Worked with {work.collaborators.join(", ")}</p>}
+                      {work.description && <p className="mt-3 text-sm text-foreground/75">{work.description}</p>}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
+            {portfolio.publicAuditions && portfolio.publicAuditions.length > 0 && (
+              <section>
+                <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-6 pb-2 border-b border-border">Audition Reels</h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {portfolio.publicAuditions.map((audition) => (
+                    <a key={audition.id} href={`/api/professionals/auditions/${audition.id}/file`} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-md border border-border bg-card p-4 transition-colors hover:border-primary">
+                      <PlayCircle className="h-8 w-8 shrink-0 text-primary" />
+                      <span><strong className="block">{audition.title}</strong><small className="text-muted-foreground">{audition.fileName}</small></span>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
           
           <div className="space-y-8">
@@ -142,7 +181,7 @@ export default function ProfessionalDetail() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Contact directly via MAD MAX messaging.
+                  Contact directly via FILMIO messaging.
                 </p>
               )}
             </div>

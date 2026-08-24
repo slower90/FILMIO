@@ -1,11 +1,132 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, followsTable, reviewsTable, ratingsTable, watchlistTable } from "@workspace/db";
-import { and, count, eq, sql } from "drizzle-orm";
+import {
+  db,
+  usersTable,
+  followsTable,
+  reviewsTable,
+  ratingsTable,
+  watchlistTable,
+  viewingHistoryTable,
+} from "@workspace/db";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middlewares/auth";
 import { UpdateMyProfileBody } from "@workspace/api-zod";
-import { desc } from "drizzle-orm";
 
 const router: IRouter = Router();
+type ViewingHistoryMovie = {
+  id: number;
+  title: string;
+  posterPath?: string | null;
+  releaseDate?: string | null;
+  voteAverage?: number | null;
+};
+
+function parseViewingHistoryBody(body: unknown): ViewingHistoryMovie[] | null {
+  if (!body || typeof body !== "object" || !Array.isArray((body as any).movies)) return null;
+  const movies = (body as any).movies as unknown[];
+  if (movies.length > 12) return null;
+  if (
+    movies.some((movie) => {
+      if (!movie || typeof movie !== "object") return true;
+      const value = movie as any;
+      return (
+        !Number.isInteger(value.id) ||
+        value.id <= 0 ||
+        typeof value.title !== "string" ||
+        value.title.length === 0 ||
+        value.title.length > 500 ||
+        (value.posterPath != null && typeof value.posterPath !== "string") ||
+        (value.releaseDate != null && typeof value.releaseDate !== "string") ||
+        (value.voteAverage != null && typeof value.voteAverage !== "number")
+      );
+    })
+  ) {
+    return null;
+  }
+  return movies as ViewingHistoryMovie[];
+}
+
+const mapViewingHistory = (entry: typeof viewingHistoryTable.$inferSelect) => ({
+  id: entry.movieId,
+  title: entry.movieTitle,
+  posterPath: entry.moviePosterPath,
+  releaseDate: entry.movieReleaseDate,
+  voteAverage: entry.movieVoteAverage,
+});
+
+type ViewingHistoryRepository = {
+  list: (userId: string) => Promise<ViewingHistoryMovie[]>;
+  merge: (userId: string, movies: ViewingHistoryMovie[]) => Promise<ViewingHistoryMovie[]>;
+  clear: (userId: string) => Promise<void>;
+};
+
+const databaseViewingHistoryRepository: ViewingHistoryRepository = {
+  async list(userId) {
+    const entries = await db
+      .select()
+      .from(viewingHistoryTable)
+      .where(eq(viewingHistoryTable.userId, userId))
+      .orderBy(desc(viewingHistoryTable.viewedAt))
+      .limit(12);
+    return entries.map(mapViewingHistory);
+  },
+  async merge(userId, movies) {
+    for (const movie of movies) {
+      await db
+        .insert(viewingHistoryTable)
+        .values({
+          userId,
+          movieId: movie.id,
+          movieTitle: movie.title,
+          moviePosterPath: movie.posterPath ?? null,
+          movieReleaseDate: movie.releaseDate ?? null,
+          movieVoteAverage: movie.voteAverage ?? null,
+          viewedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [viewingHistoryTable.userId, viewingHistoryTable.movieId],
+          set: {
+            movieTitle: movie.title,
+            moviePosterPath: movie.posterPath ?? null,
+            movieReleaseDate: movie.releaseDate ?? null,
+            movieVoteAverage: movie.voteAverage ?? null,
+            viewedAt: new Date(),
+          },
+        });
+    }
+    return databaseViewingHistoryRepository.list(userId);
+  },
+  async clear(userId) {
+    await db.delete(viewingHistoryTable).where(eq(viewingHistoryTable.userId, userId));
+  },
+};
+
+// History is always scoped by the authenticated Clerk user; no user id is accepted
+// from the client, which prevents one account from reading another's activity.
+export function createViewingHistoryRouter(
+  repository: ViewingHistoryRepository = databaseViewingHistoryRepository,
+  authMiddleware: any = requireAuth,
+): IRouter {
+  const historyRouter: IRouter = Router();
+  historyRouter.get("/users/me/viewing-history", authMiddleware, async (req: any, res): Promise<void> => {
+    res.json(await repository.list(req.userId));
+  });
+  historyRouter.post("/users/me/viewing-history", authMiddleware, async (req: any, res): Promise<void> => {
+    const movies = parseViewingHistoryBody(req.body);
+    if (!movies) {
+      res.status(400).json({ error: "Invalid viewing history" });
+      return;
+    }
+    res.json(await repository.merge(req.userId, movies));
+  });
+  historyRouter.delete("/users/me/viewing-history", authMiddleware, async (req: any, res): Promise<void> => {
+    await repository.clear(req.userId);
+    res.sendStatus(204);
+  });
+  return historyRouter;
+}
+
+router.use(createViewingHistoryRouter());
 
 const buildUserProfile = async (user: any, currentUserId: string | null) => {
   const [followerCount] = await db
@@ -236,7 +357,7 @@ router.get("/feed", requireAuth as any, async (req: any, res): Promise<void> => 
 
 // GET /recommendations
 router.get("/recommendations", optionalAuth as any, async (req: any, res): Promise<void> => {
-  const limit = Number(req.query.limit) || 20;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 40);
   const TMDB_BASE = "https://api.themoviedb.org/3";
   const key = process.env.TMDB_API_KEY;
 
@@ -261,35 +382,89 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
     return;
   }
 
-  // Get user's watched movies with ratings
-  const watched = await db
-    .select()
-    .from(watchlistTable)
-    .where(and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "watched")))
-    .limit(5);
+  const [watched, ratings, history, saved] = await Promise.all([
+    db.select().from(watchlistTable)
+      .where(and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "watched")))
+      .orderBy(desc(watchlistTable.addedAt)).limit(12),
+    db.select().from(ratingsTable)
+      .where(eq(ratingsTable.userId, req.userId))
+      .orderBy(desc(ratingsTable.updatedAt)).limit(12),
+    db.select().from(viewingHistoryTable)
+      .where(eq(viewingHistoryTable.userId, req.userId))
+      .orderBy(desc(viewingHistoryTable.viewedAt)).limit(12),
+    db.select().from(watchlistTable)
+      .where(and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "want_to_watch")))
+      .limit(12),
+  ]);
 
-  if (!watched.length) {
+  const ratingByMovie = new Map(ratings.map((rating) => [rating.movieId, rating.score]));
+  const seeds = [...new Map(
+    [...ratings, ...history, ...watched]
+      .map((item) => [item.movieId, item] as const),
+  ).values()];
+
+  if (!seeds.length) {
     const data = await tmdbGet("/trending/movie/week");
     res.json(((data?.results ?? []) as any[]).slice(0, limit).map(mapTmdb));
     return;
   }
 
-  // Get recommendations based on watched movies
-  const seen = new Set(watched.map((w) => w.movieId));
-  const recs: any[] = [];
+  // Build a broad candidate pool, then rank it from explicit ratings and
+  // recent viewing. This keeps recommendations useful without relying on
+  // opaque engagement tricks or repeating one narrow genre forever.
+  const seen = new Set([...seeds, ...saved].map((item) => item.movieId));
+  const candidateMap = new Map<number, { movie: any; score: number; seedCount: number }>();
+  const seedResults = await Promise.all(seeds.slice(0, 8).map(async (seed, index) => ({
+    seed,
+    index,
+    data: await tmdbGet(`/movie/${seed.movieId}/recommendations`),
+  })));
 
-  for (const w of watched.slice(0, 3)) {
-    const data = await tmdbGet(`/movie/${w.movieId}/recommendations`);
+  for (const { seed, index, data } of seedResults) {
     if (!data) continue;
-    for (const m of (data.results ?? []).slice(0, 10)) {
-      if (!seen.has(m.id)) {
-        seen.add(m.id);
-        recs.push(mapTmdb(m));
-      }
+    const seedRating = ratingByMovie.get(seed.movieId);
+    const preferenceWeight = seedRating ? (seedRating - 5.5) / 2.5 : 0.25;
+    const recencyWeight = 1 - index / Math.max(seedResults.length, 1);
+    for (const [position, movie] of (data.results ?? []).slice(0, 20).entries()) {
+      if (seen.has(movie.id)) continue;
+      const quality = Math.min(Number(movie.vote_average ?? 0) / 10, 1);
+      const popularity = Math.min(Math.log10(Number(movie.popularity ?? 0) + 1) / 3, 1);
+      const score = preferenceWeight * 4 + recencyWeight * 2.5
+        + quality * 2 + popularity + (20 - position) / 20;
+      const existing = candidateMap.get(movie.id);
+      candidateMap.set(movie.id, {
+        movie,
+        score: (existing?.score ?? 0) + score,
+        seedCount: (existing?.seedCount ?? 0) + 1,
+      });
     }
   }
 
-  res.json(recs.slice(0, limit));
+  const ranked = [...candidateMap.values()].sort((a, b) =>
+    (b.score + b.seedCount * 0.75) - (a.score + a.seedCount * 0.75),
+  );
+  const selected: any[] = [];
+  const genreCounts = new Map<number, number>();
+  for (const candidate of ranked) {
+    const genres = (candidate.movie.genre_ids ?? []) as number[];
+    const alreadyHeavy = genres.some((genre) => (genreCounts.get(genre) ?? 0) >= 3);
+    if (alreadyHeavy && selected.length < limit - 3) continue;
+    selected.push(mapTmdb(candidate.movie));
+    for (const genre of genres) genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
+    if (selected.length >= limit) break;
+  }
+
+  // A partial provider response should still return a stable, useful contract.
+  if (selected.length < limit) {
+    const fallback = await tmdbGet("/trending/movie/week");
+    for (const movie of (fallback?.results ?? [])) {
+      if (!seen.has(movie.id) && !selected.some((item) => item.id === movie.id)) {
+        selected.push(mapTmdb(movie));
+      }
+      if (selected.length >= limit) break;
+    }
+  }
+  res.json(selected.slice(0, limit));
 });
 
 export default router;

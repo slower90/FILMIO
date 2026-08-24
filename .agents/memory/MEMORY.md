@@ -3,3 +3,14 @@
 - [DB schema rebuild](db-schema-rebuild.md) — after adding tables to lib/db/src/schema/, run pnpm run typecheck:libs before api-server typecheck
 - [GSAP animations](gsap-animations.md) — ScrollTrigger rows + GSAP hover + momentum scroll in movie-row.tsx; PageFade in App.tsx
 - [tmdbPosterUrl full-URL fix](tmdb-auth.md) — tmdbPosterUrl() checks for http:// prefix to pass through AniList/Jikan CDN URLs unchanged
+- [Vite build environment](vite-build-env.md) — local MAD MAX builds require both PORT and BASE_PATH
+- [Movie detail request bundling](movie-detail-performance.md) — load hero, credits, videos, and providers through one TMDB append_to_response endpoint
+- [E2EE envelope sender key](e2ee-envelope.md) — recipient-side ECDH needs the sender public key carried in each encrypted envelope
+- [MAD MAX rating source](mad-max-rating-source.md) — show only platform-owned 1–10 averages; external scores are metadata/discovery only
+- [Genre-first personalization](genre-first-personalization.md) — home recommendations use actual genre/mood pools, not age brackets
+- [MAD MAX blended ratings](mad-max-blended-ratings.md) — show only MAD MAX while blending TMDB baseline with the platform's user average
+- [Catalog resilience](catalog-resilience.md) — ordered compatible fallback is opt-in and route response contracts stay stable
+- [Post-merge setup timing](post-merge-setup.md) — dependency reconciliation and database push need a buffered timeout, not the default 20 seconds
+- [Personalized discovery](personalized-discovery.md) — rank for movie-fit with transparent signals, diversity, and bounded feeds rather than compulsive engagement
+- [Brand migration compatibility](brand-migration.md) — visible rebrands should preserve artifact paths, package names, and persisted storage keys unless migration is explicit
+- [FILMIO typography](filmio-typography.md) — Space Grotesk for premium geometric headings; Michroma stays reserved for the wordmark

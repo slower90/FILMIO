@@ -3,7 +3,7 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: MAD MAX - Movie Review & Discovery Platform API
+  description: FILMIO - Movie Review & Discovery Platform API
 servers:
   - url: /api
     description: Base API path
@@ -1329,7 +1329,6 @@ components:
           type: string
           minLength: 1
       required: [content]
-
     # ── Rating schemas ──
     Rating:
       type: object

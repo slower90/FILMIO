@@ -1,4 +1,6 @@
 #!/bin/bash
 set -e
-pnpm install --frozen-lockfile
+# Merged task branches can update catalog declarations without a matching
+# lockfile snapshot. Reconcile the workspace lockfile before rebuilding.
+pnpm install --no-frozen-lockfile
 pnpm --filter db push

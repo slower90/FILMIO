@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "python-base-3.13"]
 
 [deployment]
 router = "application"
@@ -11,15 +11,63 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "mad-max"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "mobile-production-build"
+
+[[workflows.workflow]]
+name = "mad-max"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/mad-max test && pnpm --filter @workspace/mad-max typecheck"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "mobile-production-build"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/mad-max-mobile build:check"
+
+[workflows.workflow.metadata]
+isValidation = true
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
 
 [postMerge]
 path = "scripts/post-merge.sh"
-timeoutMs = 20000
+timeoutMs = 120000
 
-[userenv]
+[nix]
+channel = "stable-25_05"
 
-[userenv.shared]
-TMDB_API_KEY = "30215e1edfcf77a30a718f7f0e66dc53"
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 22520
+externalPort = 80
+
+[objectStorage]
+defaultBucketID = "replit-objstore-cfa6a3a5-2f90-4fba-927d-b160ef18af95"

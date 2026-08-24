@@ -5,7 +5,8 @@ import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
-const rawPort = process.env.PORT;
+const isBuild = process.argv.includes("build");
+const rawPort = process.env.PORT ?? (isBuild ? "5173" : undefined);
 
 if (!rawPort) {
   throw new Error(
@@ -19,7 +20,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
+const basePath = process.env.BASE_PATH ?? (isBuild ? "/" : undefined);
 
 if (!basePath) {
   throw new Error(
@@ -63,6 +64,28 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    sourcemap: false,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === 'SOURCEMAP_ERROR') return;
+        warn(warning);
+      },
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('@clerk/')) return 'clerk-vendor';
+          if (
+            id.includes('/lucide-react/') ||
+            id.includes('/gsap/') ||
+            id.includes('/recharts/') ||
+            id.includes('/@radix-ui/')
+          ) {
+            return 'ui-vendor';
+          }
+          return 'vendor';
+        },
+      },
+    },
   },
   server: {
     port,

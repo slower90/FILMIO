@@ -1,2 +1,10 @@
 User-agent: *
 Allow: /
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /watchlist
+Disallow: /feed
+Disallow: /chat
+Disallow: /professionals
+Disallow: /profile
+Sitemap: https://vishnuva.in/sitemap.xml

@@ -1,0 +1,8 @@
+<svg width="320" height="72" viewBox="0 0 320 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#F59E0B" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 24h46l8 12H16L8 24Z"/>
+    <path d="M16 36v25h43V36"/>
+    <path d="M18 15l12 9M38 15l12 9"/>
+  </g>
+  <text x="76" y="52" fill="#F59E0B" font-family="Michroma, Arial, sans-serif" font-size="34" font-weight="400" letter-spacing="6">FILMIO</text>
+</svg>

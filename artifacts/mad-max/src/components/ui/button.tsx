@@ -22,6 +22,12 @@ const variantClass = {
   link: "text-primary underline-offset-4 hover:underline",
 }
 
+export const buttonVariants = ({
+  variant = "default",
+  size = "default",
+}: Pick<ButtonProps, "variant" | "size"> = {}) =>
+  cn(variantClass[variant], sizeClass[size])
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", asChild = false, children, ...props }, ref) => {
     const classes = cn(

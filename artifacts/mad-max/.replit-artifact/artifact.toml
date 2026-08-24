@@ -10,6 +10,7 @@ router = "path"
 name = "web"
 paths = [ "/" ]
 localPort = 22520
+dependsOn = ["artifacts/api-server: API Server"]
 
 [services.development]
 run = "pnpm --filter @workspace/mad-max run dev"

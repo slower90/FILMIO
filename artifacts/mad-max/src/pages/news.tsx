@@ -27,7 +27,7 @@ function timeAgo(iso: string): string {
 
 const SOURCE_COLORS: Record<string, string> = {
   "Variety": "text-blue-400",
-  "Hollywood Reporter": "text-red-400",
+  "Hollywood Reporter": "text-primary",
   "Anime News Network": "text-purple-400",
 };
 
@@ -102,7 +102,7 @@ export default function News() {
       return res.json();
     },
     staleTime: 30 * 60 * 1000, // 30 min client-side stale
-    refetchInterval: 60 * 60 * 1000, // refetch every hour
+    refetchInterval: 30 * 60 * 1000, // refetch every 30 minutes
   });
 
   const allItems = data?.items ?? [];

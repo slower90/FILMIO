@@ -4,13 +4,95 @@ import {
   conversationsTable,
   conversationParticipantsTable,
   chatMessagesTable,
+  chatDevicesTable,
   usersTable,
 } from "@workspace/db";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { CreateConversationBody, SendMessageBody } from "@workspace/api-zod";
+import { activeDeliveryDevices, conversationAccessError } from "./chat-security";
 
 const router: IRouter = Router();
+const deviceLinkChallenges = new Map<string, { userId: string; expiresAt: number }>();
+
+router.post("/chat/device-links", requireAuth as any, async (req: any, res): Promise<void> => {
+  const { challenge } = req.body || {};
+  if (typeof challenge !== "string" || challenge.length < 32 || challenge.length > 200) {
+    res.status(400).json({ error: "A valid device link challenge is required" }); return;
+  }
+  deviceLinkChallenges.set(challenge, { userId: req.userId, expiresAt: Date.now() + 10 * 60 * 1000 });
+  res.status(201).json({ challenge, expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString() });
+});
+
+router.post("/chat/device-links/:challenge/complete", requireAuth as any, async (req: any, res): Promise<void> => {
+  const pending = deviceLinkChallenges.get(req.params.challenge);
+  if (!pending || pending.expiresAt < Date.now()) {
+    deviceLinkChallenges.delete(req.params.challenge);
+    res.status(410).json({ error: "This device link has expired. Create a new code." }); return;
+  }
+  if (pending.userId !== req.userId) {
+    res.status(403).json({ error: "This device link belongs to another account." }); return;
+  }
+  const { deviceId, publicKey, deviceName } = req.body || {};
+  if (typeof deviceId !== "string" || typeof publicKey !== "string" || !deviceId || !publicKey) {
+    res.status(400).json({ error: "deviceId and publicKey are required" }); return;
+  }
+  deviceLinkChallenges.delete(req.params.challenge);
+  const [device] = await db.insert(chatDevicesTable).values({
+    deviceId,
+    publicKey,
+    deviceName: deviceName ? String(deviceName).slice(0, 120) : "FILMIO linked device",
+    userId: req.userId,
+  }).onConflictDoUpdate({
+    target: chatDevicesTable.deviceId,
+    set: { publicKey, deviceName, revoked: false, lastSeenAt: new Date() },
+  }).returning();
+  res.status(201).json(device);
+});
+
+router.get("/chat/devices", requireAuth as any, async (req: any, res): Promise<void> => {
+  const devices = await db.select({
+    deviceId: chatDevicesTable.deviceId, deviceName: chatDevicesTable.deviceName,
+    publicKey: chatDevicesTable.publicKey, revoked: chatDevicesTable.revoked,
+    createdAt: chatDevicesTable.createdAt, lastSeenAt: chatDevicesTable.lastSeenAt,
+  }).from(chatDevicesTable).where(eq(chatDevicesTable.userId, req.userId));
+  res.json(devices);
+});
+
+router.post("/chat/devices", requireAuth as any, async (req: any, res): Promise<void> => {
+  const { deviceId, publicKey, deviceName } = req.body || {};
+  if (!deviceId || !publicKey || typeof deviceId !== "string" || typeof publicKey !== "string") {
+    res.status(400).json({ error: "deviceId and publicKey are required" }); return;
+  }
+  const [device] = await db.insert(chatDevicesTable).values({
+    deviceId, publicKey, deviceName: deviceName ? String(deviceName).slice(0, 120) : "FILMIO device", userId: req.userId,
+  }).onConflictDoUpdate({ target: chatDevicesTable.deviceId, set: { publicKey, deviceName, revoked: false, lastSeenAt: new Date() } }).returning();
+  res.status(201).json(device);
+});
+
+router.delete("/chat/devices/:deviceId", requireAuth as any, async (req: any, res): Promise<void> => {
+  const updated = await db.update(chatDevicesTable).set({ revoked: true, lastSeenAt: new Date() })
+    .where(and(eq(chatDevicesTable.deviceId, req.params.deviceId), eq(chatDevicesTable.userId, req.userId))).returning();
+  if (!updated.length) { res.status(404).json({ error: "Device not found" }); return; }
+  res.status(204).end();
+});
+
+router.get("/chat/conversations/:id/devices", requireAuth as any, async (req: any, res): Promise<void> => {
+  const conversationId = Number(req.params.id);
+  const [participant] = await db.select().from(conversationParticipantsTable).where(and(
+    eq(conversationParticipantsTable.conversationId, conversationId), eq(conversationParticipantsTable.userId, req.userId),
+  ));
+  if (conversationAccessError(req.userId, participant ? [participant.userId] : [])) {
+    res.status(403).json({ error: "Not a participant" }); return;
+  }
+  const participants = await db.select({ userId: conversationParticipantsTable.userId })
+    .from(conversationParticipantsTable).where(eq(conversationParticipantsTable.conversationId, conversationId));
+  const ids = participants.map((item) => item.userId);
+  const devices = ids.length ? await db.select({
+    deviceId: chatDevicesTable.deviceId, userId: chatDevicesTable.userId, publicKey: chatDevicesTable.publicKey,
+  }).from(chatDevicesTable).where(and(sql`${chatDevicesTable.userId} = ANY(${ids})`, eq(chatDevicesTable.revoked, false))) : [];
+  res.json(activeDeliveryDevices(devices));
+});
 
 // GET /chat/conversations
 router.get("/chat/conversations", requireAuth as any, async (req: any, res): Promise<void> => {
@@ -147,7 +229,7 @@ router.get(
           eq(conversationParticipantsTable.userId, req.userId),
         ),
       );
-    if (!part) {
+    if (conversationAccessError(req.userId, part ? [part.userId] : [])) {
       res.status(403).json({ error: "Not a participant" });
       return;
     }
@@ -194,18 +276,48 @@ router.post(
       return;
     }
 
+    const [participant] = await db.select().from(conversationParticipantsTable).where(and(
+      eq(conversationParticipantsTable.conversationId, id), eq(conversationParticipantsTable.userId, req.userId),
+    ));
+    if (conversationAccessError(req.userId, participant ? [participant.userId] : [])) {
+      res.status(403).json({ error: "Not a participant" }); return;
+    }
+    let envelope: unknown;
+    try {
+      envelope = JSON.parse(parsed.data.content);
+      if (
+        !envelope ||
+        typeof envelope !== "object" ||
+         !("version" in envelope) ||
+         envelope.version !== 2 ||
+         !("algorithm" in envelope) ||
+         envelope.algorithm !== "P-256-ECDH/HKDF-SHA-256/AES-GCM" ||
+        !("senderDeviceId" in envelope) ||
+        !("senderPublicKey" in envelope) ||
+         !("createdAt" in envelope) ||
+         !("recipients" in envelope) ||
+         typeof envelope.recipients !== "object" ||
+         Object.values(envelope.recipients as Record<string, unknown>).some((recipient) => {
+           if (!recipient || typeof recipient !== "object") return true;
+           const item = recipient as Record<string, unknown>;
+           return typeof item.ephemeralPublicKey !== "string" || typeof item.iv !== "string" || typeof item.ciphertext !== "string";
+         })
+      ) throw new Error();
+    } catch {
+      res.status(400).json({ error: "Messages must be encrypted on the device before sending." }); return;
+    }
     const [msg] = await db
       .insert(chatMessagesTable)
       .values({
         conversationId: id,
         senderId: req.userId,
-        content: parsed.data.content,
+        content: JSON.stringify(envelope),
       })
       .returning();
 
     await db
       .update(conversationsTable)
-      .set({ lastMessage: parsed.data.content, lastMessageAt: new Date() })
+      .set({ lastMessage: "[Encrypted message]", lastMessageAt: new Date() })
       .where(eq(conversationsTable.id, id));
 
     const [user] = await db

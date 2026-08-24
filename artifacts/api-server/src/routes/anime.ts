@@ -145,7 +145,7 @@ async function anilistFetch(query: string, variables: Record<string, any>): Prom
     const body = await res.text().catch(() => "");
     throw new Error(`AniList HTTP ${res.status}: ${body.slice(0, 200)}`);
   }
-  const json = await res.json();
+  const json = await res.json() as { errors?: Array<{ message: string }>; data: any };
   if (json.errors?.length) {
     throw new Error(`AniList error: ${json.errors[0].message}`);
   }

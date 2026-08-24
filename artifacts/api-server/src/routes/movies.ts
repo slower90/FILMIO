@@ -1,35 +1,53 @@
 import { Router, type IRouter } from "express";
 import { db, ratingsTable, reviewsTable } from "@workspace/db";
-import { avg, count, eq, sql } from "drizzle-orm";
+import { avg, count, eq, inArray, sql } from "drizzle-orm";
+import {
+  catalogIdentity,
+  createCatalogClient,
+  createCompatibleProvider,
+  createOmdbProvider,
+  defaultBuildUrl,
+  mergeCatalogItems,
+  type CatalogMetadata,
+} from "../lib/catalog";
 
 const router: IRouter = Router();
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
-
-type FetchResponse = {
-  ok: boolean;
-  status: number;
-  text: () => Promise<string>;
-  json: () => Promise<any>;
+const primaryCatalogProvider = {
+  name: "tmdb",
+  baseUrl: TMDB_BASE,
+  buildUrl: (base: string, path: string, params: Record<string, string | number>) =>
+    defaultBuildUrl(base, path, {
+      api_key: process.env.TMDB_API_KEY ?? "",
+      ...params,
+    }),
+  attribution: "TMDB",
+  quota: "TMDB rate limits and terms apply.",
 };
 
-const tmdbFetch = async (
-  path: string,
-  params: Record<string, string | number> = {},
-) => {
-  const key = process.env.TMDB_API_KEY;
-  if (!key) throw new Error("TMDB_API_KEY not configured");
-  const url = new URL(`${TMDB_BASE}${path}`);
-  url.searchParams.set("api_key", key);
-  for (const [k, v] of Object.entries(params)) {
-    url.searchParams.set(k, String(v));
-  }
-  const res = (await fetch(url.toString())) as unknown as FetchResponse;
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`TMDB ${res.status}: ${path} — ${body.slice(0, 200)}`);
-  }
-  return res.json() as Promise<any>;
+const fallbackCatalogProvider = process.env.CATALOG_FALLBACK_BASE_URL
+  ? createCompatibleProvider({
+      name: process.env.CATALOG_FALLBACK_NAME || "approved-compatible-catalog",
+      baseUrl: process.env.CATALOG_FALLBACK_BASE_URL,
+      headers: process.env.CATALOG_FALLBACK_API_KEY
+        ? { Authorization: `Bearer ${process.env.CATALOG_FALLBACK_API_KEY}` }
+        : undefined,
+      attribution: process.env.CATALOG_FALLBACK_ATTRIBUTION || "Configured catalog provider",
+      quota: process.env.CATALOG_FALLBACK_QUOTA || "Configured provider quota applies.",
+    })
+  : process.env.OMDB_API_KEY
+    ? createOmdbProvider(process.env.OMDB_API_KEY)
+    : undefined;
+
+const tmdbClient = createCatalogClient(primaryCatalogProvider, fallbackCatalogProvider);
+
+const tmdbFetch = (path: string, params: Record<string, string | number> = {}) => {
+  return tmdbClient.fetch(path, params);
+};
+
+const tmdbFetchWithMetadata = (path: string, params: Record<string, string | number> = {}) => {
+  return tmdbClient.fetchWithMetadata(path, params);
 };
 
 const mapMovie = (m: any) => ({
@@ -43,28 +61,72 @@ const mapMovie = (m: any) => ({
   genreIds: m.genre_ids ?? [],
 });
 
+const hasReleased = (movie: ReturnType<typeof mapMovie>) => {
+  if (!movie.releaseDate) return true;
+  const releaseTime = new Date(`${movie.releaseDate}T23:59:59.999Z`).getTime();
+  return Number.isNaN(releaseTime) || releaseTime <= Date.now();
+};
+
+const getPrismRatings = async (movieIds: number[]) => {
+  const ids = [...new Set(movieIds)].filter((id) => Number.isInteger(id) && id > 0);
+  if (ids.length === 0) return new Map<number, { averageRating: number; totalRatings: number }>();
+
+  const rows = await db
+    .select({
+      movieId: ratingsTable.movieId,
+      averageRating: avg(ratingsTable.score),
+      totalRatings: count(ratingsTable.id),
+    })
+    .from(ratingsTable)
+    .where(inArray(ratingsTable.movieId, ids))
+    .groupBy(ratingsTable.movieId);
+
+  return new Map(
+    rows.map((row) => [
+      row.movieId,
+      {
+        averageRating: row.averageRating ? parseFloat(String(row.averageRating)) : 0,
+        totalRatings: Number(row.totalRatings ?? 0),
+      },
+    ]),
+  );
+};
+
 /** Fetch up to maxPages pages in parallel and return a flat deduplicated array */
 const tmdbFetchMultiPage = async (
   path: string,
   maxPages: number,
   extraParams: Record<string, string | number> = {},
+  includeUnreleased = false,
 ): Promise<ReturnType<typeof mapMovie>[]> => {
+  const page = await tmdbFetchMultiPageWithMetadata(path, maxPages, extraParams, includeUnreleased);
+  return page.results;
+};
+
+const tmdbFetchMultiPageWithMetadata = async (
+  path: string,
+  maxPages: number,
+  extraParams: Record<string, string | number> = {},
+  includeUnreleased = false,
+): Promise<{ results: ReturnType<typeof mapMovie>[]; metadata: CatalogMetadata }> => {
   const pages = Array.from({ length: Math.min(maxPages, 5) }, (_, i) => i + 1);
-  const results = await Promise.all(
-    pages.map((page) => tmdbFetch(path, { ...extraParams, page }).catch(() => null)),
+  const responses = await Promise.all(
+    pages.map((page) => tmdbFetchWithMetadata(path, { ...extraParams, page }).catch(() => null)),
   );
-  const seen = new Set<number>();
-  const movies: ReturnType<typeof mapMovie>[] = [];
-  for (const data of results) {
-    if (!data) continue;
-    for (const m of data.results ?? []) {
-      if (!seen.has(m.id)) {
-        seen.add(m.id);
-        movies.push(mapMovie(m));
-      }
-    }
-  }
-  return movies;
+  const movies = mergeCatalogItems(
+    responses.filter(Boolean).map((response) => (response?.data?.results ?? []).map(mapMovie)),
+    catalogIdentity,
+  ) as ReturnType<typeof mapMovie>[];
+  const first = responses.find(Boolean);
+  return {
+    results: includeUnreleased ? movies : movies.filter(hasReleased),
+    metadata: {
+      source: first?.source ?? "unavailable",
+      fetchedAt: first?.fetchedAt ?? new Date(0).toISOString(),
+      stale: responses.some((response) => response?.stale === true),
+      partial: responses.some((response) => !response),
+    },
+  };
 };
 
 // ─── Collection endpoints (must come before /:movieId) ───────────────────────
@@ -88,6 +150,243 @@ router.get("/movies/search-multi", async (req, res): Promise<void> => {
     overview: r.overview ?? r.known_for_department ?? "",
   }));
   res.json({ results, page: data.page ?? 1, totalPages: data.total_pages ?? 1 });
+});
+
+// GET /movies/search-smart?q= — natural-language movie search.
+// Keeps intent server-side so "10 horror movies" becomes a rated horror
+// discovery query instead of a generic text search.
+router.get("/movies/search-smart", async (req, res): Promise<void> => {
+  const rawQuery = String(req.query.q ?? "").trim();
+  if (!rawQuery) {
+    res.status(400).json({ error: "q is required" });
+    return;
+  }
+
+  const normalized = rawQuery.toLowerCase().replace(/[^\w\s-]/g, " ");
+  const isAdultSearch = /\b(porn|pornography|xxx|18\+)\b/i.test(normalized);
+  const limitMatch = normalized.match(/\b(\d{1,2})\b/);
+  const requestedLimit = Number(req.query.limit);
+   const limit = Math.min(Math.max(Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : Number(limitMatch?.[1] ?? 20), 1), 100);
+  const searchPages = Math.min(Math.max(Math.ceil(limit / 20), 1), 5);
+  const yearMatch = normalized.match(/\b(19\d{2}|20\d{2})\b/);
+
+  const genres: Record<string, number> = {
+    action: 28, adventure: 12, animation: 16, comedy: 35, crime: 80,
+    documentary: 99, drama: 18, family: 10751, fantasy: 14, history: 36,
+    horror: 27, music: 10402, mystery: 9648, romance: 10749,
+    "science fiction": 878, "sci fi": 878, thriller: 53, war: 10752,
+    western: 37,
+  };
+  const genreEntry = Object.entries(genres).find(([name]) =>
+    new RegExp(`\\b${name.replace(" ", "\\s+")}\\b`, "i").test(normalized),
+  );
+
+  const languageTerms: Array<[string, string, string]> = [
+    ["tamil", "ta", "Tamil"],
+    ["telugu", "te", "Telugu"],
+    ["malayalam", "ml", "Malayalam"],
+    ["kannada", "kn", "Kannada"],
+    ["hindi", "hi", "Hindi"],
+    ["bollywood", "hi", "Bollywood"],
+    ["korean", "ko", "Korean"],
+    ["japanese", "ja", "Japanese"],
+    ["french", "fr", "French"],
+    ["spanish", "es", "Spanish"],
+  ];
+  const languageEntry = languageTerms.find(([term]) => normalized.includes(term));
+  const isIndia = /\b(india|indian|bollywood|desi)\b/i.test(normalized);
+  const isAnime = /\banime\b/i.test(normalized);
+  // A constrained discovery request such as "10 horror movies" should still
+  // surface the strongest titles first, even when the user did not type
+  // "best" explicitly.
+  const wantsRating =
+    /\b(best|top|highest|rated|rating|greatest|must watch)\b/i.test(normalized) ||
+    Boolean(genreEntry || languageEntry || isIndia);
+  const wantsRecent = /\b(new|latest|recent|upcoming)\b/i.test(normalized);
+  const wantsPopular = /\b(popular|trending)\b/i.test(normalized);
+
+  const genericWords = /\b(best|top|highest|rated|rating|greatest|must watch|popular|trending|movies?|films?|watch|new|latest|recent|upcoming|in|from|of|the|202\d|19\d)\b/gi;
+  const residual = normalized
+    .replace(/\b\d{1,2}\b/g, " ")
+    .replace(genericWords, " ")
+    .replace(genreEntry ? new RegExp(`\\b${genreEntry[0].replace(" ", "\\s+")}\\b`, "gi") : /$^/, " ")
+    .replace(languageEntry ? new RegExp(`\\b${languageEntry[0]}\\b`, "gi") : /$^/, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const sortBy = wantsRecent
+      ? "primary_release_date.desc"
+      : wantsPopular
+        ? "popularity.desc"
+        : "popularity.desc";
+  const params: Record<string, string | number> = {
+    sort_by: sortBy,
+    page: 1,
+  };
+  if (genreEntry) params.with_genres = genreEntry[1];
+  if (languageEntry) params.with_original_language = languageEntry[1];
+  if (isIndia) {
+    params.with_origin_country = "IN";
+    params.region = "IN";
+  }
+  if (yearMatch) {
+    params.primary_release_year = Number(yearMatch[1]);
+  }
+
+  let results: ReturnType<typeof mapMovie>[] = [];
+  let catalogMetadata: CatalogMetadata = {
+    source: "unavailable",
+    fetchedAt: new Date(0).toISOString(),
+    stale: false,
+    partial: false,
+  };
+  if (isAdultSearch) {
+    // Keep this branch intentionally scoped to adult-intent queries. TMDB's
+    // adult flag is the source of truth; no external explicit-content source
+    // is introduced into the app.
+    const keywordData = await tmdbFetch("/search/keyword", { query: "porn", page: 1 }).catch(() => ({ results: [] }));
+    const keywordIds = (keywordData.results ?? [])
+      .filter((keyword: any) => /\b(porn|pornography|adult|erotic)\b/i.test(keyword.name ?? ""))
+      .slice(0, 5)
+      .map((keyword: any) => keyword.id);
+    const adultParams: Record<string, string | number> = {
+      sort_by: "popularity.desc",
+      include_adult: "true",
+      "vote_count.gte": 1,
+      ...(keywordIds.length ? { with_keywords: keywordIds.join("|") } : { with_genres: 10749 }),
+    };
+    const page = await tmdbFetchMultiPageWithMetadata("/discover/movie", searchPages, adultParams);
+    results = page.results;
+    catalogMetadata = page.metadata;
+  } else if (residual && !genreEntry && !languageEntry && !isIndia) {
+    const page = await tmdbFetchMultiPageWithMetadata("/search/movie", searchPages, { query: residual });
+    results = page.results;
+    catalogMetadata = page.metadata;
+  } else {
+    const page = await tmdbFetchMultiPageWithMetadata("/discover/movie", searchPages, params);
+    results = page.results;
+    catalogMetadata = page.metadata;
+  }
+
+  const prismRatings = wantsRating
+    ? await getPrismRatings(results.map((movie) => movie.id))
+    : null;
+  const rankedResults = results
+    .filter((movie) => movie.posterPath)
+    .sort((a, b) => {
+      if (!prismRatings) return 0;
+      const aRating = prismRatings.get(a.id);
+      const bRating = prismRatings.get(b.id);
+      const aScore = aRating?.totalRatings ? aRating.averageRating : -1;
+      const bScore = bRating?.totalRatings ? bRating.averageRating : -1;
+      return bScore - aScore;
+    });
+
+  res.json({
+    query: rawQuery,
+    intent: {
+      limit,
+      genre: genreEntry?.[0] ?? null,
+      language: languageEntry?.[2] ?? null,
+      india: isIndia,
+      anime: isAnime,
+      adult: isAdultSearch,
+      sort: wantsRating ? "rating" : wantsRecent ? "recent" : wantsPopular ? "popular" : "relevance",
+      year: yearMatch ? Number(yearMatch[1]) : null,
+    },
+    results: rankedResults.slice(0, limit),
+    // Keep a lightweight "more available" signal even when the requested
+    // page happens to be exactly full; the client uses this for Show more.
+    totalResults: results.length >= limit ? Math.max(results.length, limit + 1) : results.length,
+    metadata: catalogMetadata,
+  });
+});
+
+// GET /movies/actors — popular global actors, or people matching a search
+router.get("/movies/actors", async (req, res): Promise<void> => {
+  const query = String(req.query.q ?? "").trim();
+  const region = String(req.query.region ?? "").trim().toLowerCase();
+  const maxPages = Math.min(Math.max(Number(req.query.maxPages) || 1, 1), 5);
+  const indianActorNames = [
+    "Shah Rukh Khan", "Amitabh Bachchan", "Rajinikanth", "Salman Khan",
+    "Aamir Khan", "Deepika Padukone", "Allu Arjun", "Prabhas",
+    "Alia Bhatt", "Ranbir Kapoor", "Vijay", "Nayanthara",
+    "Rashmika Mandanna", "Yash", "Hrithik Roshan", "Akshay Kumar",
+    "Kareena Kapoor", "Kamal Haasan", "Suriya", "R Madhavan",
+  ];
+  const searchTerms = region === "india" ? indianActorNames : query ? [query] : [];
+  const pages = Array.from({ length: maxPages }, (_, index) => index + 1);
+  const responses = searchTerms.length
+    ? await Promise.all(
+        searchTerms.flatMap((term) =>
+          pages.map((page) => tmdbFetch("/search/person", { query: term, page }).catch(() => null)),
+        ),
+      )
+    : await Promise.all(pages.map((page) => tmdbFetch("/person/popular", { page }).catch(() => null)));
+  const seen = new Set<number>();
+  const seenNames = new Set<string>();
+  const people = region === "india"
+    ? searchTerms.flatMap((_, index) => {
+        const firstPage = responses[index * pages.length];
+        const person = (firstPage?.results ?? []).find(
+          (candidate: any) => candidate.known_for_department === "Acting" && candidate.profile_path,
+        ) ?? firstPage?.results?.[0];
+        return person ? [person] : [];
+      })
+    : responses.flatMap((data) => data?.results ?? []);
+  const results = responses.flatMap((data) =>
+    (data?.results ?? []).flatMap((person: any) => {
+      if (seen.has(person.id)) return [];
+      seen.add(person.id);
+      return [{
+        id: person.id,
+        name: person.name ?? "",
+        profilePath: person.profile_path ?? null,
+        knownForDepartment: person.known_for_department ?? "Acting",
+        popularity: person.popularity ?? 0,
+      }];
+    }),
+  );
+  const cleanResults = (region === "india" ? people : results).filter((person: any) => {
+    const normalizedName = String(person.name ?? "").trim().toLowerCase();
+    if (!normalizedName || seenNames.has(normalizedName)) return false;
+    seenNames.add(normalizedName);
+    return true;
+  }).map((person: any) => ({
+    id: person.id,
+    name: person.name ?? "",
+    profilePath: person.profile_path ?? person.profilePath ?? null,
+    knownForDepartment: person.known_for_department ?? person.knownForDepartment ?? "Acting",
+    popularity: person.popularity ?? 0,
+  }));
+  res.json({ results: cleanResults, page: 1, totalResults: cleanResults.length });
+});
+
+// GET /movies/actors/:actorId/credits — an actor's movie filmography
+router.get("/movies/actors/:actorId/credits", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.actorId) ? req.params.actorId[0] : req.params.actorId;
+  const actorId = parseInt(raw, 10);
+  if (!Number.isFinite(actorId)) {
+    res.status(400).json({ error: "Invalid actor id" });
+    return;
+  }
+  const [person, credits] = await Promise.all([
+    tmdbFetch(`/person/${actorId}`),
+    tmdbFetch(`/person/${actorId}/movie_credits`),
+  ]);
+  const results = (credits.cast ?? [])
+    .filter((movie: any) => movie.poster_path)
+    .sort((a: any, b: any) => (b.release_date ?? "").localeCompare(a.release_date ?? ""))
+    .map(mapMovie);
+  res.json({
+    actor: {
+      id: actorId,
+      name: person.name ?? "",
+      profilePath: person.profile_path ?? null,
+      biography: person.biography ?? "",
+    },
+    results,
+  });
 });
 
 // GET /movies/new-releases?maxPages=2
@@ -119,12 +418,19 @@ router.get("/movies/omdb", async (req, res): Promise<void> => {
     if (year) url.searchParams.set("y", year);
   }
 
-  const omdbRes = (await fetch(url.toString())) as unknown as FetchResponse;
+  const omdbRes = await fetch(url.toString());
   if (!omdbRes.ok) {
     res.status(502).json({ error: "OMDb request failed" });
     return;
   }
-  const d = await omdbRes.json();
+  const d = await omdbRes.json() as {
+    Response?: string;
+    Error?: string;
+    Ratings?: Array<{ Source?: string; Value?: string }>;
+    imdbRating?: string;
+    imdbVotes?: string;
+    Metascore?: string;
+  };
   if (d.Response === "False") {
     res.status(404).json({ error: d.Error ?? "Not found" });
     return;
@@ -133,7 +439,7 @@ router.get("/movies/omdb", async (req, res): Promise<void> => {
   // Parse Ratings array
   const ratings: Record<string, string> = {};
   for (const r of d.Ratings ?? []) {
-    ratings[r.Source] = r.Value;
+    if (r.Source && r.Value) ratings[r.Source] = r.Value;
   }
 
   const parseScore = (raw: string | undefined, outOf: number): number | null => {
@@ -152,7 +458,7 @@ router.get("/movies/omdb", async (req, res): Promise<void> => {
     imdbVotes: d.imdbVotes !== "N/A" ? d.imdbVotes : null,
     rottenTomatoes: ratings["Rotten Tomatoes"] ?? null,
     metacritic: d.Metascore !== "N/A" ? d.Metascore : null,
-    // All normalised to /100 for computing MAD MAX Score
+    // All normalised to /100 for computing FILMIO Score
     imdbNorm: imdb,
     rtNorm: rt,
     metacriticNorm: meta,
@@ -182,8 +488,8 @@ router.get("/movies/trending", async (req, res): Promise<void> => {
   const maxPages = Number(req.query.maxPages) || 1;
 
   if (maxPages > 1) {
-    const results = await tmdbFetchMultiPage("/trending/movie/week", maxPages);
-    res.json({ results, page: 1, totalPages: 500, totalResults: results.length });
+    const pageData = await tmdbFetchMultiPageWithMetadata("/trending/movie/week", maxPages);
+    res.json({ results: pageData.results, page: 1, totalPages: 500, totalResults: pageData.results.length, metadata: pageData.metadata });
     return;
   }
   const data = await tmdbFetch("/trending/movie/week", { page });
@@ -198,15 +504,132 @@ router.get("/movies/trending", async (req, res): Promise<void> => {
 // GET /movies/popular?maxPages=3
 router.get("/movies/popular", async (req, res): Promise<void> => {
   const maxPages = Number(req.query.maxPages) || 3;
-  const results = await tmdbFetchMultiPage("/movie/popular", maxPages);
-  res.json({ results, totalResults: results.length });
+  const pageData = await tmdbFetchMultiPageWithMetadata("/movie/popular", maxPages);
+  res.json({ results: pageData.results, totalResults: pageData.results.length, metadata: pageData.metadata });
 });
 
 // GET /movies/top-rated?maxPages=3
 router.get("/movies/top-rated", async (req, res): Promise<void> => {
   const maxPages = Number(req.query.maxPages) || 3;
-  const results = await tmdbFetchMultiPage("/movie/top_rated", maxPages);
+  const pageData = await tmdbFetchMultiPageWithMetadata("/movie/top_rated", maxPages);
+  res.json({ results: pageData.results, totalResults: pageData.results.length, metadata: pageData.metadata });
+});
+
+// TV collections use the same normalized shape as movie rows so the homepage
+// can render both media types with the existing card components.
+router.get("/movies/tv-popular", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 2;
+  const pageData = await tmdbFetchMultiPageWithMetadata("/tv/popular", maxPages);
+  res.json({ results: pageData.results, totalResults: pageData.results.length, metadata: pageData.metadata });
+});
+
+router.get("/movies/tv-top-rated", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 2;
+  const pageData = await tmdbFetchMultiPageWithMetadata("/tv/top_rated", maxPages);
+  res.json({ results: pageData.results, totalResults: pageData.results.length, metadata: pageData.metadata });
+});
+
+router.get("/movies/tv-upcoming", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 2;
+  const pageData = await tmdbFetchMultiPageWithMetadata("/tv/on_the_air", maxPages, {}, true);
+  res.json({ results: pageData.results, totalResults: pageData.results.length, metadata: pageData.metadata });
+});
+
+router.get("/movies/upcoming", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 2;
+  const pageData = await tmdbFetchMultiPageWithMetadata("/movie/upcoming", maxPages, { region: "IN" }, true);
+  res.json({ results: pageData.results, totalResults: pageData.results.length, metadata: pageData.metadata });
+});
+
+router.get("/movies/in-theaters", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 2;
+  const pageData = await tmdbFetchMultiPageWithMetadata("/movie/now_playing", maxPages, { region: "IN" });
+  res.json({ results: pageData.results, totalResults: pageData.results.length, metadata: pageData.metadata });
+});
+
+// Discover movies that TMDB marks as free or ad-supported in India.
+router.get("/movies/free", async (req, res): Promise<void> => {
+  const maxPages = Number(req.query.maxPages) || 3;
+  const results = await tmdbFetchMultiPage("/discover/movie", maxPages, {
+    watch_region: "IN",
+    with_watch_monetization_types: "free|ads",
+    sort_by: "popularity.desc",
+  });
   res.json({ results, totalResults: results.length });
+});
+
+// Discover titles available on a selected streaming provider in India.
+router.get("/movies/provider", async (req, res): Promise<void> => {
+  const providerId = Number(req.query.providerId);
+  const mediaType = req.query.mediaType === "tv" ? "tv" : "movie";
+  const maxPages = Number(req.query.maxPages) || 2;
+  if (!providerId) {
+    res.status(400).json({ error: "providerId is required" });
+    return;
+  }
+  const results = await tmdbFetchMultiPage(`/discover/${mediaType}`, maxPages, {
+    with_watch_providers: providerId,
+    watch_region: "IN",
+    with_watch_monetization_types: "flatrate|free|ads",
+    sort_by: "popularity.desc",
+  });
+  res.json({ results, totalResults: results.length });
+});
+
+// A bounded clip feed. TMDB stores clips on title video pages, so fetch only
+// the first page of popular titles and keep the request count predictable.
+router.get("/movies/clips", async (_req, res): Promise<void> => {
+  const popular = await tmdbFetch("/movie/popular", { page: 1 });
+  const candidates = (popular.results ?? []).slice(0, 8);
+  const clips = (await Promise.all(candidates.map(async (movie: any) => {
+    const data = await tmdbFetch(`/movie/${movie.id}/videos`).catch(() => null);
+    // This feed is explicitly for bloopers. Do not fall back to trailers,
+    // teasers, or generic clips just because they are hosted on YouTube.
+    const video = (data?.results ?? []).find((item: any) =>
+      item.site === "YouTube" && item.type === "Bloopers",
+    );
+    return video ? {
+      id: video.key,
+      movieId: movie.id,
+      title: video.name || `${movie.title ?? movie.name} clip`,
+      movieTitle: movie.title ?? movie.name ?? "",
+      key: video.key,
+      type: video.type,
+      posterPath: movie.poster_path ?? null,
+    } : null;
+  }))).filter(Boolean);
+  res.json({ results: clips });
+});
+
+// VAST pre-roll proxy. Keep the provider tag server-side so the client cannot
+// replace it with an arbitrary creative. Configure VAST_AD_TAG_URL in the
+// environment with the approved provider's VAST endpoint.
+router.get("/movies/clip-ad", async (_req, res): Promise<void> => {
+  const tagUrl = process.env.VAST_AD_TAG_URL?.trim();
+  if (!tagUrl) {
+    res.json({ enabled: false });
+    return;
+  }
+
+  try {
+    const url = new URL(tagUrl);
+    url.searchParams.set("cb", `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const adRes = await fetch(url.toString(), {
+      headers: { Accept: "application/xml,text/xml;q=0.9,*/*;q=0.8" },
+    });
+    if (!adRes.ok) {
+      res.status(502).json({ error: "Ad provider request failed" });
+      return;
+    }
+    const xml = await adRes.text();
+    if (!xml.trim()) {
+      res.status(502).json({ error: "Ad provider returned an empty response" });
+      return;
+    }
+    res.json({ enabled: true, vastXml: xml });
+  } catch {
+    res.status(502).json({ error: "Ad provider request failed" });
+  }
 });
 
 // GET /movies/indian?language=hi&maxPages=2 — Indian-origin movies (optionally by original language)
@@ -262,6 +685,113 @@ router.get("/movies/by-genre", async (req, res): Promise<void> => {
 });
 
 // ─── Per-movie sub-routes (must come before bare /:movieId) ──────────────────
+
+// GET /movies/ratings?ids=1,2,3 — FILMIO ratings for card collections.
+router.get("/movies/ratings", async (req, res): Promise<void> => {
+  const ids = String(req.query.ids ?? "")
+    .split(",")
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0)
+    .slice(0, 100);
+
+  if (ids.length === 0) {
+    res.json({ ratings: {} });
+    return;
+  }
+
+  const ratings = Object.fromEntries(
+    [...(await getPrismRatings(ids)).entries()].map(([movieId, rating]) => [
+      String(movieId),
+      rating,
+    ]),
+  );
+  res.json({ ratings });
+});
+
+// Fetch the data needed to paint the movie hero in one TMDB round-trip.
+// TMDB's append_to_response keeps credits, videos, and providers from
+// blocking the page behind three additional browser/API requests.
+router.get("/movies/:movieId/overview", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
+  const id = parseInt(raw, 10);
+  const mediaType = req.query.type === "tv" ? "tv" : "movie";
+  const catalogResponse = await tmdbFetchWithMetadata(`/${mediaType}/${id}`, {
+    append_to_response: "credits,videos,watch/providers,external_ids",
+  });
+  const data = catalogResponse.data;
+  if (!data || data.success === false) {
+    res.status(404).json({ error: "Movie not found" });
+    return;
+  }
+
+  const regionData =
+    data["watch/providers"]?.results?.IN ??
+    data["watch/providers"]?.results?.US ??
+    data["watch/providers"]?.results?.[Object.keys(data["watch/providers"]?.results ?? {})[0]] ??
+    {};
+  const mapProvider = (p: any) => ({
+    providerId: p.provider_id,
+    providerName: p.provider_name,
+    logoPath: p.logo_path ?? "",
+  });
+
+  res.json({
+    movie: {
+      id: data.id,
+      title: data.title ?? data.name ?? "",
+      overview: data.overview ?? "",
+      posterPath: data.poster_path ?? null,
+      backdropPath: data.backdrop_path ?? null,
+      releaseDate: data.release_date ?? data.first_air_date ?? "",
+      runtime: data.runtime ?? data.episode_run_time?.[0] ?? null,
+      genres: (data.genres ?? []).map((g: any) => ({ id: g.id, name: g.name })),
+      voteAverage: data.vote_average ?? 0,
+      voteCount: data.vote_count ?? 0,
+      tagline: data.tagline ?? null,
+      status: data.status ?? "",
+      budget: data.budget ?? 0,
+      revenue: data.revenue ?? 0,
+      imdbId: data.imdb_id ?? data.external_ids?.imdb_id ?? null,
+    },
+    credits: {
+      cast: (data.credits?.cast ?? []).slice(0, 20).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        character: c.character ?? "",
+        profilePath: c.profile_path ?? null,
+        order: c.order ?? 0,
+      })),
+      crew: (data.credits?.crew ?? [])
+        .filter((c: any) => ["Director", "Producer", "Screenplay", "Writer"].includes(c.job))
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          job: c.job,
+          department: c.department,
+          profilePath: c.profile_path ?? null,
+        })),
+    },
+    providers: {
+      flatrate: (regionData.flatrate ?? []).map(mapProvider),
+      free: (regionData.free ?? []).map(mapProvider),
+      ads: (regionData.ads ?? []).map(mapProvider),
+      rent: (regionData.rent ?? []).map(mapProvider),
+      buy: (regionData.buy ?? []).map(mapProvider),
+      link: regionData.link ?? null,
+    },
+    videos: {
+      results: (data.videos?.results ?? []).map((v: any) => ({
+        id: v.id,
+        key: v.key,
+        name: v.name,
+        site: v.site,
+        type: v.type,
+        official: v.official ?? false,
+      })),
+    },
+    metadata: catalogResponse,
+  });
+});
 
 // GET /movies/:movieId/recommendations
 router.get("/movies/:movieId/recommendations", async (req, res): Promise<void> => {

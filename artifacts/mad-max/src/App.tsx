@@ -1,12 +1,17 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { ClerkProvider, SignIn, SignUp, useClerk } from '@clerk/react';
+import { HelmetProvider } from "react-helmet-async";
+import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Link } from "wouter";
+import { Clapperboard } from "lucide-react";
+import PrismFooter from "@/components/mad-max-footer";
+import { SiteSeo } from "@/lib/seo";
 
 // Pages
 import Home from '@/pages/home';
@@ -14,6 +19,8 @@ import Discover from '@/pages/discover';
 import Search from '@/pages/search';
 import MovieDetail from '@/pages/movie-detail';
 import Watchlist from '@/pages/watchlist';
+import Actors from '@/pages/actors';
+import ActorDetail from '@/pages/actor-detail';
 import Feed from '@/pages/feed';
 import Profile from '@/pages/profile';
 import Professionals from '@/pages/professionals';
@@ -23,6 +30,9 @@ import Genres from '@/pages/genres';
 import GenrePage from '@/pages/genre';
 import Anime from '@/pages/anime';
 import News from '@/pages/news';
+import FooterPage from '@/pages/footer-page';
+import Pricing from '@/pages/pricing';
+import FreeMovies from '@/pages/free-movies';
 
 // Setup QueryClient
 const queryClient = new QueryClient({
@@ -30,6 +40,11 @@ const queryClient = new QueryClient({
     queries: {
       retry: false,
       refetchOnWindowFocus: false,
+      // Keep discovery responses in memory while the user browses between pages.
+      // Mutations and auth changes still invalidate/clear this cache immediately.
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      refetchOnMount: false,
     },
   },
 });
@@ -58,7 +73,9 @@ const clerkAppearance = {
   options: {
     logoPlacement: "inside" as const,
     logoLinkUrl: basePath || "/",
-    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    logoImageUrl: `${window.location.origin}${basePath}/auth-logo.svg`,
+      socialButtonsPlacement: "top" as const,
+      socialButtonsVariant: "blockButton" as const,
   },
   variables: {
     colorPrimary: "hsl(38 92% 50%)",
@@ -74,12 +91,13 @@ const clerkAppearance = {
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-[#0A0A0F] rounded-md border border-[#1A1A24] w-[440px] max-w-full overflow-hidden shadow-2xl",
+    cardBox: "bg-[#0A0A0F] rounded-md border border-[#1A1A24] w-[480px] max-w-full overflow-hidden shadow-2xl",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
     headerTitle: "font-display uppercase tracking-widest text-xl text-white",
     headerSubtitle: "text-[#9999A1]",
-    socialButtonsBlockButtonText: "text-white font-medium",
+    socialButtonsBlockButton: "!bg-white !border-white/20 !text-[#111118] hover:!bg-[#f3f3f3] !min-h-11",
+    socialButtonsBlockButtonText: "!text-[#111118] font-semibold",
     formFieldLabel: "text-white font-medium uppercase tracking-wider text-xs",
     footerActionLink: "text-[#F59E0B] hover:text-[#F59E0B]/80",
     footerActionText: "text-[#9999A1]",
@@ -88,23 +106,57 @@ const clerkAppearance = {
 };
 
 function SignInPage() {
+  const redirectPath = new URLSearchParams(window.location.search).get("redirect");
+  const redirectUrl = redirectPath
+    ? `${basePath}${redirectPath}`.replace(/\/{2,}/g, "/")
+    : basePath || "/";
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[100px]" />
       </div>
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      <Link
+        href="/"
+        className="absolute left-5 top-5 z-10 flex items-center gap-2 text-primary transition-opacity hover:opacity-80 sm:left-8 sm:top-7"
+      >
+        <Clapperboard className="h-6 w-6" />
+        <span className="brand-wordmark text-glow">FILMIO</span>
+      </Link>
+      <SignIn
+        routing="path"
+        path={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+        forceRedirectUrl={redirectUrl}
+        fallbackRedirectUrl={redirectUrl}
+      />
     </div>
   );
 }
 
 function SignUpPage() {
+  const redirectPath = new URLSearchParams(window.location.search).get("redirect");
+  const redirectUrl = redirectPath
+    ? `${basePath}${redirectPath}`.replace(/\/{2,}/g, "/")
+    : basePath || "/";
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[100px]" />
       </div>
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      <Link
+        href="/"
+        className="absolute left-5 top-5 z-10 flex items-center gap-2 text-primary transition-opacity hover:opacity-80 sm:left-8 sm:top-7"
+      >
+        <Clapperboard className="h-6 w-6" />
+        <span className="brand-wordmark text-glow">FILMIO</span>
+      </Link>
+      <SignUp
+        routing="path"
+        path={`${basePath}/sign-up`}
+        signInUrl={`${basePath}/sign-in`}
+        forceRedirectUrl={redirectUrl}
+        fallbackRedirectUrl={redirectUrl}
+      />
     </div>
   );
 }
@@ -131,15 +183,115 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+// A tiny client-only interaction sound. It is created after a real pointer
+// gesture, so browsers do not block it as unsolicited autoplay.
+function ClickSound() {
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (!target.closest("a, button, [role='button'], img, [data-click-sound]")) return;
+
+      const AudioContextConstructor =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextConstructor) return;
+
+      const audioContext =
+        audioContextRef.current ?? (audioContextRef.current = new AudioContextConstructor());
+      if (audioContext.state === "suspended") void audioContext.resume();
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const now = audioContext.currentTime;
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, now);
+      oscillator.frequency.exponentialRampToValueAtTime(520, now + 0.045);
+      gain.gain.setValueAtTime(0.035, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.06);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, []);
+
+  return null;
+}
+
 // Fades the page in on every route change
 function PageFade({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     if (!ref.current) return;
     gsap.fromTo(ref.current, { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.out" });
   }, [location]);
   return <div ref={ref}>{children}</div>;
+}
+
+function SiteFooter() {
+  const [location] = useLocation();
+  const isAuthPage = location.startsWith("/sign-in") || location.startsWith("/sign-up");
+
+  if (isAuthPage) return null;
+  return <PrismFooter />;
+}
+
+function AuthRequiredPage() {
+  const redirect = encodeURIComponent("/professionals");
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+      <div className="w-full max-w-lg rounded-md border border-border bg-card p-8 text-center shadow-2xl">
+        <Clapperboard className="mx-auto mb-5 h-10 w-10 text-primary" />
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-primary">FILMIO Profiles</p>
+        <h1 className="font-display text-3xl font-bold uppercase tracking-wider">Sign in to explore profiles</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+          Industry profiles, networking, and direct connections are available after you log in or create your FILMIO account.
+        </p>
+        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link
+            href={`/sign-in?redirect=${redirect}`}
+            className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-6 text-xs font-bold uppercase tracking-wider text-primary-foreground transition hover:bg-primary/90"
+          >
+            Sign In
+          </Link>
+          <Link
+            href={`/sign-up?redirect=${redirect}`}
+            className="inline-flex h-11 items-center justify-center rounded-md border border-border px-6 text-xs font-bold uppercase tracking-wider transition hover:border-primary hover:text-primary"
+          >
+            Sign Up
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProtectedProfessionals() {
+  const { isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return <div className="min-h-screen bg-background" />;
+  return isSignedIn ? <Pricing /> : <AuthRequiredPage />;
+}
+
+function ProtectedProfessionalDetail() {
+  const { isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return <div className="min-h-screen bg-background" />;
+  return isSignedIn ? <ProfessionalDetail /> : <AuthRequiredPage />;
+}
+
+function ProtectedProfessionalDashboard() {
+  const { isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return <div className="min-h-screen bg-background" />;
+  return isSignedIn ? <Professionals /> : <AuthRequiredPage />;
 }
 
 function ClerkProviderWithRoutes() {
@@ -152,11 +304,27 @@ function ClerkProviderWithRoutes() {
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
+      localization={{
+        signIn: {
+          start: {
+            title: "Sign in to FILMIO",
+            subtitle: "Welcome back. Continue your movie journey.",
+          },
+        },
+        signUp: {
+          start: {
+            title: "Join FILMIO",
+            subtitle: "Create your account and start discovering.",
+          },
+        },
+      }}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
+        <ClickSound />
         <ClerkQueryClientCacheInvalidator />
+        <SiteSeo />
         <PageFade>
         <Switch>
           <Route path="/" component={Home} />
@@ -166,17 +334,24 @@ function ClerkProviderWithRoutes() {
 
           <Route path="/discover" component={Discover} />
           <Route path="/search" component={Search} />
+          <Route path="/movies/:id/:slug" component={MovieDetail} />
           <Route path="/movies/:id" component={MovieDetail} />
           <Route path="/watchlist" component={Watchlist} />
+          <Route path="/actors" component={Actors} />
+          <Route path="/actors/:id" component={ActorDetail} />
           <Route path="/feed" component={Feed} />
           <Route path="/profile/:id" component={Profile} />
-          <Route path="/professionals" component={Professionals} />
-          <Route path="/professionals/:id" component={ProfessionalDetail} />
+          <Route path="/professionals" component={ProtectedProfessionals} />
+          <Route path="/professionals/dashboard" component={ProtectedProfessionalDashboard} />
+          <Route path="/professionals/:id" component={ProtectedProfessionalDetail} />
+          <Route path="/pricing" component={Pricing} />
+          <Route path="/free-movies" component={FreeMovies} />
           <Route path="/chat" component={Chat} />
           <Route path="/genres" component={Genres} />
           <Route path="/genre/:id" component={GenrePage} />
           <Route path="/anime" component={Anime} />
           <Route path="/news" component={News} />
+          <Route path="/:slug" component={FooterPage} />
 
           <Route>
             <div className="min-h-screen bg-background flex flex-col items-center justify-center">
@@ -186,6 +361,7 @@ function ClerkProviderWithRoutes() {
           </Route>
         </Switch>
         </PageFade>
+         <SiteFooter />
       </QueryClientProvider>
     </ClerkProvider>
   );
@@ -193,12 +369,14 @@ function ClerkProviderWithRoutes() {
 
 function App() {
   return (
-    <TooltipProvider>
-      <WouterRouter base={basePath}>
-        <ClerkProviderWithRoutes />
-      </WouterRouter>
-      <Toaster />
-    </TooltipProvider>
+    <HelmetProvider>
+      <TooltipProvider>
+        <WouterRouter base={basePath}>
+          <ClerkProviderWithRoutes />
+        </WouterRouter>
+        <Toaster />
+      </TooltipProvider>
+    </HelmetProvider>
   );
 }
 

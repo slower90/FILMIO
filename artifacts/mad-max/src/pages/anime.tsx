@@ -11,7 +11,6 @@ interface AnimeItem {
   posterPath: string | null;
   synopsis: string;
   score: number;
-  voteAverage: number;
   releaseDate: string | null;
   episodes: number | null;
   status: string;
@@ -27,7 +26,6 @@ function animeToRowMovie(a: AnimeItem): RowMovie {
     title: a.title,
     posterPath: a.posterPath, // full URL — posterUrl() handles this
     releaseDate: a.releaseDate ?? undefined,
-    voteAverage: a.score,
   };
 }
 
@@ -52,14 +50,6 @@ function AnimeCard({ anime }: { anime: AnimeItem }) {
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
               <Tv className="w-8 h-8" />
-            </div>
-          )}
-          {anime.score > 0 && (
-            <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded px-1.5 py-0.5">
-              <Star className="w-2.5 h-2.5 fill-primary text-primary" />
-              <span className="text-[10px] font-bold text-white leading-none">
-                {anime.score.toFixed(1)}
-              </span>
             </div>
           )}
           <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />

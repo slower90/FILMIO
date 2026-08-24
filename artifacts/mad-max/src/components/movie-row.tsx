@@ -1,10 +1,22 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { ChevronRight, Star, Plus, Check } from "lucide-react";
 import { tmdbPosterUrl } from "@/lib/utils";
+import { createWatchlistAddPayload } from "@/lib/authenticated-flow-contracts";
 import { cn } from "@/lib/utils";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useUser } from "@clerk/react";
+import {
+  getGetWatchlistQueryKey,
+  useAddToWatchlist,
+  useGetWatchlist,
+  useRemoveFromWatchlist,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { fetchPrismRatings, getPrismDisplayRating, type PrismRatings } from "@/lib/mad-max-ratings";
+import { withMovieTitle } from "@/lib/movie-links";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -13,7 +25,7 @@ export interface RowMovie {
   title: string;
   posterPath?: string | null;
   releaseDate?: string | null;
-  voteAverage?: number | null;
+  voteAverage?: number;
   /** Override the link href (e.g. for anime cards). Defaults to /movies/:id */
   linkHref?: string;
   /** If set, link opens in a new tab */
@@ -21,7 +33,7 @@ export interface RowMovie {
 }
 
 interface MovieRowProps {
-  title: string;
+  title?: string;
   movies: RowMovie[];
   isLoading?: boolean;
   className?: string;
@@ -29,102 +41,147 @@ interface MovieRowProps {
 
 const SKELETON_COUNT = 12;
 
-// ── Individual card with GSAP hover ──────────────────────────────────────────
-function MovieCard({ movie }: { movie: RowMovie }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const imgWrapRef = useRef<HTMLDivElement>(null);
+// ── Individual card ───────────────────────────────────────────────────────────
+function MovieCard({
+  movie,
+  rating,
+}: {
+  movie: RowMovie;
+  rating?: { averageRating: number; totalRatings: number };
+}) {
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
-  const href = movie.linkHref ?? `/movies/${movie.id}`;
+  const href = withMovieTitle(movie.linkHref ?? `/movies/${movie.id}`, movie.title);
+  const { isSignedIn } = useUser();
+  const queryClient = useQueryClient();
+  const { data: watchlist } = useGetWatchlist({
+    query: { queryKey: getGetWatchlistQueryKey(), enabled: !!isSignedIn },
+  });
+  const addToWatchlist = useAddToWatchlist();
+  const removeFromWatchlist = useRemoveFromWatchlist();
+  const isSaved = watchlist?.some((entry) => entry.movieId === movie.id) ?? false;
+  const isSaving = addToWatchlist.isPending || removeFromWatchlist.isPending;
 
-  const onEnter = () => {
-    gsap.to(cardRef.current, {
-      y: -7,
-      scale: 1.06,
-      duration: 0.22,
-      ease: "power2.out",
-      overwrite: "auto",
-    });
-    gsap.to(imgWrapRef.current, {
-      boxShadow: "0 18px 40px rgba(0,0,0,0.75), 0 0 0 1.5px rgba(251,191,36,0.25)",
-      duration: 0.22,
-      ease: "power2.out",
-      overwrite: "auto",
-    });
-  };
-
-  const onLeave = () => {
-    gsap.to(cardRef.current, {
-      y: 0,
-      scale: 1,
-      duration: 0.25,
-      ease: "power2.inOut",
-      overwrite: "auto",
-    });
-    gsap.to(imgWrapRef.current, {
-      boxShadow: "0 0px 0px rgba(0,0,0,0)",
-      duration: 0.25,
-      ease: "power2.inOut",
-      overwrite: "auto",
-    });
-  };
-
-  const inner = (
+  const openMovie = (
     <div
-      ref={cardRef}
-      className="flex-none w-32 md:w-36 cursor-pointer"
-      style={{ willChange: "transform" }}
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
+      className="poster-shell relative aspect-[2/3] overflow-hidden rounded-[0.35rem] border border-border/70"
     >
+      <img
+        src={tmdbPosterUrl(movie.posterPath)}
+        alt={movie.title}
+        className="h-full w-full object-cover"
+        loading="lazy"
+        decoding="async"
+      />
       <div
-        ref={imgWrapRef}
-        className="aspect-[2/3] rounded overflow-hidden bg-muted relative"
-        style={{ boxShadow: "0 0px 0px rgba(0,0,0,0)" }}
+        className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/70 px-1.5 py-1 backdrop-blur-sm"
+        title="FILMIO rating"
+        aria-label={
+          rating && rating.totalRatings > 0
+            ? `FILMIO rating ${getPrismDisplayRating(movie.voteAverage, rating).toFixed(1)} out of 10`
+            : "FILMIO rating 0.0 out of 10"
+        }
       >
-        <img
-          src={tmdbPosterUrl(movie.posterPath)}
-          alt={movie.title}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-        {/* Rating badge */}
-        {movie.voteAverage && movie.voteAverage > 0 ? (
-          <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded px-1.5 py-0.5">
-            <Star className="w-2.5 h-2.5 fill-primary text-primary" />
-            <span className="text-[10px] font-bold text-white leading-none">
-              {movie.voteAverage.toFixed(1)}
-            </span>
-          </div>
-        ) : null}
-        {/* Hover tint */}
-        <div className="absolute inset-0 bg-primary/0 hover:bg-primary/8 transition-colors duration-200 pointer-events-none" />
+        <Star className="h-2.5 w-2.5 fill-primary text-primary" />
+        <span className="text-[9px] font-bold uppercase leading-none tracking-[0.08em] text-primary">
+          FILMIO
+        </span>
+        <span className="text-[10px] font-bold leading-none text-white">
+          {getPrismDisplayRating(movie.voteAverage, rating).toFixed(1)}
+        </span>
       </div>
-      <p className="mt-2 text-xs font-display uppercase tracking-wide font-semibold line-clamp-1 leading-tight transition-colors duration-150 hover:text-primary">
-        {movie.title}
-      </p>
-      {year && <p className="text-[10px] text-muted-foreground mt-0.5">{year}</p>}
+       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[hsl(var(--ink)/0.48)] via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
     </div>
   );
 
-  if (movie.externalLink) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer">
-        {inner}
-      </a>
-    );
-  }
-  return <Link href={href}>{inner}</Link>;
+  const handleWatchlist = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isSignedIn || isSaving) return;
+    const onSuccess = () =>
+      queryClient.invalidateQueries({ queryKey: getGetWatchlistQueryKey() });
+
+    if (isSaved) {
+      removeFromWatchlist.mutate({ movieId: movie.id }, { onSuccess });
+    } else {
+      addToWatchlist.mutate(
+        {
+          data: createWatchlistAddPayload({
+            movieId: movie.id,
+            movieTitle: movie.title,
+            moviePosterPath: movie.posterPath,
+            movieReleaseDate: movie.releaseDate,
+          }),
+        },
+        { onSuccess },
+      );
+    }
+  };
+
+  return (
+    <div
+      className="group w-36 flex-none transform-gpu transition-[transform,opacity] duration-200 hover:-translate-y-1.5 hover:scale-[1.025] focus-within:-translate-y-1.5 md:w-40"
+    >
+      {movie.externalLink ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open ${movie.title}`}>
+          {openMovie}
+        </a>
+      ) : (
+        <Link href={href} aria-label={`Open ${movie.title}`}>
+          {openMovie}
+        </Link>
+      )}
+       <p className="mt-2 line-clamp-1 text-xs font-display font-semibold uppercase tracking-[0.08em] leading-tight group-hover:text-primary">
+        {movie.title}
+      </p>
+      {year && <p className="mt-0.5 text-[10px] text-muted-foreground">{year}</p>}
+      {isSignedIn ? (
+        <button
+          type="button"
+          onClick={handleWatchlist}
+          disabled={isSaving}
+          aria-label={isSaved ? `Remove ${movie.title} from watchlist` : `Add ${movie.title} to watchlist`}
+          className={cn(
+             "mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded border px-1.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] transition-colors",
+            isSaved
+              ? "border-primary/50 bg-primary/15 text-primary hover:bg-primary/25"
+              : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary",
+          )}
+        >
+          {isSaved ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+          {isSaving ? "Saving..." : isSaved ? "Saved" : "Watchlist"}
+        </button>
+      ) : (
+        <Link
+          href="/sign-in"
+          onClick={(event) => event.stopPropagation()}
+           className="mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded border border-border bg-card px-1.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+        >
+          <Plus className="h-3 w-3" />
+          Watchlist
+        </Link>
+      )}
+    </div>
+  );
 }
 
 // ── Row ───────────────────────────────────────────────────────────────────────
 export function MovieRow({ title, movies, isLoading, className }: MovieRowProps) {
   const scrollRef  = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const ratingIds = movies.map((movie) => movie.id);
+  const { data: prismRatings } = useQuery<PrismRatings>({
+    queryKey: ["mad-max-ratings", ratingIds],
+    queryFn: () => fetchPrismRatings(ratingIds),
+    enabled: ratingIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // ScrollTrigger: fade-in + slide-up when row enters viewport
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     // Start invisible so there's no flash before GSAP takes over
     gsap.set(el, { opacity: 0, y: 48 });
     const ctx = gsap.context(() => {
@@ -153,6 +210,10 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       e.preventDefault();
       const target = track.scrollLeft + e.deltaY * 2.5;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        track.scrollLeft = target;
+        return;
+      }
       gsap.to(track, {
         scrollLeft: target,
         duration: 0.5,
@@ -165,42 +226,18 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
     return () => track.removeEventListener("wheel", onWheel);
   }, []);
 
-  // Button scroll — GSAP-driven so it matches the momentum feel
-  const scroll = (direction: "left" | "right") => {
-    const track = scrollRef.current;
-    if (!track) return;
-    const amount = track.clientWidth * 0.75;
-    gsap.to(track, {
-      scrollLeft: track.scrollLeft + (direction === "right" ? amount : -amount),
-      duration: 0.55,
-      ease: "power2.inOut",
-      overwrite: "auto",
-    });
-  };
+  const visibleMovies = expanded ? movies : movies.slice(0, 8);
 
   return (
-    <section ref={sectionRef} className={cn("py-10", className)}>
+    <section ref={sectionRef} className={cn("py-9 md:py-11", className)}>
       <div className="container mx-auto px-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-display font-bold uppercase tracking-wider">{title}</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => scroll("left")}
-              className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center hover:bg-accent hover:border-primary transition-colors"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => scroll("right")}
-              className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center hover:bg-accent hover:border-primary transition-colors"
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+        {title ? (
+           <div className="mb-5 flex items-end justify-between border-l-2 border-primary pl-3">
+             <h2 className="text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">{title}</h2>
+             <span className="hidden text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:block">Curated for tonight</span>
           </div>
-        </div>
+        ) : null}
 
         {/* Scroll track — overflow-y:visible lets hovered cards scale up without clipping */}
         <div
@@ -216,15 +253,36 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
             ? Array.from({ length: SKELETON_COUNT }).map((_, i) => (
                 <div
                   key={i}
-                  className="flex-none w-32 md:w-36"
+                   className="flex-none w-36 md:w-40"
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
-                  <div className="aspect-[2/3] rounded bg-muted animate-pulse" />
+                   <div className="poster-shell aspect-[2/3] rounded animate-pulse" />
                   <div className="mt-2 h-3 w-3/4 rounded bg-muted animate-pulse" />
                   <div className="mt-1 h-2.5 w-1/2 rounded bg-muted animate-pulse" />
                 </div>
               ))
-            : movies.map((movie) => <MovieCard key={movie.id} movie={movie} />)}
+             : visibleMovies.map((movie) => (
+               <MovieCard
+                 key={movie.id}
+                 movie={movie}
+                 rating={prismRatings?.[String(movie.id)]}
+               />
+             ))}
+          {!isLoading && movies.length > 8 && !expanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+               className="group flex-none w-36 md:w-40 aspect-[2/3] rounded border border-primary/35 bg-primary/[0.06] flex flex-col items-center justify-center gap-3 text-primary transition-colors hover:bg-primary hover:text-primary-foreground hover:border-primary"
+              aria-label={`See more movies in ${title}`}
+            >
+               <span className="w-11 h-11 rounded-full border border-current flex items-center justify-center transition-transform group-hover:translate-x-1">
+                <ChevronRight className="w-5 h-5" />
+              </span>
+              <span className="text-[10px] font-display font-bold uppercase tracking-widest text-center px-2">
+                See more
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </section>

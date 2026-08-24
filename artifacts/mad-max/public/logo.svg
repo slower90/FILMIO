@@ -1,12 +1,6 @@
-<svg width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M20 15L30 45L40 15H50L60 45L70 15H80L65 55H55L45 25L35 55H25L10 15H20Z" fill="#F59E0B"/>
-  <path d="M100 15L120 55H110L105 45H95L90 55H80L100 15ZM100 25L97 38H103L100 25Z" fill="#F59E0B"/>
-  <path d="M130 15H150C161 15 170 24 170 35C170 46 161 55 150 55H130V15ZM140 25V45H150C155.5 45 160 40.5 160 35C160 29.5 155.5 25 150 25H140Z" fill="#F59E0B"/>
-  <rect x="0" y="0" width="200" height="60" stroke="#F59E0B" stroke-width="2" fill="none"/>
-  <rect x="5" y="5" width="10" height="10" fill="#F59E0B"/>
-  <rect x="5" y="25" width="10" height="10" fill="#F59E0B"/>
-  <rect x="5" y="45" width="10" height="10" fill="#F59E0B"/>
-  <rect x="185" y="5" width="10" height="10" fill="#F59E0B"/>
-  <rect x="185" y="25" width="10" height="10" fill="#F59E0B"/>
-  <rect x="185" y="45" width="10" height="10" fill="#F59E0B"/>
+<svg width="260" height="64" viewBox="0 0 260 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="2" y="2" width="256" height="60" rx="8" stroke="#F59E0B" stroke-width="3"/>
+  <path d="M18 18h8v8h-8zM18 28h8v8h-8zM18 38h8v8h-8zM234 18h8v8h-8zM234 28h8v8h-8zM234 38h8v8h-8z" fill="#F59E0B"/>
+  <path d="M62 13h30" stroke="#F59E0B" stroke-width="3"/>
+  <text x="130" y="44" text-anchor="middle" fill="#F59E0B" font-family="Michroma, Arial, sans-serif" font-size="25" font-weight="400" letter-spacing="5">FILMIO</text>
 </svg>

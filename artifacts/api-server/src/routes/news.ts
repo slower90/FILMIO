@@ -37,8 +37,66 @@ const FEEDS = [
 ];
 
 function extractFirstImg(html: string): string | null {
-  const m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return m ? m[1] : null;
+  const m = html.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i);
+  if (m?.[1]) return m[1];
+  const srcset = html.match(/<img[^>]+srcset=["']([^"']+)["']/i);
+  return srcset?.[1]?.split(",")[0]?.trim().split(/\s+/)[0] ?? null;
+}
+
+function extractMediaUrl(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === "string") {
+    return /^https?:\/\//i.test(value) ? value : null;
+  }
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const result = extractMediaUrl(entry);
+      if (result) return result;
+    }
+    return null;
+  }
+  if (typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    for (const key of ["url", "href", "_"]) {
+      const result = extractMediaUrl(object[key]);
+      if (result) return result;
+    }
+    for (const entry of Object.values(object)) {
+      const result = extractMediaUrl(entry);
+      if (result) return result;
+    }
+  }
+  return null;
+}
+
+async function fetchArticleImage(url: string): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; MAD-MAX-News/1.0)" },
+      signal: AbortSignal.timeout(7_000),
+    });
+    if (!response.ok) return null;
+    const html = (await response.text()).slice(0, 1_000_000);
+    const patterns = [
+      /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i,
+      /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i,
+    ];
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match?.[1]) {
+        return match[1]
+          .replace(/&amp;/g, "&")
+          .replace(/&#038;/g, "&")
+          .replace(/&#x26;/gi, "&");
+      }
+    }
+  } catch {
+    // A feed item can still be shown without a photo if its article blocks scraping.
+  }
+  return null;
 }
 
 function stripHtml(html: string): string {
@@ -59,10 +117,13 @@ const fetchAllFeeds = async (): Promise<NewsItem[]> => {
         const contentEncoded = (item as any)["content:encoded"] || item.content || "";
 
         const thumbnail =
-          enclosure?.url ||
-          mediaContent?.$.url ||
-          mediaThumbnail?.$.url ||
-          extractFirstImg(contentEncoded) ||
+          extractMediaUrl(enclosure) ||
+          extractMediaUrl(mediaContent) ||
+          extractMediaUrl(mediaThumbnail) ||
+          extractMediaUrl((item as any)["media:group"]) ||
+          extractMediaUrl((item as any)["itunes:image"]) ||
+          extractMediaUrl((item as any).image) ||
+          extractFirstImg(String(contentEncoded)) ||
           null;
 
         return {
@@ -87,11 +148,17 @@ const fetchAllFeeds = async (): Promise<NewsItem[]> => {
   items.sort(
     (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
   );
-  return items;
+  const photoItems = await Promise.all(
+    items.slice(0, 36).map(async (item) => ({
+      ...item,
+      thumbnail: item.thumbnail ?? await fetchArticleImage(item.url),
+    })),
+  );
+  return [...photoItems, ...items.slice(36)];
 };
 
 let cache: { items: NewsItem[]; fetchedAt: number } | null = null;
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 // GET /news?category=film|anime
 router.get("/news", async (req, res): Promise<void> => {

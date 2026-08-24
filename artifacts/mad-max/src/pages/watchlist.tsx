@@ -1,24 +1,55 @@
 import { Navbar } from "@/components/navbar";
-import { useGetWatchlist, useUpdateWatchlistEntry, useRemoveFromWatchlist } from "@workspace/api-client-react";
+import { getGetWatchlistQueryKey, useGetWatchlist, useUpdateWatchlistEntry, useRemoveFromWatchlist } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Check, X, Eye, Clock, Clapperboard } from "lucide-react";
 import { tmdbPosterUrl } from "@/lib/utils";
 import { format } from "date-fns";
+import { useUser } from "@clerk/react";
+import { createWatchlistRemovePayload, createWatchlistUpdatePayload } from "@/lib/authenticated-flow-contracts";
+import { withMovieTitle } from "@/lib/movie-links";
 
 export default function Watchlist() {
-  const { data: watchlist, isLoading } = useGetWatchlist();
+  const { isSignedIn, isLoaded } = useUser();
+  const { data: watchlist, isLoading } = useGetWatchlist({
+    query: { queryKey: getGetWatchlistQueryKey(), enabled: isLoaded && !!isSignedIn },
+  });
   const updateEntry = useUpdateWatchlistEntry();
   const removeEntry = useRemoveFromWatchlist();
+  const queryClient = useQueryClient();
 
-  if (isLoading) {
+  const refreshWatchlist = () =>
+    queryClient.invalidateQueries({ queryKey: getGetWatchlistQueryKey() });
+
+  if (!isLoaded || (isSignedIn && isLoading)) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="container mx-auto px-4 pt-24 text-center">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="container mx-auto max-w-3xl px-4 pt-32 text-center">
+          <Clapperboard className="mx-auto mb-6 h-16 w-16 text-primary/60" />
+          <h1 className="mb-3 text-4xl font-display font-bold uppercase tracking-tight text-glow">
+            Your Watchlist
+          </h1>
+          <p className="mb-8 text-muted-foreground">
+            Sign in to save movies and keep your watchlist synced across devices.
+          </p>
+          <Button asChild>
+            <Link href="/sign-in">Sign in to continue</Link>
+          </Button>
+        </main>
       </div>
     );
   }
@@ -66,8 +97,14 @@ export default function Watchlist() {
                   <WatchlistRow 
                     key={entry.id} 
                     entry={entry} 
-                    onMarkWatched={() => updateEntry.mutate({ params: { movieId: entry.movieId }, data: { status: "watched" } })}
-                    onRemove={() => removeEntry.mutate({ params: { movieId: entry.movieId } })}
+                    onMarkWatched={() => updateEntry.mutate(
+                      { movieId: entry.movieId, data: createWatchlistUpdatePayload("watched") },
+                      { onSuccess: refreshWatchlist },
+                    )}
+                    onRemove={() => removeEntry.mutate(
+                      createWatchlistRemovePayload(entry.movieId),
+                      { onSuccess: refreshWatchlist },
+                    )}
                   />
                 ))}
               </div>
@@ -84,7 +121,10 @@ export default function Watchlist() {
                     key={entry.id} 
                     entry={entry} 
                     onMarkWatched={undefined} // Already watched
-                    onRemove={() => removeEntry.mutate({ params: { movieId: entry.movieId } })}
+                    onRemove={() => removeEntry.mutate(
+                      createWatchlistRemovePayload(entry.movieId),
+                      { onSuccess: refreshWatchlist },
+                    )}
                   />
                 ))}
               </div>
@@ -99,7 +139,7 @@ export default function Watchlist() {
 function WatchlistRow({ entry, onMarkWatched, onRemove }: any) {
   return (
     <div className="flex bg-card border border-border rounded-md overflow-hidden group hover-elevate transition-all">
-      <Link href={`/movies/${entry.movieId}`} className="shrink-0">
+      <Link href={withMovieTitle(`/movies/${entry.movieId}`, entry.movieTitle)} className="shrink-0">
         <img 
           src={tmdbPosterUrl(entry.moviePosterPath)} 
           alt={entry.movieTitle || "Poster"} 
@@ -108,7 +148,7 @@ function WatchlistRow({ entry, onMarkWatched, onRemove }: any) {
       </Link>
       <div className="p-4 md:p-6 flex flex-col justify-between flex-1">
         <div>
-          <Link href={`/movies/${entry.movieId}`} className="block w-fit">
+          <Link href={withMovieTitle(`/movies/${entry.movieId}`, entry.movieTitle)} className="block w-fit">
             <h3 className="font-display font-bold uppercase tracking-wide text-xl md:text-2xl hover:text-primary transition-colors line-clamp-1">
               {entry.movieTitle}
             </h3>

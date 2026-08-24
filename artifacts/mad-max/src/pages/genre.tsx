@@ -4,9 +4,9 @@ import { useParams } from "wouter";
 import gsap from "gsap";
 import { Navbar } from "@/components/navbar";
 import { MovieCard } from "@/components/movie-card";
-import type { MovieSummary } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Film, Loader2 } from "lucide-react";
+import { recordMoodSignal } from "@/lib/mood-agent";
 
 interface Genre {
   id: number;
@@ -67,6 +67,10 @@ export default function GenrePage() {
   const genre = genresData?.genres.find((g) => g.id === genreId);
   const genreName = genre?.name ?? "";
 
+  useEffect(() => {
+    if (genreId > 0) recordMoodSignal(genreId);
+  }, [genreId]);
+
   const {
     data,
     isLoading,
@@ -101,7 +105,7 @@ export default function GenrePage() {
     });
   // De-dupe across pages and normalize to the shared MovieSummary shape
   const seen = new Set<number>();
-  const uniqueMovies: MovieSummary[] = movies
+  const uniqueMovies = movies
     .filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)))
     .map((m) => ({
       id: m.id,

@@ -9,6 +9,12 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "brace-expansion": "5.0.9",
+      "image-size": "file:./artifacts/mad-max-mobile/vendor/image-size-safe"
+    }
+  },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.1"
   },
