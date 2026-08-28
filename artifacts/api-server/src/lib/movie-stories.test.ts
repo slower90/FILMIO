@@ -14,11 +14,17 @@ const baseInput = {
   runtime: 148,
   genres: [{ id: 878, name: "Science Fiction" }],
   imdbId: "tt1375666",
-  cast: [{ name: "Leonardo DiCaprio" }],
+  cast: [{ id: 6193, name: "Leonardo DiCaprio" }],
   crew: [
-    { name: "Christopher Nolan", job: "Director" },
-    { name: "Christopher Nolan", job: "Writer" },
+    { id: 525, name: "Christopher Nolan", job: "Director" },
+    { id: 525, name: "Christopher Nolan", job: "Writer" },
   ],
+  productionCompanies: ["Warner Bros. Pictures"],
+  productionCountries: ["United Kingdom", "United States"],
+  originalLanguage: "en",
+  budget: 160000000,
+  revenue: 839000000,
+  catalogStatus: "Released",
   trailerUrl: "https://www.youtube.com/watch?v=YoHD9XEInc0",
   updatedAt: "2026-08-26T00:00:00.000Z",
 };
@@ -36,11 +42,32 @@ test("builds a ready story with source attribution and verified title metadata",
   assert.equal(story.movie.title, "Inception");
   assert.equal(story.movie.releaseDate, "2010-07-16");
   assert.equal(story.sections.length, 4);
+  assert.match(story.headline, /people and craft/);
   assert.match(story.sections[0]?.body[0] ?? "", /Inception/);
+  assert.match(story.sections.find((section) => section.id === "the-people")?.body.join(" ") ?? "", /Christopher Nolan/);
+  assert.ok(story.topics.some((topic) => topic.href === "/actors/525"));
+  assert.ok(story.topics.some((topic) => topic.href === "/genre/878"));
   assert.deepEqual(
     story.sources.map((source) => source.name),
     ["TMDB", "Wikipedia", "IMDb", "Official trailer"],
   );
+});
+
+test("adds a history chapter only for documented reference context", () => {
+  const story = storyForMovie({
+    ...baseInput,
+    wikipedia: {
+      extract: "Inception is a 2010 science fiction film. It premiered at the 2010 London Film Festival and was nominated for eight Academy Awards.",
+      url: "https://en.wikipedia.org/wiki/Inception",
+    },
+  });
+
+  const history = story.sections.find((section) => section.id === "the-history");
+  assert.ok(history);
+  assert.match(story.headline, /history/);
+  assert.match(history.body.join(" "), /London Film Festival/);
+  assert.match(history.body.join(" "), /Academy Awards/);
+  assert.equal(story.topics.find((topic) => topic.kind === "country")?.href, "/search?q=United%20Kingdom");
 });
 
 test("returns a partial story without inventing missing source context", () => {
@@ -57,6 +84,7 @@ test("returns a partial story without inventing missing source context", () => {
   assert.equal(story.sources[0]?.name, "TMDB");
   assert.equal(story.movie.overview, "");
   assert.ok(story.sections.every((section) => section.body.every((paragraph) => paragraph.length > 0)));
+  assert.equal(story.sections.some((section) => section.id === "the-history"), false);
 });
 
 test("marks a catalog-only story partial when Wikipedia is unavailable", async () => {

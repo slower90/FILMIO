@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db, ratingsTable } from "@workspace/db";
-import { and, avg, count, eq } from "drizzle-orm";
+import { and, avg, count, desc, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { UpsertRatingBody } from "@workspace/api-zod";
 import { syncSearchDocumentsForProviderId } from "../lib/meilisearch";
+import { resolveOptionalProfileId } from "./profiles";
 
 const router: IRouter = Router();
 
@@ -15,11 +16,20 @@ router.post("/ratings", requireAuth as any, async (req: any, res): Promise<void>
     return;
   }
   const { movieId, score } = parsed.data;
+  const scope = await resolveOptionalProfileId(req.userId, req.query.profileId ?? parsed.data.profileId);
+  if (scope.provided && scope.id === null) {
+    res.status(404).json({ error: "Viewing profile not found." });
+    return;
+  }
 
   const [existing] = await db
     .select()
     .from(ratingsTable)
-    .where(and(eq(ratingsTable.userId, req.userId), eq(ratingsTable.movieId, movieId)));
+    .where(and(
+      eq(ratingsTable.userId, req.userId),
+      ...(scope.id === null ? [] : [eq(ratingsTable.profileId, scope.id)]),
+      eq(ratingsTable.movieId, movieId),
+    ));
 
   let rating;
   if (existing) {
@@ -31,13 +41,33 @@ router.post("/ratings", requireAuth as any, async (req: any, res): Promise<void>
   } else {
     [rating] = await db
       .insert(ratingsTable)
-      .values({ userId: req.userId, movieId, score })
+      .values({ userId: req.userId, profileId: scope.id, movieId, score })
       .returning();
   }
   void syncSearchDocumentsForProviderId(movieId).catch((error) => {
     console.warn("[ratings] Meilisearch rating sync failed:", (error as Error).message);
   });
   res.json(rating);
+});
+
+// GET /ratings/my — list the current profile's ratings for personal insights.
+router.get("/ratings/my", requireAuth as any, async (req: any, res): Promise<void> => {
+  const scope = await resolveOptionalProfileId(req.userId, req.query.profileId);
+  if (scope.provided && scope.id === null) {
+    res.status(404).json({ error: "Viewing profile not found." });
+    return;
+  }
+
+  const ratings = await db
+    .select()
+    .from(ratingsTable)
+    .where(and(
+      eq(ratingsTable.userId, req.userId),
+      ...(scope.id === null ? [] : [eq(ratingsTable.profileId, scope.id)]),
+    ))
+    .orderBy(desc(ratingsTable.updatedAt));
+
+  res.json(ratings);
 });
 
 // GET /ratings/movie/:movieId — aggregate
@@ -69,11 +99,20 @@ router.get("/ratings/movie/:movieId", async (req, res): Promise<void> => {
 router.get("/ratings/my/:movieId", requireAuth as any, async (req: any, res): Promise<void> => {
   const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const movieId = parseInt(raw, 10);
+  const scope = await resolveOptionalProfileId(req.userId, req.query.profileId);
+  if (scope.provided && scope.id === null) {
+    res.status(404).json({ error: "Viewing profile not found." });
+    return;
+  }
 
   const [rating] = await db
     .select()
     .from(ratingsTable)
-    .where(and(eq(ratingsTable.userId, req.userId), eq(ratingsTable.movieId, movieId)));
+    .where(and(
+      eq(ratingsTable.userId, req.userId),
+      ...(scope.id === null ? [] : [eq(ratingsTable.profileId, scope.id)]),
+      eq(ratingsTable.movieId, movieId),
+    ));
 
   if (!rating) {
     res.status(404).json({ error: "Not rated" });

@@ -11,6 +11,8 @@ import animeRouter from "./anime";
 import newsRouter from "./news";
 import postsRouter from "./posts";
 import adminSearchRouter from "./admin-search";
+import profilesRouter from "./profiles";
+import signalsRouter from "./signals";
 
 const router: IRouter = Router();
 
@@ -20,6 +22,8 @@ router.use(reviewsRouter);
 router.use(ratingsRouter);
 router.use(watchlistRouter);
 router.use(usersRouter);
+router.use(profilesRouter);
+router.use(signalsRouter);
 router.use(professionalsRouter);
 router.use(chatRouter);
 router.use(animeRouter);

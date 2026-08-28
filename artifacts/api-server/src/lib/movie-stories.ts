@@ -11,6 +11,12 @@ export type MovieStorySection = {
   body: string[];
 };
 
+export type MovieStoryTopic = {
+  label: string;
+  href: string;
+  kind: "person" | "genre" | "country";
+};
+
 export type MovieStory = {
   status: "ready" | "partial" | "unavailable";
   movie: {
@@ -32,6 +38,7 @@ export type MovieStory = {
   updatedAt: string;
   sections: MovieStorySection[];
   sources: StorySource[];
+  topics: MovieStoryTopic[];
 };
 
 type StoryCacheEntry = {
@@ -59,8 +66,10 @@ const cleanText = (value: unknown): string =>
     .trim();
 
 const firstSentence = (value: string): string => {
-  const sentence = cleanText(value).match(/^(.{40,260}?[.!?])(?:\s|$)/)?.[1];
-  return sentence || cleanText(value).slice(0, 240).replace(/[,:;]$/, "");
+  const normalized = cleanText(value);
+  const sentence = normalized.match(/^(.{40,420}?[.!?])(?:\s|$)/)?.[1];
+  if (sentence) return sentence;
+  return normalized.slice(0, 320).replace(/\s+\S*$/, "").replace(/[,:;]$/, "");
 };
 
 const yearFromDate = (date: string): number | null => {
@@ -117,13 +126,28 @@ async function fetchWikipediaContext(title: string): Promise<{
     `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(candidate.replace(/ /g, "_"))}`,
   );
   if (!summary) return null;
-  const extract = firstSentence(summary?.extract ?? "");
+  const extract = cleanText(summary?.extract ?? "").slice(0, 1800);
   if (!extract) return null;
   const url =
     summary?.content_urls?.desktop?.page ??
     `https://en.wikipedia.org/wiki/${encodeURIComponent(candidate.replace(/ /g, "_"))}`;
   return { extract, url };
 }
+
+const splitSentences = (value: string): string[] =>
+  cleanText(value)
+    .match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g)
+    ?.map((sentence) => sentence.trim())
+    .filter(Boolean) ?? [];
+
+const moneyInUsd = (value: number | null | undefined): string | null => {
+  if (!value || value <= 0) return null;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+};
 
 export function storyForMovie(input: {
   id: number;
@@ -137,8 +161,14 @@ export function storyForMovie(input: {
   runtime: number | null;
   genres: Array<{ id: number; name: string }>;
   imdbId: string | null;
-  cast: Array<{ name: string; character?: string }>;
-  crew: Array<{ name: string; job: string }>;
+  cast: Array<{ id: number; name: string; character?: string }>;
+  crew: Array<{ id: number; name: string; job: string }>;
+  productionCompanies: string[];
+  productionCountries: string[];
+  originalLanguage: string | null;
+  budget: number | null;
+  revenue: number | null;
+  catalogStatus: string;
   wikipedia: { extract: string; url: string } | null;
   trailerUrl: string | null;
   updatedAt: string;
@@ -154,6 +184,12 @@ export function storyForMovie(input: {
     runtime,
     cast,
     crew,
+    productionCompanies,
+    productionCountries,
+    originalLanguage,
+    budget,
+    revenue,
+    catalogStatus,
     wikipedia,
     imdbId,
     trailerUrl,
@@ -168,6 +204,28 @@ export function storyForMovie(input: {
   const subject = mediaType === "tv" ? "series" : "film";
   const overviewSentence = firstSentence(overview);
   const wikipediaSentence = firstSentence(wikipedia?.extract ?? "");
+  const wikipediaSentences = splitSentences(wikipedia?.extract ?? "");
+  const producerNames = crew
+    .filter((member) => /producer/i.test(member.job))
+    .map((member) => cleanText(member.name))
+    .filter(Boolean);
+  const historyNotes = wikipediaSentences
+    .filter((sentence) =>
+      /\b(released|premiered|festival|adapted|based on|filmed|production|award|nominated|box office|sequel|remake|debut|acclaim|censorship|controvers)\b/i.test(sentence),
+    )
+    .map(cleanText)
+    .filter(Boolean)
+    .slice(0, 4);
+  const productionFacts = [
+    productionCompanies.length
+      ? `The catalog credits ${listNames(productionCompanies.slice(0, 3))}${productionCompanies.length > 3 ? " and others" : ""} as production ${productionCompanies.length === 1 ? "company" : "companies"}.`
+      : "",
+    productionCountries.length ? `Its listed production footprint includes ${listNames(productionCountries.slice(0, 3))}.` : "",
+    originalLanguage ? `The recorded original language is ${originalLanguage.toUpperCase()}.` : "",
+    runtime ? `The listed runtime is ${runtime} minutes.` : "",
+    moneyInUsd(budget) ? `The catalog reports a production budget of ${moneyInUsd(budget)}.` : "",
+    moneyInUsd(revenue) ? `The catalog reports worldwide revenue of ${moneyInUsd(revenue)}.` : "",
+  ].filter(Boolean);
 
   const sections: MovieStorySection[] = [
     {
@@ -182,53 +240,62 @@ export function storyForMovie(input: {
           : `That balance between a clear setup and room for interpretation is part of what makes this a natural pick for a considered watch.`,
       ],
     },
-    {
-      id: "the-feeling",
-      heading: "What it feels like",
-      body: [
-        genreNames.includes("comedy")
-          ? `The pleasure is in the timing: ${title} lets its characters breathe, then finds the small turn that changes the mood.`
-          : genreNames.includes("horror") || genreNames.includes("thriller") || genreNames.includes("mystery")
-            ? `The tension works best when it stays close to the characters. ${title} understands that an unanswered question can be more powerful than a loud answer.`
-            : genreNames.includes("romance")
-              ? `Its emotional pull comes from the pauses between the big moments—the glances, choices, and compromises that make a relationship feel lived in.`
-              : genreNames.includes("documentary")
-                ? `Its strongest quality is attention. The subject is given enough space to become more than a headline, while the viewer is trusted to make the final connection.`
-                : `Its appeal is less about a single trick than the way its pieces settle together: character, atmosphere, and the question at the centre of the story.`,
-        leadCast.length
-          ? `The screen presence of ${listNames(leadCast)} gives the material a human centre.`
-          : `The story carries its own centre of gravity, with the mood doing as much work as the plot.`,
-      ],
-    },
-    {
-      id: "the-craft",
-      heading: "The craft around it",
+  ];
+
+  if (director || writers.length || producerNames.length || leadCast.length) {
+    sections.push({
+      id: "the-people",
+      heading: "The people who shaped it",
       body: [
         director
-          ? `${director.name}'s direction is the clearest creative through-line in the available credits, shaping how the ${subject} moves from setup to aftermath.`
-          : `The available credits point to a collaborative piece of filmmaking, with the direction and ensemble working together rather than competing for attention.`,
-        writers.length
-          ? `The writing credits include ${listNames(writers.slice(0, 2))}, a useful reminder that the film's voice begins on the page before it reaches the screen.`
-          : runtime
-            ? `At ${runtime} minutes, it has enough room to establish its world without asking the viewer to wait for the story to begin.`
-            : `Its catalog footprint leaves space for the viewer to discover the rhythm rather than arrive with every beat already explained.`,
-      ],
-    },
-    {
-      id: "before-you-watch",
-      heading: "Before you watch",
+          ? `${director.name} is credited as director, the clearest creative through-line in the available record.`
+          : "The available record does not name a director, so FILMIO leaves that credit open rather than guessing.",
+        writers.length ? `Writing credits include ${listNames(writers.slice(0, 3))}.` : "",
+        producerNames.length ? `Producer credits include ${listNames(producerNames.slice(0, 3))}.` : "",
+        leadCast.length ? `The leading cast record includes ${listNames(leadCast)}.` : "",
+        "Open a credited person below to follow their work beyond this one title.",
+      ].filter(Boolean),
+    });
+  }
+
+  if (productionFacts.length) {
+    sections.push({
+      id: "the-making",
+      heading: "The making and release record",
       body: [
-        year
-          ? `${title} is a ${year} ${subject}${genrePhrase ? ` in the ${genrePhrase} space` : ""}. Go in looking for the details that match your mood, not a borrowed verdict.`
-          : `For a first watch, start with the mood rather than a ranking. ${title} is best met on its own terms.`,
-        runtime
-          ? `The listed runtime is ${runtime} minutes${tagline ? `, and its tagline keeps the invitation simple: “${cleanText(tagline)}”` : ""}.`
-          : tagline
-            ? `Its tagline offers a small doorway into the tone: “${cleanText(tagline)}”`
-            : `FILMIO's community rating and reviews are the best next stop if you want to compare your reaction with other viewers.`,
+        `${title}'s catalog record gives us a concrete trail around the screen story—not just a synopsis.`,
+        ...productionFacts,
+        year ? `The title is dated to ${year}${catalogStatus ? ` and its recorded status is “${catalogStatus}”` : ""}.` : "",
+      ].filter(Boolean),
+    });
+  }
+
+  if (historyNotes.length) {
+    sections.push({
+      id: "the-history",
+      heading: "What happened around it",
+      body: [
+        "The linked reference preserves a little of the title's life beyond its plot:",
+        ...historyNotes,
+        "These notes are included because they are documented in the linked reference—not because FILMIO is filling in a gap with rumor.",
       ],
-    },
-  ];
+    });
+  }
+
+  sections.push({
+    id: "before-you-watch",
+    heading: "Before you watch",
+    body: [
+      year
+        ? `${title} is a ${year} ${subject}${genrePhrase ? ` in the ${genrePhrase} space` : ""}. Go in looking for the details that match your mood, not a borrowed verdict.`
+        : `For a first watch, start with the mood rather than a ranking. ${title} is best met on its own terms.`,
+      runtime
+        ? `The listed runtime is ${runtime} minutes${tagline ? `, and its tagline keeps the invitation simple: “${cleanText(tagline)}”` : ""}.`
+        : tagline
+          ? `Its tagline offers a small doorway into the tone: “${cleanText(tagline)}”`
+          : `FILMIO's community rating and reviews are the best next stop if you want to compare your reaction with other viewers.`,
+    ],
+  });
 
   const sources: StorySource[] = [
     {
@@ -270,6 +337,26 @@ export function storyForMovie(input: {
     });
   }
 
+  const peopleTopics = [...(director ? [director] : []), ...crew.filter((member) => /writer|screenplay|producer/i.test(member.job)), ...cast.slice(0, 4)]
+    .filter((member) => member.id > 0 && member.name)
+    .map((member) => ({
+      label: cleanText(member.name),
+      href: `/actors/${member.id}`,
+      kind: "person" as const,
+    }));
+  const rawTopics: MovieStoryTopic[] = [
+    ...peopleTopics.slice(0, 8),
+    ...genres.slice(0, 4).map((genre) => ({ label: genre.name, href: `/genre/${genre.id}`, kind: "genre" as const })),
+    ...productionCountries.slice(0, 3).map((country) => ({
+      label: country,
+      href: `/search?q=${encodeURIComponent(country)}`,
+      kind: "country" as const,
+    })),
+  ];
+  const topics = rawTopics
+    .filter((topic, index, all) => topic.label && all.findIndex((candidate) => candidate.label.toLowerCase() === topic.label.toLowerCase()) === index)
+    .slice(0, 14);
+
   // A complete story needs both the catalog premise and the independent
   // reference check. Generic editorial language must never turn one missing
   // source into a falsely "ready" story.
@@ -289,12 +376,15 @@ export function storyForMovie(input: {
       genres,
       imdbId,
     },
-    headline: `${title}: a closer look before you press play`,
-    dek: `${title} through a FILMIO lens—its premise, feeling, and the details that make this ${subject} worth finding.`,
-    readTimeMinutes: 4,
+    headline: historyNotes.length
+      ? `${title}: the people, moments, and history behind the screen`
+      : `${title}: the people and craft behind the screen`,
+    dek: `${title} through a FILMIO Journal lens—its premise, collaborators, ${historyNotes.length ? "documented history, and " : ""}the details worth following before you press play.`,
+    readTimeMinutes: Math.min(8, Math.max(4, Math.ceil(sections.length * 1.2))),
     updatedAt: input.updatedAt,
     sections,
     sources: uniqueByUrl(sources),
+    topics,
   };
 }
 
@@ -358,8 +448,26 @@ export async function getMovieStory(options: {
       runtime: Number(data.runtime ?? data.episode_run_time?.[0]) || null,
       genres: (data.genres ?? []).map((genre: any) => ({ id: Number(genre.id), name: cleanText(genre.name) })),
       imdbId: data.imdb_id ?? data.external_ids?.imdb_id ?? null,
-      cast: (data.credits?.cast ?? []).map((member: any) => ({ name: cleanText(member.name), character: member.character })),
-      crew: (data.credits?.crew ?? []).map((member: any) => ({ name: cleanText(member.name), job: cleanText(member.job) })),
+      cast: (data.credits?.cast ?? []).map((member: any) => ({
+        id: Number(member.id),
+        name: cleanText(member.name),
+        character: member.character,
+      })),
+      crew: (data.credits?.crew ?? []).map((member: any) => ({
+        id: Number(member.id),
+        name: cleanText(member.name),
+        job: cleanText(member.job),
+      })),
+      productionCompanies: (data.production_companies ?? [])
+        .map((company: any) => cleanText(company.name))
+        .filter(Boolean),
+      productionCountries: (data.production_countries ?? [])
+        .map((country: any) => cleanText(country.name))
+        .filter(Boolean),
+      originalLanguage: data.original_language ? cleanText(data.original_language) : null,
+      budget: Number(data.budget) || null,
+      revenue: Number(data.revenue) || null,
+      catalogStatus: cleanText(data.status),
       wikipedia,
       trailerUrl: trailer?.key ? `https://www.youtube.com/watch?v=${encodeURIComponent(trailer.key)}` : null,
       updatedAt: metadata?.fetchedAt ?? new Date().toISOString(),

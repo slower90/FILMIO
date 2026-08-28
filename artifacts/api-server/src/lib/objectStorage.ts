@@ -43,3 +43,25 @@ export async function deletePrivateObject(
     throw new Error(`Unable to delete private object (${deletion.status})`);
   }
 }
+
+export async function signPrivateObjectUrl(
+  objectPath: string,
+  method: "PUT" | "GET",
+): Promise<{ url: string; objectPath: string }> {
+  const { bucket, objectName } = privateObjectName(objectPath);
+  const response = await fetch(`${SIDECAR}/object-storage/signed-object-url`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      bucket_name: bucket,
+      object_name: objectName,
+      method,
+      expires_at: new Date(Date.now() + 900_000).toISOString(),
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Unable to sign private object URL (${response.status})`);
+  }
+  const { signed_url: url } = await response.json() as { signed_url: string };
+  return { url, objectPath };
+}

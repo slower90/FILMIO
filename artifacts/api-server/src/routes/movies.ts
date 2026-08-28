@@ -966,6 +966,8 @@ router.get("/movies/:movieId/overview", async (req, res): Promise<void> => {
       releaseDate: data.release_date ?? data.first_air_date ?? "",
       runtime: data.runtime ?? data.episode_run_time?.[0] ?? null,
       genres: (data.genres ?? []).map((g: any) => ({ id: g.id, name: g.name })),
+      originalLanguage: data.original_language ?? null,
+      productionCountries: (data.production_countries ?? []).map((country: any) => country.name).filter(Boolean),
       voteAverage: data.vote_average ?? 0,
       voteCount: data.vote_count ?? 0,
       tagline: data.tagline ?? null,
