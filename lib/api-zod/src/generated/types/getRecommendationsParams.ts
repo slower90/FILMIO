@@ -5,7 +5,12 @@
  * FILMIO - Movie Review & Discovery Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { ProfileIdQueryParameter } from './profileIdQueryParameter';
 
 export type GetRecommendationsParams = {
 limit?: number;
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
 };
