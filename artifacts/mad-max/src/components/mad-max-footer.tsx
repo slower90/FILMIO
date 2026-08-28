@@ -2,8 +2,10 @@ import {
   ExternalLink,
   Mail,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useUser } from "@clerk/react";
+import { ProfileAvatar } from "@/components/profile-avatar";
+import { useActiveProfile } from "@/lib/profile-context";
 
 const appLandingUrl = "https://vishnuva.in/";
 const appStoreLinks = [
@@ -32,6 +34,13 @@ const footerLinks = [
 
 export default function PrismFooter() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const { activeProfile } = useActiveProfile();
+  const [, setLocation] = useLocation();
+
+  const openProfileRooms = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    setLocation(user ? `/profile/${user.id}` : "/profiles");
+  };
 
   return (
     <footer className="w-full border-t border-border/70 bg-[hsl(var(--surface-deep))] px-6 pb-8 pt-14 text-foreground">
@@ -40,10 +49,22 @@ export default function PrismFooter() {
           <div className="mb-10 flex justify-center">
             {isSignedIn ? (
               <Link
-                href={user ? `/profile/${user.id}` : "/"}
-                className="rounded-full bg-primary px-6 py-2.5 text-sm font-bold tracking-wide text-primary-foreground transition-colors hover:bg-primary/85"
+                href={user ? `/profile/${user.id}` : "/profiles"}
+                onClick={openProfileRooms}
+                aria-label="Open your profile and viewing rooms"
+                data-testid="link-footer-profile"
+                className="group inline-flex items-center gap-3 rounded-full bg-primary px-5 py-2.5 text-sm font-bold tracking-wide text-primary-foreground transition-colors hover:bg-primary/85"
               >
-                Open your profile
+                <ProfileAvatar
+                  src={activeProfile?.avatarUrl || user?.imageUrl}
+                  name={activeProfile?.name || user?.fullName || "You"}
+                  size="sm"
+                  className="h-8 w-8 rounded-full border-primary-foreground/40"
+                />
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="text-[9px] uppercase tracking-[0.18em] opacity-80">You</span>
+                  <span>Open your profile</span>
+                </span>
               </Link>
             ) : (
               <Link

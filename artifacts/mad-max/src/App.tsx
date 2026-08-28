@@ -17,6 +17,7 @@ import { SiteSeo } from "@/lib/seo";
 // Keep the Home route eager so the primary landing page becomes interactive
 // without waiting for a route chunk. Secondary surfaces load only when visited.
 import Home from '@/pages/home';
+import { ProfileProvider } from "@/lib/profile-context";
 const Discover = lazy(() => import('@/pages/discover'));
 const Search = lazy(() => import('@/pages/search'));
 const MovieDetail = lazy(() => import('@/pages/movie-detail'));
@@ -33,12 +34,15 @@ const Genres = lazy(() => import('@/pages/genres'));
 const GenrePage = lazy(() => import('@/pages/genre'));
 const Anime = lazy(() => import('@/pages/anime'));
 const News = lazy(() => import('@/pages/news'));
+const Signals = lazy(() => import('@/pages/signals'));
 const Events = lazy(() => import('@/pages/events'));
 const FooterPage = lazy(() => import('@/pages/footer-page'));
 const Pricing = lazy(() => import('@/pages/pricing'));
 const FreeMovies = lazy(() => import('@/pages/free-movies'));
 const MovieStory = lazy(() => import('@/pages/movie-story'));
 const Friends = lazy(() => import('@/pages/friends'));
+const Profiles = lazy(() => import('@/pages/profiles'));
+const CinemaGraph = lazy(() => import('@/pages/cinema-graph'));
 
 // Setup QueryClient
 const queryClient = new QueryClient({
@@ -374,6 +378,12 @@ function ProtectedProfessionalDashboard() {
   return isSignedIn ? <Professionals /> : <AuthRequiredPage />;
 }
 
+function ProtectedProfiles() {
+  const { isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return <div className="min-h-screen bg-background" />;
+  return isSignedIn ? <Profiles /> : <AuthRequiredPage redirectPath="/profiles" />;
+}
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -402,12 +412,13 @@ function ClerkProviderWithRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
-        <ClickSound />
-        <ClerkQueryClientCacheInvalidator />
-        <SiteSeo />
-        <PageFade>
-        <Suspense fallback={<RouteLoading />}>
-          <Switch>
+        <ProfileProvider>
+          <ClickSound />
+          <ClerkQueryClientCacheInvalidator />
+          <SiteSeo />
+          <PageFade>
+          <Suspense fallback={<RouteLoading />}>
+            <Switch>
           <Route path="/" component={Home} />
 
           <Route path="/sign-in/*?" component={SignInPage} />
@@ -419,6 +430,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/movies/:id/:slug" component={MovieDetail} />
           <Route path="/movies/:id" component={MovieDetail} />
           <Route path="/watchlist" component={Watchlist} />
+          <Route path="/profiles" component={ProtectedProfiles} />
+          <Route path="/profiles/graph" component={CinemaGraph} />
           <Route path="/actors" component={Actors} />
           <Route path="/actors/:id" component={ActorDetail} />
           <Route path="/feed" component={Feed} />
@@ -435,6 +448,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/genre/:id" component={GenrePage} />
           <Route path="/anime" component={Anime} />
           <Route path="/news" component={News} />
+          <Route path="/signals" component={Signals} />
           <Route path="/events" component={Events} />
           <Route path="/help" component={FooterPage} />
           <Route path="/advertising" component={FooterPage} />
@@ -451,10 +465,11 @@ function ClerkProviderWithRoutes() {
               <p className="text-muted-foreground">The page you are looking for doesn't exist.</p>
             </div>
           </Route>
-          </Switch>
-        </Suspense>
-        </PageFade>
-         <SiteFooter />
+            </Switch>
+          </Suspense>
+          </PageFade>
+           <SiteFooter />
+        </ProfileProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );

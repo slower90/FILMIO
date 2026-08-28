@@ -9,8 +9,9 @@ import {
   watchlistTable,
   viewingHistoryTable,
 } from "@workspace/db";
-import { and, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middlewares/auth";
+import { resolveOptionalProfileId } from "./profiles";
 import {
   AcceptFriendRequestParams,
   AcceptFriendRequestResponse,
@@ -67,27 +68,48 @@ const mapViewingHistory = (entry: typeof viewingHistoryTable.$inferSelect) => ({
 });
 
 type ViewingHistoryRepository = {
-  list: (userId: string) => Promise<ViewingHistoryMovie[]>;
-  merge: (userId: string, movies: ViewingHistoryMovie[]) => Promise<ViewingHistoryMovie[]>;
-  clear: (userId: string) => Promise<void>;
+  list: (userId: string, profileId?: number | null) => Promise<ViewingHistoryMovie[]>;
+  merge: (userId: string, movies: ViewingHistoryMovie[], profileId?: number | null) => Promise<ViewingHistoryMovie[]>;
+  clear: (userId: string, profileId?: number | null) => Promise<void>;
 };
 
 const databaseViewingHistoryRepository: ViewingHistoryRepository = {
-  async list(userId) {
+  async list(userId, profileId = null) {
     const entries = await db
       .select()
       .from(viewingHistoryTable)
-      .where(eq(viewingHistoryTable.userId, userId))
+      .where(profileId === null
+        ? eq(viewingHistoryTable.userId, userId)
+        : and(eq(viewingHistoryTable.userId, userId), eq(viewingHistoryTable.profileId, profileId)))
       .orderBy(desc(viewingHistoryTable.viewedAt))
       .limit(12);
     return entries.map(mapViewingHistory);
   },
-  async merge(userId, movies) {
+  async merge(userId, movies, profileId = null) {
     for (const movie of movies) {
+      if (profileId === null) {
+        const [existing] = await db
+          .select({ id: viewingHistoryTable.id })
+          .from(viewingHistoryTable)
+          .where(and(eq(viewingHistoryTable.userId, userId), eq(viewingHistoryTable.movieId, movie.id)))
+          .orderBy(asc(viewingHistoryTable.id))
+          .limit(1);
+        if (existing) {
+          await db.update(viewingHistoryTable).set({
+            movieTitle: movie.title,
+            moviePosterPath: movie.posterPath ?? null,
+            movieReleaseDate: movie.releaseDate ?? null,
+            movieVoteAverage: movie.voteAverage ?? null,
+            viewedAt: new Date(),
+          }).where(eq(viewingHistoryTable.id, existing.id));
+          continue;
+        }
+      }
       await db
         .insert(viewingHistoryTable)
         .values({
           userId,
+          profileId,
           movieId: movie.id,
           movieTitle: movie.title,
           moviePosterPath: movie.posterPath ?? null,
@@ -96,7 +118,7 @@ const databaseViewingHistoryRepository: ViewingHistoryRepository = {
           viewedAt: new Date(),
         })
         .onConflictDoUpdate({
-          target: [viewingHistoryTable.userId, viewingHistoryTable.movieId],
+          target: [viewingHistoryTable.userId, viewingHistoryTable.profileId, viewingHistoryTable.movieId],
           set: {
             movieTitle: movie.title,
             moviePosterPath: movie.posterPath ?? null,
@@ -106,10 +128,12 @@ const databaseViewingHistoryRepository: ViewingHistoryRepository = {
           },
         });
     }
-    return databaseViewingHistoryRepository.list(userId);
+    return databaseViewingHistoryRepository.list(userId, profileId);
   },
-  async clear(userId) {
-    await db.delete(viewingHistoryTable).where(eq(viewingHistoryTable.userId, userId));
+  async clear(userId, profileId = null) {
+    await db.delete(viewingHistoryTable).where(profileId === null
+      ? eq(viewingHistoryTable.userId, userId)
+      : and(eq(viewingHistoryTable.userId, userId), eq(viewingHistoryTable.profileId, profileId)));
   },
 };
 
@@ -118,10 +142,16 @@ const databaseViewingHistoryRepository: ViewingHistoryRepository = {
 export function createViewingHistoryRouter(
   repository: ViewingHistoryRepository = databaseViewingHistoryRepository,
   authMiddleware: any = requireAuth,
+  profileResolver: typeof resolveOptionalProfileId = resolveOptionalProfileId,
 ): IRouter {
   const historyRouter: IRouter = Router();
   historyRouter.get("/users/me/viewing-history", authMiddleware, async (req: any, res): Promise<void> => {
-    res.json(await repository.list(req.userId));
+    const scope = await profileResolver(req.userId, req.query.profileId);
+    if (scope.provided && scope.id === null) {
+      res.status(404).json({ error: "Viewing profile not found." });
+      return;
+    }
+    res.json(await repository.list(req.userId, scope.id));
   });
   historyRouter.post("/users/me/viewing-history", authMiddleware, async (req: any, res): Promise<void> => {
     const movies = parseViewingHistoryBody(req.body);
@@ -129,10 +159,20 @@ export function createViewingHistoryRouter(
       res.status(400).json({ error: "Invalid viewing history" });
       return;
     }
-    res.json(await repository.merge(req.userId, movies));
+    const scope = await profileResolver(req.userId, req.query.profileId);
+    if (scope.provided && scope.id === null) {
+      res.status(404).json({ error: "Viewing profile not found." });
+      return;
+    }
+    res.json(await repository.merge(req.userId, movies, scope.id));
   });
   historyRouter.delete("/users/me/viewing-history", authMiddleware, async (req: any, res): Promise<void> => {
-    await repository.clear(req.userId);
+    const scope = await profileResolver(req.userId, req.query.profileId);
+    if (scope.provided && scope.id === null) {
+      res.status(404).json({ error: "Viewing profile not found." });
+      return;
+    }
+    await repository.clear(req.userId, scope.id);
     res.sendStatus(204);
   });
   return historyRouter;
@@ -756,18 +796,32 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
     return;
   }
 
+  const scope = await resolveOptionalProfileId(req.userId, req.query.profileId);
+  if (scope.provided && scope.id === null) {
+    res.status(404).json({ error: "Viewing profile not found." });
+    return;
+  }
+  const profileId = scope.id;
   const [watched, ratings, history, saved] = await Promise.all([
     db.select().from(watchlistTable)
-      .where(and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "watched")))
+      .where(profileId === null
+        ? and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "watched"))
+        : and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.profileId, profileId), eq(watchlistTable.status, "watched")))
       .orderBy(desc(watchlistTable.addedAt)).limit(12),
     db.select().from(ratingsTable)
-      .where(eq(ratingsTable.userId, req.userId))
+      .where(profileId === null
+        ? eq(ratingsTable.userId, req.userId)
+        : and(eq(ratingsTable.userId, req.userId), eq(ratingsTable.profileId, profileId)))
       .orderBy(desc(ratingsTable.updatedAt)).limit(12),
     db.select().from(viewingHistoryTable)
-      .where(eq(viewingHistoryTable.userId, req.userId))
+      .where(profileId === null
+        ? eq(viewingHistoryTable.userId, req.userId)
+        : and(eq(viewingHistoryTable.userId, req.userId), eq(viewingHistoryTable.profileId, profileId)))
       .orderBy(desc(viewingHistoryTable.viewedAt)).limit(12),
     db.select().from(watchlistTable)
-      .where(and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "want_to_watch")))
+      .where(profileId === null
+        ? and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "want_to_watch"))
+        : and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.profileId, profileId), eq(watchlistTable.status, "want_to_watch")))
       .limit(12),
   ]);
 
@@ -839,6 +893,335 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
     }
   }
   res.json(selected.slice(0, limit));
+});
+
+type SurpriseLens =
+  | "tonight"
+  | "15-minutes"
+  | "90-minutes"
+  | "3-hours"
+  | "obscure"
+  | "emotional"
+  | "visually-insane"
+  | "everyone-missed"
+  | "india"
+  | "outside-taste";
+
+const SURPRISE_LENSES: Record<SurpriseLens, {
+  label: string;
+  targetRuntime?: number;
+  maxRuntime?: number;
+  minRuntime?: number;
+  genres?: number[];
+  originCountry?: string;
+  sortBy: string;
+  qualityFloor: number;
+}> = {
+  tonight: { label: "Tonight", targetRuntime: 120, maxRuntime: 150, sortBy: "popularity.desc", qualityFloor: 6.2 },
+  "15-minutes": { label: "15 minutes", targetRuntime: 15, maxRuntime: 45, sortBy: "vote_average.desc", qualityFloor: 5.5 },
+  "90-minutes": { label: "90 minutes", targetRuntime: 90, maxRuntime: 115, sortBy: "popularity.desc", qualityFloor: 6.2 },
+  "3-hours": { label: "3 hours", targetRuntime: 180, minRuntime: 150, maxRuntime: 220, sortBy: "vote_average.desc", qualityFloor: 6.5 },
+  obscure: { label: "Something obscure", sortBy: "popularity.asc", qualityFloor: 6.5 },
+  emotional: { label: "Something emotional", genres: [18, 10749], sortBy: "vote_average.desc", qualityFloor: 6.8 },
+  "visually-insane": { label: "Something visually insane", genres: [878, 14, 16, 12], sortBy: "vote_average.desc", qualityFloor: 6.6 },
+  "everyone-missed": { label: "Something everyone missed", sortBy: "vote_average.desc", qualityFloor: 7.1 },
+  india: { label: "Something from India", originCountry: "IN", sortBy: "popularity.desc", qualityFloor: 6.4 },
+  "outside-taste": { label: "Something outside my taste", sortBy: "vote_average.desc", qualityFloor: 6.8 },
+};
+
+function parseSurpriseLens(value: unknown): SurpriseLens | null {
+  const lens = String(value ?? "").trim() as SurpriseLens;
+  return lens in SURPRISE_LENSES ? lens : null;
+}
+
+function mapSurpriseMovie(movie: any, details: any) {
+  const genres = Array.isArray(details?.genres)
+    ? details.genres
+        .filter((genre: any) => Number.isInteger(Number(genre.id)) && typeof genre.name === "string")
+        .map((genre: any) => ({ id: Number(genre.id), name: genre.name }))
+    : [];
+  return {
+    id: Number(movie.id),
+    title: String(details?.title ?? movie.title ?? ""),
+    posterPath: details?.poster_path ?? movie.poster_path ?? null,
+    backdropPath: details?.backdrop_path ?? movie.backdrop_path ?? null,
+    overview: String(details?.overview ?? movie.overview ?? ""),
+    releaseDate: String(details?.release_date ?? movie.release_date ?? ""),
+    runtime: Number.isInteger(details?.runtime) ? details.runtime : null,
+    genres,
+    voteAverage: Number(details?.vote_average ?? movie.vote_average ?? 0),
+  };
+}
+
+function stableSurpriseOffset(seed: string, length: number): number {
+  if (length <= 1) return 0;
+  let hash = 0;
+  for (const character of seed) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return hash % length;
+}
+
+// GET /surprise-me?lens= — choose exactly one explainable film.
+// This route deliberately returns one result rather than a scrollable list.
+router.get("/surprise-me", optionalAuth as any, async (req: any, res): Promise<void> => {
+  const lens = parseSurpriseLens(req.query.lens);
+  if (!lens) {
+    res.status(400).json({ error: "lens must be one of the supported Surprise Me lenses." });
+    return;
+  }
+
+  const config = SURPRISE_LENSES[lens];
+  const requestedProfile = req.userId
+    ? await resolveOptionalProfileId(req.userId, req.query.profileId)
+    : { provided: false, id: null };
+  if (requestedProfile.provided && requestedProfile.id === null) {
+    res.status(404).json({ error: "Viewing profile not found." });
+    return;
+  }
+
+  const key = process.env.TMDB_API_KEY;
+  if (!key) {
+    res.status(503).json({ error: "Surprise Me is temporarily unavailable while the catalog reconnects." });
+    return;
+  }
+
+  const tmdbGet = async (path: string, params: Record<string, string | number> = {}) => {
+    const url = new URL(`https://api.themoviedb.org/3${path}`);
+    url.searchParams.set("api_key", key);
+    for (const [name, value] of Object.entries(params)) url.searchParams.set(name, String(value));
+    const response = await fetch(url.toString());
+    return response.ok ? response.json() as Promise<any> : null;
+  };
+
+  const profileId = requestedProfile.id;
+  const profileSignals: string[] = [];
+  const [watched, saved, ratings, history] = req.userId
+    ? await Promise.all([
+        db.select({ movieId: watchlistTable.movieId }).from(watchlistTable).where(
+          profileId === null
+            ? and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "watched"))
+            : and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.profileId, profileId), eq(watchlistTable.status, "watched")),
+        ).limit(80),
+        db.select({ movieId: watchlistTable.movieId }).from(watchlistTable).where(
+          profileId === null
+            ? and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "want_to_watch"))
+            : and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.profileId, profileId), eq(watchlistTable.status, "want_to_watch")),
+        ).limit(80),
+        db.select({ movieId: ratingsTable.movieId, score: ratingsTable.score }).from(ratingsTable).where(
+          profileId === null
+            ? eq(ratingsTable.userId, req.userId)
+            : and(eq(ratingsTable.userId, req.userId), eq(ratingsTable.profileId, profileId)),
+        ).orderBy(desc(ratingsTable.updatedAt)).limit(30),
+        db.select({ movieId: viewingHistoryTable.movieId }).from(viewingHistoryTable).where(
+          profileId === null
+            ? eq(viewingHistoryTable.userId, req.userId)
+            : and(eq(viewingHistoryTable.userId, req.userId), eq(viewingHistoryTable.profileId, profileId)),
+        ).orderBy(desc(viewingHistoryTable.viewedAt)).limit(30),
+      ])
+    : [[], [], [], []];
+
+  const excludedIds = new Set([
+    ...watched.map((item: any) => item.movieId),
+    ...saved.map((item: any) => item.movieId),
+    ...ratings.map((item: any) => item.movieId),
+    ...history.map((item: any) => item.movieId),
+  ]);
+  if (req.userId) {
+    profileSignals.push("profile context");
+    if (ratings.length) profileSignals.push("rating signals");
+    if (history.length) profileSignals.push("recent viewing");
+    if (saved.length || watched.length) profileSignals.push("watched and saved exclusions");
+  }
+
+  const positiveRatedIds = ratings
+    .filter((rating: any) => Number(rating.score) >= 7)
+    .map((rating: any) => Number(rating.movieId))
+    .filter((id: number) => Number.isInteger(id) && id > 0)
+    .slice(0, 5);
+  const seedDetails = positiveRatedIds.length
+    ? await Promise.all(positiveRatedIds.map((id) => tmdbGet(`/movie/${id}`)))
+    : [];
+  const preferredGenres = new Set<number>(
+    seedDetails.flatMap((movie: any) =>
+      Array.isArray(movie?.genres) ? movie.genres.map((genre: any) => Number(genre.id)).filter(Number.isInteger) : [],
+    ),
+  );
+
+  const baseParams: Record<string, string | number> = {
+    sort_by: config.sortBy,
+    include_adult: "false",
+    "vote_average.gte": config.qualityFloor,
+    "vote_count.gte": lens === "obscure" || lens === "everyone-missed" ? 25 : 80,
+  };
+  if (config.genres?.length) baseParams.with_genres = config.genres.join("|");
+  if (config.originCountry) {
+    baseParams.with_origin_country = config.originCountry;
+    baseParams.region = config.originCountry;
+  }
+  if (config.maxRuntime) baseParams["with_runtime.lte"] = config.maxRuntime;
+  if (config.minRuntime) baseParams["with_runtime.gte"] = config.minRuntime;
+  if (lens === "everyone-missed") {
+    baseParams["vote_count.lte"] = 600;
+    baseParams.sort_by = "vote_average.desc";
+  }
+  if (lens === "outside-taste" && preferredGenres.size) {
+    baseParams.without_genres = [...preferredGenres].slice(0, 6).join("|");
+    profileSignals.push("genre distance from your highly rated films");
+  }
+  if (lens === "outside-taste" && !preferredGenres.size) {
+    profileSignals.push("a deliberate genre detour");
+  }
+
+  const discover = async (params: Record<string, string | number>) => {
+    const pages = await Promise.all(
+      [1, 2, 3].map((page) => tmdbGet("/discover/movie", { ...params, page })),
+    );
+    return pages.flatMap((page: any) => page?.results ?? []);
+  };
+
+  let candidates = await discover(baseParams);
+  const candidateById = new Map<number, any>();
+  for (const candidate of candidates) {
+    if (Number.isInteger(candidate?.id) && !excludedIds.has(candidate.id) && candidate.poster_path) {
+      candidateById.set(candidate.id, candidate);
+    }
+  }
+
+  // Profile-aware recommendations add a personal signal without ever reading
+  // private message content. Discovery remains the fallback for new accounts.
+  if (
+    req.userId &&
+    positiveRatedIds.length &&
+    !config.originCountry &&
+    !config.targetRuntime &&
+    lens !== "outside-taste"
+  ) {
+    const recommendationSets = await Promise.all(
+      positiveRatedIds.slice(0, 3).map((id) => tmdbGet(`/movie/${id}/recommendations`)),
+    );
+    for (const recommendationSet of recommendationSets) {
+      for (const candidate of recommendationSet?.results ?? []) {
+        if (Number.isInteger(candidate?.id) && !excludedIds.has(candidate.id) && candidate.poster_path) {
+          candidateById.set(candidate.id, { ...candidate, _profileSignal: true });
+        }
+      }
+    }
+  }
+
+  let candidateList = [...candidateById.values()];
+  if (!candidateList.length) {
+    // A narrow runtime or niche lens may be empty on the live provider. Relax
+    // only the impossible constraint and label the result as a near match.
+    const relaxed = { ...baseParams };
+    delete relaxed["with_runtime.lte"];
+    delete relaxed["with_runtime.gte"];
+    candidates = await discover(relaxed);
+    candidateList = candidates.filter((candidate: any) =>
+      Number.isInteger(candidate?.id) && !excludedIds.has(candidate.id) && candidate.poster_path,
+    );
+  }
+
+  if (!candidateList.length) {
+    res.status(503).json({ error: "The live catalog could not find a safe Surprise Me pick right now." });
+    return;
+  }
+
+  const avoidMovieId = Number(req.query.avoidMovieId);
+  if (Number.isInteger(avoidMovieId) && avoidMovieId > 0) {
+    const withoutAvoided = candidateList.filter((candidate) => candidate.id !== avoidMovieId);
+    if (withoutAvoided.length) candidateList = withoutAvoided;
+  }
+  const seed = String(req.query.seed ?? `${lens}-${Date.now()}`);
+  const offset = stableSurpriseOffset(seed, candidateList.length);
+  candidateList = [...candidateList.slice(offset), ...candidateList.slice(0, offset)];
+
+  const detailCandidates = await Promise.all(
+    candidateList.slice(0, 18).map(async (candidate) => ({
+      candidate,
+      details: await tmdbGet(`/movie/${candidate.id}`),
+    })),
+  );
+  const validDetails = detailCandidates.filter(({ details }) =>
+    details && !details.adult && typeof details.title === "string" && details.poster_path,
+  );
+  if (!validDetails.length) {
+    res.status(503).json({ error: "Surprise Me could not verify a film from the live catalog." });
+    return;
+  }
+
+  const isRuntimeLens = Boolean(config.targetRuntime);
+  const scored = validDetails
+    .map(({ candidate, details }) => {
+      const runtime = Number.isInteger(details.runtime) ? Number(details.runtime) : null;
+      const runtimeDistance = runtime === null || !config.targetRuntime ? 0 : Math.abs(runtime - config.targetRuntime);
+      const genreIds = Array.isArray(details.genres) ? details.genres.map((genre: any) => Number(genre.id)) : [];
+      const profileSignal = candidate._profileSignal ? 1.2 : 0;
+      const quality = Math.min(Number(details.vote_average ?? candidate.vote_average ?? 0) / 10, 1);
+      const popularity = Math.min(Math.log10(Number(details.popularity ?? candidate.popularity ?? 0) + 1) / 3, 1);
+      const tastePenalty = lens === "outside-taste" && preferredGenres.size && genreIds.some((id: number) => preferredGenres.has(id)) ? 1.5 : 0;
+      const runtimeScore = config.targetRuntime ? Math.max(0, 2 - runtimeDistance / 45) : 0;
+      return {
+        candidate,
+        details,
+        score: quality * 4 + popularity + profileSignal + runtimeScore - tastePenalty,
+        runtimeDistance,
+      };
+    })
+    .sort((a, b) => {
+      if (isRuntimeLens && a.runtimeDistance !== b.runtimeDistance) return a.runtimeDistance - b.runtimeDistance;
+      return b.score - a.score;
+    });
+  const selected = scored[0];
+  const pick = mapSurpriseMovie(selected.candidate, selected.details);
+  const runtimeExact = config.targetRuntime && pick.runtime !== null
+    ? Math.abs(pick.runtime - config.targetRuntime) <= (lens === "15-minutes" ? 10 : 20)
+    : null;
+  const runtimeMatch = !config.targetRuntime
+    ? "not-applicable"
+    : runtimeExact
+      ? "exact"
+      : "nearest-available";
+
+  const explanationByLens: Record<SurpriseLens, string> = {
+    tonight: `A strong ${pick.runtime ? `${pick.runtime}-minute` : "feature-length"} choice for tonight, with enough room to settle into its world.`,
+    "15-minutes": runtimeMatch === "exact"
+      ? `A compact ${pick.runtime}-minute watch that respects your short window.`
+      : `No exact 15-minute film was available, so this is the closest verified short-window match in the live catalog.`,
+    "90-minutes": runtimeMatch === "exact"
+      ? `A focused ${pick.runtime}-minute story with a clean arc for a 90-minute window.`
+      : `The live catalog had no exact 90-minute match, so this is the nearest verified fit.`,
+    "3-hours": runtimeMatch === "exact"
+      ? `A full-scale ${pick.runtime}-minute journey for a night with room to disappear.`
+      : `A long-form film chosen as the nearest available match to a three-hour window.`,
+    obscure: "High quality with deliberately lower catalog momentum — a path away from the obvious.",
+    emotional: "A story led by human feeling, chosen from drama and romance signals.",
+    "visually-insane": "A high-sensory pick from worlds built for the largest possible inner screen.",
+    "everyone-missed": "A quality-first detour with a smaller vote footprint — no invented audience claims, just a bounded catalog signal.",
+    india: "A film from India, chosen to open a different regional door in the catalog.",
+    "outside-taste": "A quality floor held steady while your familiar genre signals were deliberately kept at a distance.",
+  };
+
+  const signals = [...profileSignals];
+  if (config.targetRuntime) signals.push(`runtime target: ${config.label}`);
+  if (config.qualityFloor) signals.push(`quality floor: ${config.qualityFloor.toFixed(1)}/10`);
+  if (!signals.length) signals.push("live catalog quality and lens fit");
+  if (lens === "obscure" || lens === "everyone-missed") signals.push("bounded popularity signal");
+
+  res.json({
+    lens,
+    lensLabel: config.label,
+    movie: pick,
+    explanation: explanationByLens[lens],
+    signals: [...new Set(signals)].slice(0, 6),
+    personalized: Boolean(req.userId && (ratings.length || history.length || saved.length || watched.length)),
+    runtimeMatch,
+    requestedRuntime: config.targetRuntime ?? null,
+    metadata: {
+      source: "tmdb",
+      stale: false,
+      partial: false,
+      fetchedAt: new Date().toISOString(),
+    },
+  });
 });
 
 export default router;

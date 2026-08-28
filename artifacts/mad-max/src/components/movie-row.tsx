@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPrismRatings, getPrismDisplayRating, type PrismRatings } from "@/lib/mad-max-ratings";
 import { withMovieTitle } from "@/lib/movie-links";
+import { useActiveProfile } from "@/lib/profile-context";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -47,11 +48,13 @@ function MovieCard({
   rating,
   isSignedIn,
   isSaved,
+  profileId,
 }: {
   movie: RowMovie;
   rating?: { averageRating: number; totalRatings: number };
   isSignedIn: boolean;
   isSaved: boolean;
+  profileId?: number;
 }) {
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
   const href = withMovieTitle(movie.linkHref ?? `/movies/${movie.id}`, movie.title);
@@ -102,7 +105,10 @@ function MovieCard({
       queryClient.invalidateQueries({ queryKey: getGetWatchlistQueryKey() });
 
     if (isSaved) {
-      removeFromWatchlist.mutate({ movieId: movie.id }, { onSuccess });
+      removeFromWatchlist.mutate(
+        { movieId: movie.id, params: profileId ? { profileId } : undefined },
+        { onSuccess },
+      );
     } else {
       addToWatchlist.mutate(
         {
@@ -111,7 +117,9 @@ function MovieCard({
             movieTitle: movie.title,
             moviePosterPath: movie.posterPath,
             movieReleaseDate: movie.releaseDate,
+            profileId,
           }),
+          params: profileId ? { profileId } : undefined,
         },
         { onSuccess },
       );
@@ -176,8 +184,10 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
   const headingRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const { isSignedIn } = useUser();
-  const { data: watchlist } = useGetWatchlist({
-    query: { queryKey: getGetWatchlistQueryKey(), enabled: !!isSignedIn },
+  const { activeProfile } = useActiveProfile();
+  const profileParams = activeProfile ? { profileId: activeProfile.id } : undefined;
+  const { data: watchlist } = useGetWatchlist(profileParams, {
+    query: { queryKey: getGetWatchlistQueryKey(profileParams), enabled: !!isSignedIn },
   });
   const savedMovieIds = useMemo(
     () => new Set((watchlist ?? []).map((entry) => entry.movieId)),
@@ -306,6 +316,7 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
                  rating={prismRatings?.[String(movie.id)]}
                  isSignedIn={!!isSignedIn}
                  isSaved={savedMovieIds.has(movie.id)}
+                 profileId={activeProfile?.id}
                />
              ))}
           {!isLoading && movies.length > 8 && !expanded && (
