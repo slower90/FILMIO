@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, real, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -18,6 +18,10 @@ export const viewingHistoryTable = pgTable(
     userMovieUnique: uniqueIndex("viewing_history_user_movie_idx").on(
       table.userId,
       table.movieId,
+    ),
+    userViewedIdx: index("viewing_history_user_viewed_at_idx").on(
+      table.userId,
+      table.viewedAt,
     ),
   }),
 );

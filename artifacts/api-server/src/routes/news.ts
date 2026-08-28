@@ -158,19 +158,40 @@ const fetchAllFeeds = async (): Promise<NewsItem[]> => {
 };
 
 let cache: { items: NewsItem[]; fetchedAt: number } | null = null;
+let refreshPromise: Promise<NewsItem[]> | null = null;
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+function refreshNewsCache(): Promise<NewsItem[]> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = fetchAllFeeds()
+    .then((items) => {
+      cache = { items, fetchedAt: Date.now() };
+      return items;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+  return refreshPromise;
+}
 
 // GET /news?category=film|anime
 router.get("/news", async (req, res): Promise<void> => {
   const category = req.query.category as "film" | "anime" | undefined;
   try {
     const now = Date.now();
-    if (!cache || now - cache.fetchedAt > CACHE_TTL) {
-      cache = { items: await fetchAllFeeds(), fetchedAt: now };
+    if (!cache) {
+      await refreshNewsCache();
+    } else if (now - cache.fetchedAt > CACHE_TTL) {
+      // Serve the last good result immediately while one request refreshes it.
+      void refreshNewsCache().catch((error) => {
+        console.warn("[news] background refresh failed:", error);
+      });
     }
-    let items = cache.items;
+    const current = cache;
+    if (!current) throw new Error("News cache is unavailable");
+    let items = current.items;
     if (category) items = items.filter((i) => i.category === category);
-    res.json({ items, fetchedAt: new Date(cache.fetchedAt).toISOString() });
+    res.json({ items, fetchedAt: new Date(current.fetchedAt).toISOString() });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -179,8 +200,8 @@ router.get("/news", async (req, res): Promise<void> => {
 // POST /news/refresh — force refresh the cache
 router.post("/news/refresh", async (_req, res): Promise<void> => {
   try {
-    cache = { items: await fetchAllFeeds(), fetchedAt: Date.now() };
-    res.json({ ok: true, count: cache.items.length });
+    const items = await refreshNewsCache();
+    res.json({ ok: true, count: items.length });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

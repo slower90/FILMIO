@@ -417,15 +417,21 @@ export default function Home() {
     enabled: belowFoldReady,
     staleTime: 5 * 60 * 1000,
   });
+  const loadGenreFallback =
+    belowFoldReady && !loadingPersonalized && !personalizedFeed?.length;
   // These genre pools power the genre-personalized For You row.
-  // React Query deduplicates them with the genre tab requests below.
-  const { data: actionMovies } = useGenreRow(28, belowFoldReady);
-  const { data: comedyMovies } = useGenreRow(35, belowFoldReady);
-  const { data: dramaMovies } = useGenreRow(18, belowFoldReady);
-  const { data: sciFiMovies } = useGenreRow(878, belowFoldReady);
+  // Only request them after personalized recommendations resolve empty; this
+  // removes four simultaneous catalog requests from the normal home path.
+  const { data: actionMovies } = useGenreRow(28, loadGenreFallback);
+  const { data: comedyMovies } = useGenreRow(35, loadGenreFallback);
+  const { data: dramaMovies } = useGenreRow(18, loadGenreFallback);
+  const { data: sciFiMovies } = useGenreRow(878, loadGenreFallback);
 
   const genreFallbackMovies = uniqueMovies(actionMovies, sciFiMovies, comedyMovies, dramaMovies);
   const personalizedMovies = personalizedFeed?.length ? personalizedFeed : genreFallbackMovies;
+  const loadingGenreFallback =
+    loadGenreFallback &&
+    [actionMovies, comedyMovies, dramaMovies, sciFiMovies].some((movies) => movies === undefined);
   const genreRows = GENRE_ROWS;
 
   const choosePrimerTab = (tab: DiscoveryTab) => {
@@ -490,7 +496,7 @@ export default function Home() {
             <MovieRow
               title="Action, Sci-Fi, Comedy & Drama"
               movies={personalizedMovies}
-                isLoading={!belowFoldReady || (loadingPersonalized && !personalizedMovies.length)}
+                isLoading={!belowFoldReady || loadingPersonalized || loadingGenreFallback}
               className="border-b border-border/30"
             />
              {belowFoldReady && <ActorRow />}

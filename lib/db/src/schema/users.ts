@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, numeric, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, numeric, timestamp, integer, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -20,7 +20,10 @@ export const followsTable = pgTable("follows", {
   followerId: text("follower_id").notNull(),
   followingId: text("following_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  followerCreatedIdx: index("follows_follower_created_at_idx").on(table.followerId, table.createdAt),
+  followingCreatedIdx: index("follows_following_created_at_idx").on(table.followingId, table.createdAt),
+}));
 
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;

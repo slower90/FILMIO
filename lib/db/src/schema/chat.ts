@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,7 +13,13 @@ export const conversationParticipantsTable = pgTable("conversation_participants"
   id: serial("id").primaryKey(),
   conversationId: integer("conversation_id").notNull(),
   userId: text("user_id").notNull(),
-});
+}, (table) => ({
+  userConversationIdx: index("conversation_participants_user_conversation_idx").on(
+    table.userId,
+    table.conversationId,
+  ),
+  conversationIdx: index("conversation_participants_conversation_id_idx").on(table.conversationId),
+}));
 
 export const chatDevicesTable = pgTable("chat_devices", {
   id: serial("id").primaryKey(),
@@ -32,7 +38,12 @@ export const chatMessagesTable = pgTable("chat_messages", {
   senderId: text("sender_id").notNull(),
   content: text("content").notNull(), // encrypted envelope JSON; never plaintext
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  conversationCreatedIdx: index("chat_messages_conversation_created_at_idx").on(
+    table.conversationId,
+    table.createdAt,
+  ),
+}));
 
 export const insertMessageSchema = createInsertSchema(chatMessagesTable).omit({ id: true, createdAt: true });
 export type InsertMessage = z.infer<typeof insertMessageSchema>;

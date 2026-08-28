@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ChevronRight, Star, Plus, Check } from "lucide-react";
 import { tmdbPosterUrl } from "@/lib/utils";
@@ -45,20 +45,19 @@ const SKELETON_COUNT = 12;
 function MovieCard({
   movie,
   rating,
+  isSignedIn,
+  isSaved,
 }: {
   movie: RowMovie;
   rating?: { averageRating: number; totalRatings: number };
+  isSignedIn: boolean;
+  isSaved: boolean;
 }) {
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : null;
   const href = withMovieTitle(movie.linkHref ?? `/movies/${movie.id}`, movie.title);
-  const { isSignedIn } = useUser();
   const queryClient = useQueryClient();
-  const { data: watchlist } = useGetWatchlist({
-    query: { queryKey: getGetWatchlistQueryKey(), enabled: !!isSignedIn },
-  });
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
-  const isSaved = watchlist?.some((entry) => entry.movieId === movie.id) ?? false;
   const isSaving = addToWatchlist.isPending || removeFromWatchlist.isPending;
 
   const openMovie = (
@@ -176,6 +175,14 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
   const sectionRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const { isSignedIn } = useUser();
+  const { data: watchlist } = useGetWatchlist({
+    query: { queryKey: getGetWatchlistQueryKey(), enabled: !!isSignedIn },
+  });
+  const savedMovieIds = useMemo(
+    () => new Set((watchlist ?? []).map((entry) => entry.movieId)),
+    [watchlist],
+  );
   const ratingIds = movies.map((movie) => movie.id);
   const { data: prismRatings } = useQuery<PrismRatings>({
     queryKey: ["mad-max-ratings", ratingIds],
@@ -297,6 +304,8 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
                  key={movie.id}
                  movie={movie}
                  rating={prismRatings?.[String(movie.id)]}
+                 isSignedIn={!!isSignedIn}
+                 isSaved={savedMovieIds.has(movie.id)}
                />
              ))}
           {!isLoading && movies.length > 8 && !expanded && (

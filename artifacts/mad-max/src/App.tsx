@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { HelmetProvider } from "react-helmet-async";
 import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
@@ -14,30 +14,31 @@ import { Clapperboard } from "lucide-react";
 import PrismFooter from "@/components/mad-max-footer";
 import { SiteSeo } from "@/lib/seo";
 
-// Pages
+// Keep the Home route eager so the primary landing page becomes interactive
+// without waiting for a route chunk. Secondary surfaces load only when visited.
 import Home from '@/pages/home';
-import Discover from '@/pages/discover';
-import Search from '@/pages/search';
-import MovieDetail from '@/pages/movie-detail';
-import Watchlist from '@/pages/watchlist';
-import Actors from '@/pages/actors';
-import ActorDetail from '@/pages/actor-detail';
-import Feed from '@/pages/feed';
-import Profile from '@/pages/profile';
-import Professionals from '@/pages/professionals';
-import ProfessionalDetail from '@/pages/professional-detail';
-import IndustryCommunity from '@/pages/industry-community';
-import Chat from '@/pages/chat';
-import Genres from '@/pages/genres';
-import GenrePage from '@/pages/genre';
-import Anime from '@/pages/anime';
-import News from '@/pages/news';
-import Events from '@/pages/events';
-import FooterPage from '@/pages/footer-page';
-import Pricing from '@/pages/pricing';
-import FreeMovies from '@/pages/free-movies';
-import MovieStory from '@/pages/movie-story';
-import Friends from '@/pages/friends';
+const Discover = lazy(() => import('@/pages/discover'));
+const Search = lazy(() => import('@/pages/search'));
+const MovieDetail = lazy(() => import('@/pages/movie-detail'));
+const Watchlist = lazy(() => import('@/pages/watchlist'));
+const Actors = lazy(() => import('@/pages/actors'));
+const ActorDetail = lazy(() => import('@/pages/actor-detail'));
+const Feed = lazy(() => import('@/pages/feed'));
+const Profile = lazy(() => import('@/pages/profile'));
+const Professionals = lazy(() => import('@/pages/professionals'));
+const ProfessionalDetail = lazy(() => import('@/pages/professional-detail'));
+const IndustryCommunity = lazy(() => import('@/pages/industry-community'));
+const Chat = lazy(() => import('@/pages/chat'));
+const Genres = lazy(() => import('@/pages/genres'));
+const GenrePage = lazy(() => import('@/pages/genre'));
+const Anime = lazy(() => import('@/pages/anime'));
+const News = lazy(() => import('@/pages/news'));
+const Events = lazy(() => import('@/pages/events'));
+const FooterPage = lazy(() => import('@/pages/footer-page'));
+const Pricing = lazy(() => import('@/pages/pricing'));
+const FreeMovies = lazy(() => import('@/pages/free-movies'));
+const MovieStory = lazy(() => import('@/pages/movie-story'));
+const Friends = lazy(() => import('@/pages/friends'));
 
 // Setup QueryClient
 const queryClient = new QueryClient({
@@ -317,6 +318,14 @@ function SiteFooter() {
   return <PrismFooter />;
 }
 
+function RouteLoading() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center bg-background">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" aria-label="Loading page" />
+    </div>
+  );
+}
+
 function AuthRequiredPage({ redirectPath = "/professionals" }: { redirectPath?: string }) {
   const redirect = encodeURIComponent(redirectPath);
   return (
@@ -397,7 +406,8 @@ function ClerkProviderWithRoutes() {
         <ClerkQueryClientCacheInvalidator />
         <SiteSeo />
         <PageFade>
-        <Switch>
+        <Suspense fallback={<RouteLoading />}>
+          <Switch>
           <Route path="/" component={Home} />
 
           <Route path="/sign-in/*?" component={SignInPage} />
@@ -441,7 +451,8 @@ function ClerkProviderWithRoutes() {
               <p className="text-muted-foreground">The page you are looking for doesn't exist.</p>
             </div>
           </Route>
-        </Switch>
+          </Switch>
+        </Suspense>
         </PageFade>
          <SiteFooter />
       </QueryClientProvider>

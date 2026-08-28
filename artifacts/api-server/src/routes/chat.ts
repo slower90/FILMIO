@@ -129,44 +129,42 @@ router.get("/chat/conversations", authMiddleware, async (req: any, res): Promise
     .where(inArray(conversationsTable.id, convIds))
     .orderBy(desc(conversationsTable.lastMessageAt));
 
-  const enriched = await Promise.all(
-    conversations.map(async (conv) => {
-      const participants = await db
-        .select({ userId: conversationParticipantsTable.userId })
-        .from(conversationParticipantsTable)
-        .where(eq(conversationParticipantsTable.conversationId, conv.id));
+  const participantRows = await db
+    .select({
+      conversationId: conversationParticipantsTable.conversationId,
+      user: usersTable,
+    })
+    .from(conversationParticipantsTable)
+    .innerJoin(usersTable, eq(usersTable.clerkId, conversationParticipantsTable.userId))
+    .where(inArray(conversationParticipantsTable.conversationId, convIds));
+  const usersByConversation = new Map<number, typeof participantRows>();
+  for (const row of participantRows) {
+    const rows = usersByConversation.get(row.conversationId) ?? [];
+    rows.push(row);
+    usersByConversation.set(row.conversationId, rows);
+  }
 
-      const participantIds = participants.map((p) => p.userId);
-      const users = participantIds.length
-        ? await db
-            .select()
-            .from(usersTable)
-            .where(inArray(usersTable.clerkId, participantIds))
-        : [];
-
-      return {
-        id: conv.id,
-        participants: users.map((u) => ({
-          id: String(u.id),
-          clerkId: u.clerkId,
-          username: u.username ?? null,
-          displayName: u.displayName ?? null,
-          bio: u.bio ?? null,
-          avatarUrl: u.avatarUrl ?? null,
-          isProfessional: u.isProfessional,
-          credibilityScore: parseFloat(String(u.credibilityScore ?? "1.0")),
-          followersCount: 0,
-          followingCount: 0,
-          reviewsCount: 0,
-          isFollowedByMe: false,
-          createdAt: u.createdAt.toISOString(),
-        })),
-        lastMessage: conv.lastMessage ?? null,
-        lastMessageAt: conv.lastMessageAt?.toISOString() ?? null,
-        createdAt: conv.createdAt.toISOString(),
-      };
-    }),
-  );
+  const enriched = conversations.map((conv) => ({
+    id: conv.id,
+    participants: (usersByConversation.get(conv.id) ?? []).map(({ user: u }) => ({
+      id: String(u.id),
+      clerkId: u.clerkId,
+      username: u.username ?? null,
+      displayName: u.displayName ?? null,
+      bio: u.bio ?? null,
+      avatarUrl: u.avatarUrl ?? null,
+      isProfessional: u.isProfessional,
+      credibilityScore: parseFloat(String(u.credibilityScore ?? "1.0")),
+      followersCount: 0,
+      followingCount: 0,
+      reviewsCount: 0,
+      isFollowedByMe: false,
+      createdAt: u.createdAt.toISOString(),
+    })),
+    lastMessage: conv.lastMessage ?? null,
+    lastMessageAt: conv.lastMessageAt?.toISOString() ?? null,
+    createdAt: conv.createdAt.toISOString(),
+  }));
   res.json(enriched);
 });
 

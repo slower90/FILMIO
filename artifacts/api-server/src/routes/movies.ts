@@ -228,11 +228,13 @@ const tmdbFetchMultiPageWithMetadata = async (
     catalogIdentity,
   ) as any[];
   const mediaType = path.includes("/tv") ? "tv" : "movie";
-  await upsertSearchCatalog(
+  void upsertSearchCatalog(
     rawItems
       .map((item) => tmdbToSearchCatalogRecord(item, mediaType))
       .filter((item): item is NonNullable<typeof item> => Boolean(item)),
-  );
+  ).catch((error) => {
+    console.warn("[search] catalog sync failed:", error);
+  });
   const movies = rawItems.map(mapMovie);
   const first = responses.find(Boolean);
   return {
@@ -257,13 +259,15 @@ router.get("/movies/search-multi", async (req, res): Promise<void> => {
     return;
   }
   const data = await tmdbFetch("/search/multi", { query: q, page });
-  await upsertSearchCatalog(
+  void upsertSearchCatalog(
     (data.results ?? [])
       .map((item: any) => item.media_type === "tv" || item.media_type === "movie"
         ? tmdbToSearchCatalogRecord(item, item.media_type)
         : null)
       .filter((item: any) => Boolean(item)),
-  );
+  ).catch((error) => {
+    console.warn("[search] catalog sync failed:", error);
+  });
   const results = (data.results ?? []).map((r: any) => ({
     id: r.id,
     mediaType: r.media_type, // "movie" | "tv" | "person"
