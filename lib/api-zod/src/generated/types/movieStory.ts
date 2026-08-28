@@ -8,6 +8,7 @@
 import type { MovieStoryMovie } from './movieStoryMovie';
 import type { MovieStorySection } from './movieStorySection';
 import type { MovieStoryStatus } from './movieStoryStatus';
+import type { MovieStoryTopic } from './movieStoryTopic';
 import type { StorySource } from './storySource';
 
 export interface MovieStory {
@@ -19,4 +20,5 @@ export interface MovieStory {
   updatedAt: Date;
   sections: MovieStorySection[];
   sources: StorySource[];
+  topics: MovieStoryTopic[];
 }
