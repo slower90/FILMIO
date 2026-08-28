@@ -1,4 +1,5 @@
 export * from "./users";
+export * from "./profiles";
 export * from "./friend-requests";
 export * from "./reviews";
 export * from "./ratings";
@@ -12,3 +13,4 @@ export * from "./chat";
 export * from "./anime";
 export * from "./viewing-history";
 export * from "./search-catalog";
+export * from "./signals";
