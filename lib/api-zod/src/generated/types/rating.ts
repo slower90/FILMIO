@@ -10,6 +10,8 @@ export interface Rating {
   id: number;
   userId: string;
   movieId: number;
+  /** @nullable */
+  profileId: number | null;
   /**
      * @minimum 1
      * @maximum 10
