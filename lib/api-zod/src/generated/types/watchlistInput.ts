@@ -9,6 +9,8 @@ import type { WatchlistInputStatus } from './watchlistInputStatus';
 
 export interface WatchlistInput {
   movieId: number;
+  /** @minimum 1 */
+  profileId?: number;
   status?: WatchlistInputStatus;
   movieTitle?: string;
   /** @nullable */
