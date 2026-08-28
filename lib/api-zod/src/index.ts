@@ -53,6 +53,8 @@ export type * from "./generated/types/movieStorySection";
 export type * from "./generated/types/movieStoryStatus";
 export type * from "./generated/types/movieStoryTopic";
 export type * from "./generated/types/movieStoryTopicKind";
+export type * from "./generated/types/movieSummary";
+export type * from "./generated/types/movieVideosResult";
 export type * from "./generated/types/post";
 export type * from "./generated/types/postAuthor";
 export type * from "./generated/types/postAuthorAuthorType";

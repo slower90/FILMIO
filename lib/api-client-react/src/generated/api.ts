@@ -20,8 +20,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AddToWatchlistParams,
   ChatMessage,
   ChatMessageInput,
+  ClearViewingHistoryParams,
   Comment,
   CommentInput,
   Conversation,
@@ -35,13 +37,20 @@ import type {
   GetFriendsOverviewParams,
   GetMovieStoryParams,
   GetMoviesByGenreParams,
+  GetMyMovieRatingParams,
   GetPostsFeedParams,
   GetRecommendationsParams,
+  GetSurprisePickParams,
   GetTrendingMoviesParams,
   GetTrendingReviewsParams,
+  GetViewingHistoryParams,
+  GetWatchlistParams,
   HealthStatus,
   LikeResult,
+  ListMyRatingsParams,
   ListReviewsParams,
+  ListSignalsParams,
+  MergeViewingHistoryParams,
   MovieCredits,
   MovieDetail,
   MoviePagedResult,
@@ -62,20 +71,33 @@ import type {
   ProfessionalProfile,
   ProfessionalProfileInput,
   ProfessionalProfileUpdate,
+  ProfileAvatarUploadInput,
+  ProfileAvatarUploadResponse,
   Rating,
   RatingInput,
+  RemoveFromWatchlistParams,
   Review,
   ReviewInput,
   ReviewUpdate,
   SearchMoviesParams,
   SearchProfessionalsParams,
+  Signal,
+  SignalsResponse,
   Story,
   StoryInput,
   StoryUploadInput,
   StoryUploadResponse,
+  SurprisePick,
+  UpdateWatchlistEntryParams,
+  UpsertRatingParams,
   UserProfile,
   UserProfileUpdate,
   UserStats,
+  ViewingHistoryEntry,
+  ViewingHistoryInput,
+  ViewingProfile,
+  ViewingProfileInput,
+  ViewingProfileUpdate,
   WatchProvidersResult,
   WatchlistEntry,
   WatchlistInput,
@@ -1668,20 +1690,28 @@ export const useCreateComment = <TError = ErrorType<ErrorResponse>,
       return useMutation(getCreateCommentMutationOptions(options));
     }
 
-export const getUpsertRatingUrl = () => {
+export const getUpsertRatingUrl = (params?: UpsertRatingParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/ratings`
+  return stringifiedParams.length > 0 ? `/api/ratings?${stringifiedParams}` : `/api/ratings`
 }
 
 /**
  * @summary Create or update a movie rating
  */
-export const upsertRating = async (ratingInput: RatingInput, options?: Parameters<typeof customFetch>[1]): Promise<Rating> => {
+export const upsertRating = async (ratingInput: RatingInput,
+    params?: UpsertRatingParams, options?: Parameters<typeof customFetch>[1]): Promise<Rating> => {
 
-  return customFetch<Rating>(getUpsertRatingUrl(),
+  return customFetch<Rating>(getUpsertRatingUrl(params),
   {
     ...options,
     method: 'POST',
@@ -1695,8 +1725,8 @@ export const upsertRating = async (ratingInput: RatingInput, options?: Parameter
 
 
 export const getUpsertRatingMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertRating>>, TError,{data: BodyType<RatingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof upsertRating>>, TError,{data: BodyType<RatingInput>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertRating>>, TError,{data: BodyType<RatingInput>;params?: UpsertRatingParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertRating>>, TError,{data: BodyType<RatingInput>;params?: UpsertRatingParams}, TContext> => {
 
 const mutationKey = ['upsertRating'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1708,10 +1738,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertRating>>, {data: BodyType<RatingInput>}> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertRating>>, {data: BodyType<RatingInput>;params?: UpsertRatingParams}> = (props) => {
+          const {data,params} = props ?? {};
 
-          return  upsertRating(data,requestOptions)
+          return  upsertRating(data,params,requestOptions)
         }
 
 
@@ -1729,11 +1759,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Create or update a movie rating
  */
 export const useUpsertRating = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertRating>>, TError,{data: BodyType<RatingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertRating>>, TError,{data: BodyType<RatingInput>;params?: UpsertRatingParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof upsertRating>>,
         TError,
-        {data: BodyType<RatingInput>},
+        {data: BodyType<RatingInput>;params?: UpsertRatingParams},
         TContext
       > => {
       return useMutation(getUpsertRatingMutationOptions(options));
@@ -1816,20 +1846,27 @@ export function useGetMovieRating<TData = Awaited<ReturnType<typeof getMovieRati
 
 
 
-export const getGetMyMovieRatingUrl = (movieId: number,) => {
+export const getListMyRatingsUrl = (params?: ListMyRatingsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/ratings/my/${movieId}`
+  return stringifiedParams.length > 0 ? `/api/ratings/my?${stringifiedParams}` : `/api/ratings/my`
 }
 
 /**
- * @summary Get current user's rating for a movie
+ * @summary List the current profile's movie ratings
  */
-export const getMyMovieRating = async (movieId: number, options?: Parameters<typeof customFetch>[1]): Promise<Rating> => {
+export const listMyRatings = async (params?: ListMyRatingsParams, options?: Parameters<typeof customFetch>[1]): Promise<Rating[]> => {
 
-  return customFetch<Rating>(getGetMyMovieRatingUrl(movieId),
+  return customFetch<Rating[]>(getListMyRatingsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1842,23 +1879,111 @@ export const getMyMovieRating = async (movieId: number, options?: Parameters<typ
 
 
 
-export const getGetMyMovieRatingQueryKey = (movieId: number,) => {
+export const getListMyRatingsQueryKey = (params?: ListMyRatingsParams,) => {
     return [
-    `/api/ratings/my/${movieId}`
+    `/api/ratings/my`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetMyMovieRatingQueryOptions = <TData = Awaited<ReturnType<typeof getMyMovieRating>>, TError = ErrorType<ErrorResponse>>(movieId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyMovieRating>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListMyRatingsQueryOptions = <TData = Awaited<ReturnType<typeof listMyRatings>>, TError = ErrorType<ErrorResponse>>(params?: ListMyRatingsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyRatings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetMyMovieRatingQueryKey(movieId);
+  const queryKey =  queryOptions?.queryKey ?? getListMyRatingsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyMovieRating>>> = ({ signal }) => getMyMovieRating(movieId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyRatings>>> = ({ signal }) => listMyRatings(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyRatings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyRatingsQueryResult = NonNullable<Awaited<ReturnType<typeof listMyRatings>>>
+export type ListMyRatingsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List the current profile's movie ratings
+ */
+
+export function useListMyRatings<TData = Awaited<ReturnType<typeof listMyRatings>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListMyRatingsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyRatings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyRatingsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMyMovieRatingUrl = (movieId: number,
+    params?: GetMyMovieRatingParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/ratings/my/${movieId}?${stringifiedParams}` : `/api/ratings/my/${movieId}`
+}
+
+/**
+ * @summary Get current user's rating for a movie
+ */
+export const getMyMovieRating = async (movieId: number,
+    params?: GetMyMovieRatingParams, options?: Parameters<typeof customFetch>[1]): Promise<Rating> => {
+
+  return customFetch<Rating>(getGetMyMovieRatingUrl(movieId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyMovieRatingQueryKey = (movieId: number,
+    params?: GetMyMovieRatingParams,) => {
+    return [
+    `/api/ratings/my/${movieId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyMovieRatingQueryOptions = <TData = Awaited<ReturnType<typeof getMyMovieRating>>, TError = ErrorType<ErrorResponse>>(movieId: number,
+    params?: GetMyMovieRatingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyMovieRating>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyMovieRatingQueryKey(movieId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyMovieRating>>> = ({ signal }) => getMyMovieRating(movieId,params, { signal, ...requestOptions });
 
 
 
@@ -1876,11 +2001,12 @@ export type GetMyMovieRatingQueryError = ErrorType<ErrorResponse>
  */
 
 export function useGetMyMovieRating<TData = Awaited<ReturnType<typeof getMyMovieRating>>, TError = ErrorType<ErrorResponse>>(
- movieId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyMovieRating>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ movieId: number,
+    params?: GetMyMovieRatingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyMovieRating>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetMyMovieRatingQueryOptions(movieId,options)
+  const queryOptions = getGetMyMovieRatingQueryOptions(movieId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1893,20 +2019,27 @@ export function useGetMyMovieRating<TData = Awaited<ReturnType<typeof getMyMovie
 
 
 
-export const getGetWatchlistUrl = () => {
+export const getListSignalsUrl = (params?: ListSignalsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/watchlist`
+  return stringifiedParams.length > 0 ? `/api/signals?${stringifiedParams}` : `/api/signals`
 }
 
 /**
- * @summary Get current user's watchlist
+ * @summary List personal FILMIO signals
  */
-export const getWatchlist = async ( options?: Parameters<typeof customFetch>[1]): Promise<WatchlistEntry[]> => {
+export const listSignals = async (params?: ListSignalsParams, options?: Parameters<typeof customFetch>[1]): Promise<SignalsResponse> => {
 
-  return customFetch<WatchlistEntry[]>(getGetWatchlistUrl(),
+  return customFetch<SignalsResponse>(getListSignalsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1919,23 +2052,249 @@ export const getWatchlist = async ( options?: Parameters<typeof customFetch>[1])
 
 
 
-export const getGetWatchlistQueryKey = () => {
+export const getListSignalsQueryKey = (params?: ListSignalsParams,) => {
     return [
-    `/api/watchlist`
+    `/api/signals`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetWatchlistQueryOptions = <TData = Awaited<ReturnType<typeof getWatchlist>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWatchlist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListSignalsQueryOptions = <TData = Awaited<ReturnType<typeof listSignals>>, TError = ErrorType<ErrorResponse>>(params?: ListSignalsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSignals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetWatchlistQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListSignalsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWatchlist>>> = ({ signal }) => getWatchlist({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSignals>>> = ({ signal }) => listSignals(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSignals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSignalsQueryResult = NonNullable<Awaited<ReturnType<typeof listSignals>>>
+export type ListSignalsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List personal FILMIO signals
+ */
+
+export function useListSignals<TData = Awaited<ReturnType<typeof listSignals>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListSignalsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSignals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSignalsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkSignalReadUrl = (id: number,) => {
+
+
+
+
+  return `/api/signals/${id}/read`
+}
+
+/**
+ * @summary Mark a signal as read
+ */
+export const markSignalRead = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Signal> => {
+
+  return customFetch<Signal>(getMarkSignalReadUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkSignalReadMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markSignalRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markSignalRead>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['markSignalRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markSignalRead>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  markSignalRead(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkSignalReadMutationResult = NonNullable<Awaited<ReturnType<typeof markSignalRead>>>
+
+    export type MarkSignalReadMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Mark a signal as read
+ */
+export const useMarkSignalRead = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markSignalRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markSignalRead>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getMarkSignalReadMutationOptions(options));
+    }
+
+export const getMarkAllSignalsReadUrl = () => {
+
+
+
+
+  return `/api/signals/read-all`
+}
+
+/**
+ * @summary Mark all personal signals as read
+ */
+export const markAllSignalsRead = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getMarkAllSignalsReadUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkAllSignalsReadMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllSignalsRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markAllSignalsRead>>, TError,void, TContext> => {
+
+const mutationKey = ['markAllSignalsRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markAllSignalsRead>>, void> = () => {
+
+
+          return  markAllSignalsRead(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkAllSignalsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markAllSignalsRead>>>
+
+    export type MarkAllSignalsReadMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Mark all personal signals as read
+ */
+export const useMarkAllSignalsRead = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllSignalsRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markAllSignalsRead>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getMarkAllSignalsReadMutationOptions(options));
+    }
+
+export const getGetWatchlistUrl = (params?: GetWatchlistParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/watchlist?${stringifiedParams}` : `/api/watchlist`
+}
+
+/**
+ * @summary Get current user's watchlist
+ */
+export const getWatchlist = async (params?: GetWatchlistParams, options?: Parameters<typeof customFetch>[1]): Promise<WatchlistEntry[]> => {
+
+  return customFetch<WatchlistEntry[]>(getGetWatchlistUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWatchlistQueryKey = (params?: GetWatchlistParams,) => {
+    return [
+    `/api/watchlist`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetWatchlistQueryOptions = <TData = Awaited<ReturnType<typeof getWatchlist>>, TError = ErrorType<ErrorResponse>>(params?: GetWatchlistParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWatchlist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWatchlistQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWatchlist>>> = ({ signal }) => getWatchlist(params, { signal, ...requestOptions });
 
 
 
@@ -1953,11 +2312,11 @@ export type GetWatchlistQueryError = ErrorType<ErrorResponse>
  */
 
 export function useGetWatchlist<TData = Awaited<ReturnType<typeof getWatchlist>>, TError = ErrorType<ErrorResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWatchlist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetWatchlistParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWatchlist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetWatchlistQueryOptions(options)
+  const queryOptions = getGetWatchlistQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1970,20 +2329,28 @@ export function useGetWatchlist<TData = Awaited<ReturnType<typeof getWatchlist>>
 
 
 
-export const getAddToWatchlistUrl = () => {
+export const getAddToWatchlistUrl = (params?: AddToWatchlistParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/watchlist`
+  return stringifiedParams.length > 0 ? `/api/watchlist?${stringifiedParams}` : `/api/watchlist`
 }
 
 /**
  * @summary Add a movie to watchlist
  */
-export const addToWatchlist = async (watchlistInput: WatchlistInput, options?: Parameters<typeof customFetch>[1]): Promise<WatchlistEntry> => {
+export const addToWatchlist = async (watchlistInput: WatchlistInput,
+    params?: AddToWatchlistParams, options?: Parameters<typeof customFetch>[1]): Promise<WatchlistEntry> => {
 
-  return customFetch<WatchlistEntry>(getAddToWatchlistUrl(),
+  return customFetch<WatchlistEntry>(getAddToWatchlistUrl(params),
   {
     ...options,
     method: 'POST',
@@ -1997,8 +2364,8 @@ export const addToWatchlist = async (watchlistInput: WatchlistInput, options?: P
 
 
 export const getAddToWatchlistMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addToWatchlist>>, TError,{data: BodyType<WatchlistInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof addToWatchlist>>, TError,{data: BodyType<WatchlistInput>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addToWatchlist>>, TError,{data: BodyType<WatchlistInput>;params?: AddToWatchlistParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addToWatchlist>>, TError,{data: BodyType<WatchlistInput>;params?: AddToWatchlistParams}, TContext> => {
 
 const mutationKey = ['addToWatchlist'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2010,10 +2377,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addToWatchlist>>, {data: BodyType<WatchlistInput>}> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addToWatchlist>>, {data: BodyType<WatchlistInput>;params?: AddToWatchlistParams}> = (props) => {
+          const {data,params} = props ?? {};
 
-          return  addToWatchlist(data,requestOptions)
+          return  addToWatchlist(data,params,requestOptions)
         }
 
 
@@ -2031,30 +2398,39 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Add a movie to watchlist
  */
 export const useAddToWatchlist = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addToWatchlist>>, TError,{data: BodyType<WatchlistInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addToWatchlist>>, TError,{data: BodyType<WatchlistInput>;params?: AddToWatchlistParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof addToWatchlist>>,
         TError,
-        {data: BodyType<WatchlistInput>},
+        {data: BodyType<WatchlistInput>;params?: AddToWatchlistParams},
         TContext
       > => {
       return useMutation(getAddToWatchlistMutationOptions(options));
     }
 
-export const getRemoveFromWatchlistUrl = (movieId: number,) => {
+export const getRemoveFromWatchlistUrl = (movieId: number,
+    params?: RemoveFromWatchlistParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/watchlist/${movieId}`
+  return stringifiedParams.length > 0 ? `/api/watchlist/${movieId}?${stringifiedParams}` : `/api/watchlist/${movieId}`
 }
 
 /**
  * @summary Remove a movie from watchlist
  */
-export const removeFromWatchlist = async (movieId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+export const removeFromWatchlist = async (movieId: number,
+    params?: RemoveFromWatchlistParams, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
-  return customFetch<void>(getRemoveFromWatchlistUrl(movieId),
+  return customFetch<void>(getRemoveFromWatchlistUrl(movieId,params),
   {
     ...options,
     method: 'DELETE'
@@ -2068,8 +2444,8 @@ export const removeFromWatchlist = async (movieId: number, options?: Parameters<
 
 
 export const getRemoveFromWatchlistMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeFromWatchlist>>, TError,{movieId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof removeFromWatchlist>>, TError,{movieId: number}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeFromWatchlist>>, TError,{movieId: number;params?: RemoveFromWatchlistParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeFromWatchlist>>, TError,{movieId: number;params?: RemoveFromWatchlistParams}, TContext> => {
 
 const mutationKey = ['removeFromWatchlist'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2081,10 +2457,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeFromWatchlist>>, {movieId: number}> = (props) => {
-          const {movieId} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeFromWatchlist>>, {movieId: number;params?: RemoveFromWatchlistParams}> = (props) => {
+          const {movieId,params} = props ?? {};
 
-          return  removeFromWatchlist(movieId,requestOptions)
+          return  removeFromWatchlist(movieId,params,requestOptions)
         }
 
 
@@ -2102,31 +2478,40 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Remove a movie from watchlist
  */
 export const useRemoveFromWatchlist = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeFromWatchlist>>, TError,{movieId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeFromWatchlist>>, TError,{movieId: number;params?: RemoveFromWatchlistParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof removeFromWatchlist>>,
         TError,
-        {movieId: number},
+        {movieId: number;params?: RemoveFromWatchlistParams},
         TContext
       > => {
       return useMutation(getRemoveFromWatchlistMutationOptions(options));
     }
 
-export const getUpdateWatchlistEntryUrl = (movieId: number,) => {
+export const getUpdateWatchlistEntryUrl = (movieId: number,
+    params?: UpdateWatchlistEntryParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/watchlist/${movieId}`
+  return stringifiedParams.length > 0 ? `/api/watchlist/${movieId}?${stringifiedParams}` : `/api/watchlist/${movieId}`
 }
 
 /**
  * @summary Update watchlist entry status
  */
 export const updateWatchlistEntry = async (movieId: number,
-    watchlistUpdate: WatchlistUpdate, options?: Parameters<typeof customFetch>[1]): Promise<WatchlistEntry> => {
+    watchlistUpdate: WatchlistUpdate,
+    params?: UpdateWatchlistEntryParams, options?: Parameters<typeof customFetch>[1]): Promise<WatchlistEntry> => {
 
-  return customFetch<WatchlistEntry>(getUpdateWatchlistEntryUrl(movieId),
+  return customFetch<WatchlistEntry>(getUpdateWatchlistEntryUrl(movieId,params),
   {
     ...options,
     method: 'PATCH',
@@ -2140,8 +2525,8 @@ export const updateWatchlistEntry = async (movieId: number,
 
 
 export const getUpdateWatchlistEntryMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWatchlistEntry>>, TError,{movieId: number;data: BodyType<WatchlistUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateWatchlistEntry>>, TError,{movieId: number;data: BodyType<WatchlistUpdate>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWatchlistEntry>>, TError,{movieId: number;data: BodyType<WatchlistUpdate>;params?: UpdateWatchlistEntryParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateWatchlistEntry>>, TError,{movieId: number;data: BodyType<WatchlistUpdate>;params?: UpdateWatchlistEntryParams}, TContext> => {
 
 const mutationKey = ['updateWatchlistEntry'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2153,10 +2538,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateWatchlistEntry>>, {movieId: number;data: BodyType<WatchlistUpdate>}> = (props) => {
-          const {movieId,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateWatchlistEntry>>, {movieId: number;data: BodyType<WatchlistUpdate>;params?: UpdateWatchlistEntryParams}> = (props) => {
+          const {movieId,data,params} = props ?? {};
 
-          return  updateWatchlistEntry(movieId,data,requestOptions)
+          return  updateWatchlistEntry(movieId,data,params,requestOptions)
         }
 
 
@@ -2174,11 +2559,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Update watchlist entry status
  */
 export const useUpdateWatchlistEntry = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWatchlistEntry>>, TError,{movieId: number;data: BodyType<WatchlistUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWatchlistEntry>>, TError,{movieId: number;data: BodyType<WatchlistUpdate>;params?: UpdateWatchlistEntryParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateWatchlistEntry>>,
         TError,
-        {movieId: number;data: BodyType<WatchlistUpdate>},
+        {movieId: number;data: BodyType<WatchlistUpdate>;params?: UpdateWatchlistEntryParams},
         TContext
       > => {
       return useMutation(getUpdateWatchlistEntryMutationOptions(options));
@@ -2331,6 +2716,758 @@ export const useUpdateMyProfile = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getUpdateMyProfileMutationOptions(options));
     }
+
+export const getGetViewingHistoryUrl = (params?: GetViewingHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/me/viewing-history?${stringifiedParams}` : `/api/users/me/viewing-history`
+}
+
+/**
+ * @summary Get the current profile's viewing history
+ */
+export const getViewingHistory = async (params?: GetViewingHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<ViewingHistoryEntry[]> => {
+
+  return customFetch<ViewingHistoryEntry[]>(getGetViewingHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetViewingHistoryQueryKey = (params?: GetViewingHistoryParams,) => {
+    return [
+    `/api/users/me/viewing-history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetViewingHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getViewingHistory>>, TError = ErrorType<ErrorResponse>>(params?: GetViewingHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getViewingHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetViewingHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getViewingHistory>>> = ({ signal }) => getViewingHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getViewingHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetViewingHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getViewingHistory>>>
+export type GetViewingHistoryQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the current profile's viewing history
+ */
+
+export function useGetViewingHistory<TData = Awaited<ReturnType<typeof getViewingHistory>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetViewingHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getViewingHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetViewingHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMergeViewingHistoryUrl = (params?: MergeViewingHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/me/viewing-history?${stringifiedParams}` : `/api/users/me/viewing-history`
+}
+
+/**
+ * @summary Merge movies into the current profile's viewing history
+ */
+export const mergeViewingHistory = async (viewingHistoryInput: ViewingHistoryInput,
+    params?: MergeViewingHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<ViewingHistoryEntry[]> => {
+
+  return customFetch<ViewingHistoryEntry[]>(getMergeViewingHistoryUrl(params),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(viewingHistoryInput)
+  }
+);}
+
+
+
+
+
+export const getMergeViewingHistoryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeViewingHistory>>, TError,{data: BodyType<ViewingHistoryInput>;params?: MergeViewingHistoryParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof mergeViewingHistory>>, TError,{data: BodyType<ViewingHistoryInput>;params?: MergeViewingHistoryParams}, TContext> => {
+
+const mutationKey = ['mergeViewingHistory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof mergeViewingHistory>>, {data: BodyType<ViewingHistoryInput>;params?: MergeViewingHistoryParams}> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  mergeViewingHistory(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MergeViewingHistoryMutationResult = NonNullable<Awaited<ReturnType<typeof mergeViewingHistory>>>
+    export type MergeViewingHistoryMutationBody = BodyType<ViewingHistoryInput>
+    export type MergeViewingHistoryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Merge movies into the current profile's viewing history
+ */
+export const useMergeViewingHistory = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergeViewingHistory>>, TError,{data: BodyType<ViewingHistoryInput>;params?: MergeViewingHistoryParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof mergeViewingHistory>>,
+        TError,
+        {data: BodyType<ViewingHistoryInput>;params?: MergeViewingHistoryParams},
+        TContext
+      > => {
+      return useMutation(getMergeViewingHistoryMutationOptions(options));
+    }
+
+export const getClearViewingHistoryUrl = (params?: ClearViewingHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/me/viewing-history?${stringifiedParams}` : `/api/users/me/viewing-history`
+}
+
+/**
+ * @summary Clear the current profile's viewing history
+ */
+export const clearViewingHistory = async (params?: ClearViewingHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getClearViewingHistoryUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getClearViewingHistoryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearViewingHistory>>, TError,{params?: ClearViewingHistoryParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearViewingHistory>>, TError,{params?: ClearViewingHistoryParams}, TContext> => {
+
+const mutationKey = ['clearViewingHistory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearViewingHistory>>, {params?: ClearViewingHistoryParams}> = (props) => {
+          const {params} = props ?? {};
+
+          return  clearViewingHistory(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearViewingHistoryMutationResult = NonNullable<Awaited<ReturnType<typeof clearViewingHistory>>>
+
+    export type ClearViewingHistoryMutationError = ErrorType<void>
+
+    /**
+ * @summary Clear the current profile's viewing history
+ */
+export const useClearViewingHistory = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearViewingHistory>>, TError,{params?: ClearViewingHistoryParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof clearViewingHistory>>,
+        TError,
+        {params?: ClearViewingHistoryParams},
+        TContext
+      > => {
+      return useMutation(getClearViewingHistoryMutationOptions(options));
+    }
+
+export const getListProfilesUrl = () => {
+
+
+
+
+  return `/api/profiles`
+}
+
+/**
+ * @summary List viewing profiles for the current account
+ */
+export const listProfiles = async ( options?: Parameters<typeof customFetch>[1]): Promise<ViewingProfile[]> => {
+
+  return customFetch<ViewingProfile[]>(getListProfilesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListProfilesQueryKey = () => {
+    return [
+    `/api/profiles`
+    ] as const;
+    }
+
+
+export const getListProfilesQueryOptions = <TData = Awaited<ReturnType<typeof listProfiles>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listProfiles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListProfilesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listProfiles>>> = ({ signal }) => listProfiles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listProfiles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListProfilesQueryResult = NonNullable<Awaited<ReturnType<typeof listProfiles>>>
+export type ListProfilesQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List viewing profiles for the current account
+ */
+
+export function useListProfiles<TData = Awaited<ReturnType<typeof listProfiles>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listProfiles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListProfilesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateProfileUrl = () => {
+
+
+
+
+  return `/api/profiles`
+}
+
+/**
+ * @summary Create a viewing profile
+ */
+export const createProfile = async (viewingProfileInput: ViewingProfileInput, options?: Parameters<typeof customFetch>[1]): Promise<ViewingProfile> => {
+
+  return customFetch<ViewingProfile>(getCreateProfileUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(viewingProfileInput)
+  }
+);}
+
+
+
+
+
+export const getCreateProfileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfile>>, TError,{data: BodyType<ViewingProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProfile>>, TError,{data: BodyType<ViewingProfileInput>}, TContext> => {
+
+const mutationKey = ['createProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProfile>>, {data: BodyType<ViewingProfileInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateProfileMutationResult = NonNullable<Awaited<ReturnType<typeof createProfile>>>
+    export type CreateProfileMutationBody = BodyType<ViewingProfileInput>
+    export type CreateProfileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a viewing profile
+ */
+export const useCreateProfile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfile>>, TError,{data: BodyType<ViewingProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createProfile>>,
+        TError,
+        {data: BodyType<ViewingProfileInput>},
+        TContext
+      > => {
+      return useMutation(getCreateProfileMutationOptions(options));
+    }
+
+export const getUpdateProfileUrl = (profileId: number,) => {
+
+
+
+
+  return `/api/profiles/${profileId}`
+}
+
+/**
+ * @summary Update a viewing profile
+ */
+export const updateProfile = async (profileId: number,
+    viewingProfileUpdate: ViewingProfileUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ViewingProfile> => {
+
+  return customFetch<ViewingProfile>(getUpdateProfileUrl(profileId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(viewingProfileUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateProfileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfile>>, TError,{profileId: number;data: BodyType<ViewingProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProfile>>, TError,{profileId: number;data: BodyType<ViewingProfileUpdate>}, TContext> => {
+
+const mutationKey = ['updateProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProfile>>, {profileId: number;data: BodyType<ViewingProfileUpdate>}> = (props) => {
+          const {profileId,data} = props ?? {};
+
+          return  updateProfile(profileId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfile>>>
+    export type UpdateProfileMutationBody = BodyType<ViewingProfileUpdate>
+    export type UpdateProfileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a viewing profile
+ */
+export const useUpdateProfile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfile>>, TError,{profileId: number;data: BodyType<ViewingProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateProfile>>,
+        TError,
+        {profileId: number;data: BodyType<ViewingProfileUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateProfileMutationOptions(options));
+    }
+
+export const getDeleteProfileUrl = (profileId: number,) => {
+
+
+
+
+  return `/api/profiles/${profileId}`
+}
+
+/**
+ * @summary Delete a non-default viewing profile
+ */
+export const deleteProfile = async (profileId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteProfileUrl(profileId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteProfileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProfile>>, TError,{profileId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteProfile>>, TError,{profileId: number}, TContext> => {
+
+const mutationKey = ['deleteProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteProfile>>, {profileId: number}> = (props) => {
+          const {profileId} = props ?? {};
+
+          return  deleteProfile(profileId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteProfileMutationResult = NonNullable<Awaited<ReturnType<typeof deleteProfile>>>
+
+    export type DeleteProfileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a non-default viewing profile
+ */
+export const useDeleteProfile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProfile>>, TError,{profileId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteProfile>>,
+        TError,
+        {profileId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteProfileMutationOptions(options));
+    }
+
+export const getSelectProfileUrl = (profileId: number,) => {
+
+
+
+
+  return `/api/profiles/${profileId}/select`
+}
+
+/**
+ * @summary Select a viewing profile
+ */
+export const selectProfile = async (profileId: number, options?: Parameters<typeof customFetch>[1]): Promise<ViewingProfile> => {
+
+  return customFetch<ViewingProfile>(getSelectProfileUrl(profileId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSelectProfileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectProfile>>, TError,{profileId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof selectProfile>>, TError,{profileId: number}, TContext> => {
+
+const mutationKey = ['selectProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selectProfile>>, {profileId: number}> = (props) => {
+          const {profileId} = props ?? {};
+
+          return  selectProfile(profileId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SelectProfileMutationResult = NonNullable<Awaited<ReturnType<typeof selectProfile>>>
+
+    export type SelectProfileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Select a viewing profile
+ */
+export const useSelectProfile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selectProfile>>, TError,{profileId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof selectProfile>>,
+        TError,
+        {profileId: number},
+        TContext
+      > => {
+      return useMutation(getSelectProfileMutationOptions(options));
+    }
+
+export const getRequestProfileAvatarUploadUrl = (profileId: number,) => {
+
+
+
+
+  return `/api/profiles/${profileId}/avatar/upload-url`
+}
+
+/**
+ * @summary Request a private profile avatar upload URL
+ */
+export const requestProfileAvatarUpload = async (profileId: number,
+    profileAvatarUploadInput: ProfileAvatarUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfileAvatarUploadResponse> => {
+
+  return customFetch<ProfileAvatarUploadResponse>(getRequestProfileAvatarUploadUrl(profileId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(profileAvatarUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestProfileAvatarUploadMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestProfileAvatarUpload>>, TError,{profileId: number;data: BodyType<ProfileAvatarUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestProfileAvatarUpload>>, TError,{profileId: number;data: BodyType<ProfileAvatarUploadInput>}, TContext> => {
+
+const mutationKey = ['requestProfileAvatarUpload'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestProfileAvatarUpload>>, {profileId: number;data: BodyType<ProfileAvatarUploadInput>}> = (props) => {
+          const {profileId,data} = props ?? {};
+
+          return  requestProfileAvatarUpload(profileId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestProfileAvatarUploadMutationResult = NonNullable<Awaited<ReturnType<typeof requestProfileAvatarUpload>>>
+    export type RequestProfileAvatarUploadMutationBody = BodyType<ProfileAvatarUploadInput>
+    export type RequestProfileAvatarUploadMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Request a private profile avatar upload URL
+ */
+export const useRequestProfileAvatarUpload = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestProfileAvatarUpload>>, TError,{profileId: number;data: BodyType<ProfileAvatarUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestProfileAvatarUpload>>,
+        TError,
+        {profileId: number;data: BodyType<ProfileAvatarUploadInput>},
+        TContext
+      > => {
+      return useMutation(getRequestProfileAvatarUploadMutationOptions(options));
+    }
+
+export const getGetProfileAvatarUrl = (profileId: number,) => {
+
+
+
+
+  return `/api/profiles/${profileId}/avatar`
+}
+
+/**
+ * @summary Get a private profile avatar
+ */
+export const getProfileAvatar = async (profileId: number, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getGetProfileAvatarUrl(profileId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProfileAvatarQueryKey = (profileId: number,) => {
+    return [
+    `/api/profiles/${profileId}/avatar`
+    ] as const;
+    }
+
+
+export const getGetProfileAvatarQueryOptions = <TData = Awaited<ReturnType<typeof getProfileAvatar>>, TError = ErrorType<void>>(profileId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfileAvatar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProfileAvatarQueryKey(profileId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProfileAvatar>>> = ({ signal }) => getProfileAvatar(profileId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: profileId !== null && profileId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProfileAvatar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProfileAvatarQueryResult = NonNullable<Awaited<ReturnType<typeof getProfileAvatar>>>
+export type GetProfileAvatarQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get a private profile avatar
+ */
+
+export function useGetProfileAvatar<TData = Awaited<ReturnType<typeof getProfileAvatar>>, TError = ErrorType<void>>(
+ profileId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfileAvatar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProfileAvatarQueryOptions(profileId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetUserProfileUrl = (id: string,) => {
 
@@ -4107,6 +5244,90 @@ export function useGetRecommendations<TData = Awaited<ReturnType<typeof getRecom
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetRecommendationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSurprisePickUrl = (params: GetSurprisePickParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/surprise-me?${stringifiedParams}` : `/api/surprise-me`
+}
+
+/**
+ * @summary Choose one explainable film for a discovery lens
+ */
+export const getSurprisePick = async (params: GetSurprisePickParams, options?: Parameters<typeof customFetch>[1]): Promise<SurprisePick> => {
+
+  return customFetch<SurprisePick>(getGetSurprisePickUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSurprisePickQueryKey = (params?: GetSurprisePickParams,) => {
+    return [
+    `/api/surprise-me`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSurprisePickQueryOptions = <TData = Awaited<ReturnType<typeof getSurprisePick>>, TError = ErrorType<ErrorResponse>>(params: GetSurprisePickParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSurprisePick>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSurprisePickQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSurprisePick>>> = ({ signal }) => getSurprisePick(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSurprisePick>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSurprisePickQueryResult = NonNullable<Awaited<ReturnType<typeof getSurprisePick>>>
+export type GetSurprisePickQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Choose one explainable film for a discovery lens
+ */
+
+export function useGetSurprisePick<TData = Awaited<ReturnType<typeof getSurprisePick>>, TError = ErrorType<ErrorResponse>>(
+ params: GetSurprisePickParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSurprisePick>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSurprisePickQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
