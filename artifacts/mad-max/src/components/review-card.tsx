@@ -9,6 +9,7 @@ import { RatingStars } from "./rating-stars";
 import { Heart, MessageSquare, BadgeCheck, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { tmdbPosterUrl } from "@/lib/utils";
+import { withMovieTitle } from "@/lib/movie-links";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
@@ -100,7 +101,7 @@ export function ReviewCard({ review, showMovie = true }: ReviewCardProps) {
 
       {showMovie && review.movieId && (
         <Link
-          href={`/movies/${review.movieId}`}
+          href={withMovieTitle(`/movies/${review.movieId}`, review.movieTitle || `Film ${review.movieId}`)}
           className="group flex items-center gap-3 bg-secondary/30 rounded p-2 hover:bg-secondary/50 transition-colors"
         >
           <img

@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "./ui/button";
 import { useUser, useClerk } from "@clerk/react";
 import { getGetWatchlistQueryKey, useGetWatchlist } from "@workspace/api-client-react";
+import { getListSignalsQueryKey, useListSignals } from "@workspace/api-client-react";
 import {
   Search,
   MessageSquare,
@@ -14,7 +15,7 @@ import {
   Tv,
   Users,
   UserPlus,
-  Newspaper,
+  Radar,
   TrendingUp,
   ChevronRight,
 } from "lucide-react";
@@ -22,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { recordMoodSignal } from "@/lib/mood-agent";
 import { withMovieTitle } from "@/lib/movie-links";
+import { useActiveProfile } from "@/lib/profile-context";
+import { ProfileAvatar } from "@/components/profile-avatar";
 
 // ── Search result type ────────────────────────────────────────────────────────
 interface SearchResult {
@@ -231,21 +234,22 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
 interface DrawerProps {
   open: boolean;
   onClose: () => void;
+  unreadCount: number;
 }
 
 const DRAWER_LINKS = [
   { href: "/discover", label: "Discover", icon: TrendingUp },
   { href: "/genres", label: "Browse by Genre", icon: Film },
   { href: "/anime", label: "Anime", icon: Tv },
-  { href: "/news", label: "News", icon: Newspaper },
+   { href: "/signals", label: "Signals", icon: Radar },
   { href: "/friends", label: "Friends", icon: UserPlus, requiresSignIn: true },
   { href: "/professionals", label: "Industry Professionals", icon: Clapperboard },
-  { href: "/feed", label: "Join FILMIO", icon: MessageSquare, requiresSignIn: true },
-  { href: "/watchlist", label: "Watchlist", icon: Bookmark },
+   { href: "/feed", label: "Conversation", icon: MessageSquare, requiresSignIn: true },
+   { href: "/watchlist", label: "Your Next Screen", icon: Bookmark },
   { href: "/search", label: "Advanced Search", icon: Search },
 ];
 
-function SideDrawer({ open, onClose }: DrawerProps) {
+function SideDrawer({ open, onClose, unreadCount }: DrawerProps) {
   const { isSignedIn } = useUser();
   const [, setLocation] = useLocation();
 
@@ -298,11 +302,20 @@ function SideDrawer({ open, onClose }: DrawerProps) {
               onClick={() => go(requiresSignIn && !isSignedIn ? `/sign-in?redirect=${encodeURIComponent(href)}` : href)}
               className="w-full min-h-11 flex items-center gap-3 px-5 text-sm hover:bg-accent/15 hover:text-primary transition-colors group"
               data-testid={`drawer-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
+              aria-label={label === "Signals" && unreadCount > 0 ? `${unreadCount} signals waiting to be seen` : label}
             >
               <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               <span className="font-display uppercase tracking-wider text-xs font-semibold">
                 {label}
               </span>
+              {label === "Signals" && unreadCount > 0 && (
+                <span
+                  className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full border border-primary/50 px-1.5 py-0.5 text-[9px] font-bold text-primary"
+                  aria-hidden="true"
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </button>
           ))}
 
@@ -343,10 +356,19 @@ export function Navbar() {
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { data: watchlist } = useGetWatchlist({
-    query: { queryKey: getGetWatchlistQueryKey(), enabled: isLoaded && !!isSignedIn },
+  const { activeProfile } = useActiveProfile();
+  const profileParams = activeProfile ? { profileId: activeProfile.id } : undefined;
+  const { data: watchlist } = useGetWatchlist(profileParams, {
+    query: { queryKey: getGetWatchlistQueryKey(profileParams), enabled: isLoaded && !!isSignedIn },
   });
   const watchlistCount = watchlist?.length ?? 0;
+  const { data: signals } = useListSignals(profileParams, {
+    query: {
+      queryKey: getListSignalsQueryKey(profileParams),
+      enabled: isLoaded && !!isSignedIn,
+    },
+  });
+  const unreadSignalCount = signals?.unreadCount ?? 0;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 28);
@@ -357,7 +379,7 @@ export function Navbar() {
 
   return (
     <>
-      <SideDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <SideDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} unreadCount={unreadSignalCount} />
 
       <header
         className={cn(
@@ -412,7 +434,7 @@ export function Navbar() {
               )}
               data-testid="link-discover"
             >
-              Discover
+               Explore
             </Link>
             <Link
               href="/anime"
@@ -425,14 +447,23 @@ export function Navbar() {
               Anime
             </Link>
             <Link
-              href="/news"
+              href="/signals"
               className={cn(
                 "text-[10px] font-bold uppercase tracking-[0.18em] transition-colors",
-                location === "/news" ? "text-primary" : "text-muted-foreground hover:text-primary",
+                location === "/signals" ? "text-primary" : "text-muted-foreground hover:text-primary",
               )}
-              data-testid="link-news"
+              data-testid="link-signals"
+              aria-label={`Open signals${unreadSignalCount > 0 ? `, ${unreadSignalCount} waiting to be seen` : ""}`}
             >
-              News
+               <span className="inline-flex items-center gap-2">
+                 Signals
+                 {unreadSignalCount > 0 && (
+                   <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/50" />
+                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                   </span>
+                 )}
+               </span>
             </Link>
           </nav>
 
@@ -448,7 +479,7 @@ export function Navbar() {
               data-testid="link-watchlist"
             >
               <Bookmark className="h-4 w-4" />
-              <span>Watchlist</span>
+               <span>Your next screen</span>
               {watchlistCount > 0 && (
                 <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
                   {watchlistCount > 99 ? "99+" : watchlistCount}
@@ -460,12 +491,14 @@ export function Navbar() {
                   <Link href="/chat" className="hidden h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary sm:flex" aria-label="Open messages" data-testid="link-chat">
                   <MessageSquare className="w-5 h-5" />
                 </Link>
-                  <Link href={`/profile/${user.id}`} className="flex h-11 w-11 items-center justify-center rounded-sm" data-testid="link-profile">
-                   <img
-                    src={user.imageUrl}
-                    alt={user.fullName || "User"}
-                    className="h-8 w-8 rounded-sm border border-border object-cover transition-colors hover:border-primary"
+                  <Link href={`/profile/${user.id}`} className="group flex min-h-11 items-center gap-2 rounded-sm px-1" data-testid="link-profile" aria-label="Open your cinematic profile">
+                   <ProfileAvatar
+                    src={activeProfile?.avatarUrl || user.imageUrl}
+                    name={activeProfile?.name || user.fullName || "User"}
+                    size="sm"
+                    className="h-8 w-8 transition-colors group-hover:border-primary"
                   />
+                  <span className="hidden max-w-24 truncate text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary xl:block">{activeProfile?.name || "Profile"}</span>
                 </Link>
                  <button
                   onClick={() => signOut()}

@@ -8,15 +8,17 @@ import {
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import { useActiveProfile } from "@/lib/profile-context";
 
 export function RecentlyViewedRow() {
   const [movies, setMovies] = useState<RowMovie[]>([]);
   const { isSignedIn } = useUser();
+  const { activeProfile } = useActiveProfile();
 
   useEffect(() => {
     let active = true;
     const update = () => {
-      void loadRecentlyViewed(!!isSignedIn).then((next) => {
+      void loadRecentlyViewed(!!isSignedIn, activeProfile?.id).then((next) => {
         if (active) setMovies(next);
       });
     };
@@ -26,7 +28,7 @@ export function RecentlyViewedRow() {
       active = false;
       window.removeEventListener(HISTORY_EVENT, update);
     };
-  }, [isSignedIn]);
+  }, [activeProfile?.id, isSignedIn]);
 
   if (movies.length === 0) return null;
   return (
@@ -37,7 +39,7 @@ export function RecentlyViewedRow() {
         size="sm"
         className="absolute right-4 top-2 gap-2 text-xs text-muted-foreground hover:text-destructive"
         onClick={() => {
-          void clearRecentlyViewed(!!isSignedIn).then((cleared) => {
+          void clearRecentlyViewed(!!isSignedIn, activeProfile?.id).then((cleared) => {
             if (cleared) setMovies([]);
           });
         }}
