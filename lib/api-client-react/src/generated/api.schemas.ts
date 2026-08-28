@@ -5,6 +5,165 @@
  * FILMIO - Movie Review & Discovery Platform API
  * OpenAPI spec version: 0.1.0
  */
+export type PostAuthorAuthorType = typeof PostAuthorAuthorType[keyof typeof PostAuthorAuthorType];
+
+
+export const PostAuthorAuthorType = {
+  user: 'user',
+  actor: 'actor',
+} as const;
+
+export interface PostAuthor {
+  id: string;
+  displayName: string;
+  /** @nullable */
+  avatarUrl: string | null;
+  authorType: PostAuthorAuthorType;
+  verified: boolean;
+}
+
+export type PostPostType = typeof PostPostType[keyof typeof PostPostType];
+
+
+export const PostPostType = {
+  standard: 'standard',
+  announcement: 'announcement',
+} as const;
+
+export interface Post {
+  id: number;
+  author: PostAuthor;
+  content: string;
+  /** @nullable */
+  imageUrl: string | null;
+  /** @nullable */
+  imageType: string | null;
+  /** @nullable */
+  linkedMovieId: number | null;
+  /** @nullable */
+  linkedMovieTitle: string | null;
+  /** @nullable */
+  linkedMoviePosterPath: string | null;
+  postType: PostPostType;
+  likesCount: number;
+  commentsCount: number;
+  viewerLiked: boolean;
+  createdAt: string;
+}
+
+export interface PostFeedResponse {
+  items: Post[];
+  /** @nullable */
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export type PostInputPostType = typeof PostInputPostType[keyof typeof PostInputPostType];
+
+
+export const PostInputPostType = {
+  standard: 'standard',
+  announcement: 'announcement',
+} as const;
+
+export interface PostInput {
+  /** @maxLength 500 */
+  content: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  imageType?: string | null;
+  /** @nullable */
+  imageName?: string | null;
+  /** @nullable */
+  imageSize?: number | null;
+  /** @nullable */
+  linkedMovieId?: number | null;
+  /** @nullable */
+  linkedMovieTitle?: string | null;
+  /** @nullable */
+  linkedMoviePosterPath?: string | null;
+  postType?: PostInputPostType;
+}
+
+export interface PostUploadInput {
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  contentType: string;
+}
+
+export interface PostUploadResponse {
+  uploadURL: string;
+  imageUrl: string;
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface PostLikeResponse {
+  liked: boolean;
+  likesCount: number;
+}
+
+export interface PostComment {
+  id: number;
+  postId: number;
+  userId: string;
+  author: PostAuthor;
+  content: string;
+  createdAt: string;
+}
+
+export interface PostCommentInput {
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  content: string;
+}
+
+export interface Story {
+  id: number;
+  author: PostAuthor;
+  content: string;
+  /** @nullable */
+  mediaUrl: string | null;
+  /** @nullable */
+  mediaType: string | null;
+  createdAt: string;
+  expiresAt: string;
+  isOwner: boolean;
+}
+
+export interface StoryInput {
+  /** @maxLength 280 */
+  content?: string;
+  /** @nullable */
+  mediaUrl?: string | null;
+  /** @nullable */
+  mediaType?: string | null;
+  /** @nullable */
+  mediaName?: string | null;
+  /** @nullable */
+  mediaSize?: number | null;
+}
+
+export interface StoryUploadInput {
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  contentType: string;
+}
+
+export interface StoryUploadResponse {
+  uploadURL: string;
+  mediaUrl: string;
+  name: string;
+  size: number;
+  contentType: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -52,6 +211,75 @@ export interface MovieDetail {
   revenue: number;
   /** @nullable */
   imdbId?: string | null;
+}
+
+export type StorySourceKind = typeof StorySourceKind[keyof typeof StorySourceKind];
+
+
+export const StorySourceKind = {
+  catalog: 'catalog',
+  reference: 'reference',
+  official: 'official',
+} as const;
+
+export interface StorySource {
+  name: string;
+  url: string;
+  kind: StorySourceKind;
+  note: string;
+}
+
+export interface MovieStorySection {
+  id: string;
+  heading: string;
+  body: string[];
+}
+
+export type MovieStoryStatus = typeof MovieStoryStatus[keyof typeof MovieStoryStatus];
+
+
+export const MovieStoryStatus = {
+  ready: 'ready',
+  partial: 'partial',
+  unavailable: 'unavailable',
+} as const;
+
+export type MovieStoryMovieMediaType = typeof MovieStoryMovieMediaType[keyof typeof MovieStoryMovieMediaType];
+
+
+export const MovieStoryMovieMediaType = {
+  movie: 'movie',
+  tv: 'tv',
+} as const;
+
+export type MovieStoryMovie = {
+  id: number;
+  title: string;
+  mediaType: MovieStoryMovieMediaType;
+  releaseDate: string;
+  /** @nullable */
+  posterPath: string | null;
+  /** @nullable */
+  backdropPath: string | null;
+  overview: string;
+  /** @nullable */
+  tagline: string | null;
+  /** @nullable */
+  runtime: number | null;
+  genres: Genre[];
+  /** @nullable */
+  imdbId: string | null;
+};
+
+export interface MovieStory {
+  status: MovieStoryStatus;
+  movie: MovieStoryMovie;
+  headline: string;
+  dek: string;
+  readTimeMinutes: number;
+  updatedAt: string;
+  sections: MovieStorySection[];
+  sources: StorySource[];
 }
 
 export interface GenreListResult {
@@ -331,6 +559,59 @@ export interface FollowResult {
   followersCount: number;
 }
 
+export type FriendUserRelationship = typeof FriendUserRelationship[keyof typeof FriendUserRelationship];
+
+
+export const FriendUserRelationship = {
+  none: 'none',
+  incoming: 'incoming',
+  outgoing: 'outgoing',
+  friends: 'friends',
+} as const;
+
+export interface FriendUser {
+  id: number;
+  /** @nullable */
+  username?: string | null;
+  /** @nullable */
+  displayName?: string | null;
+  /** @nullable */
+  avatarUrl?: string | null;
+  isProfessional: boolean;
+  relationship: FriendUserRelationship;
+  /** @nullable */
+  requestId: number | null;
+}
+
+export type FriendRequestStatus = typeof FriendRequestStatus[keyof typeof FriendRequestStatus];
+
+
+export const FriendRequestStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+} as const;
+
+export interface FriendRequest {
+  id: number;
+  status: FriendRequestStatus;
+  createdAt: string;
+  user: FriendUser;
+}
+
+export type FriendsOverviewCounts = {
+  incoming: number;
+  outgoing: number;
+  friends: number;
+};
+
+export interface FriendsOverview {
+  users: FriendUser[];
+  incomingRequests: FriendRequest[];
+  outgoingRequests: FriendRequest[];
+  friends: FriendUser[];
+  counts: FriendsOverviewCounts;
+}
+
 export type ProfessionalProfileAvailabilityStatus = typeof ProfessionalProfileAvailabilityStatus[keyof typeof ProfessionalProfileAvailabilityStatus];
 
 
@@ -449,6 +730,18 @@ genreId: number;
 page?: number;
 };
 
+export type GetMovieStoryParams = {
+type?: GetMovieStoryType;
+};
+
+export type GetMovieStoryType = typeof GetMovieStoryType[keyof typeof GetMovieStoryType];
+
+
+export const GetMovieStoryType = {
+  movie: 'movie',
+  tv: 'tv',
+} as const;
+
 export type ListReviewsParams = {
 movieId?: number;
 userId?: string;
@@ -466,6 +759,30 @@ export const ListReviewsType = {
 } as const;
 
 export type GetTrendingReviewsParams = {
+limit?: number;
+};
+
+export type GetFriendsOverviewParams = {
+/**
+ * @maxLength 80
+ */
+q?: string;
+/**
+ * @minimum 1
+ * @maximum 80
+ */
+limit?: number;
+};
+
+export type GetPostsFeedParams = {
+/**
+ * @nullable
+ */
+cursor?: string | null;
+/**
+ * @minimum 10
+ * @maximum 15
+ */
 limit?: number;
 };
 
