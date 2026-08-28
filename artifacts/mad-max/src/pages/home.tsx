@@ -4,7 +4,8 @@ import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { HeroCarousel, type HeroMovie } from "@/components/hero-carousel";
 import { MoodAgentRow } from "@/components/mood-agent-row";
-import { TopTen } from "@/components/top-ten";
+import { StoryConstellation } from "@/components/story-constellation";
+import { CinemaNow } from "@/components/cinema-now";
 import { RecentlyViewedRow } from "@/components/recently-viewed-row";
 import { ClipSection, type ClipItem } from "@/components/clip-section";
 import { ActorRow } from "@/components/actor-row";
@@ -14,6 +15,8 @@ import { ArrowRight, ExternalLink, Clock, Film, Tv } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { CatalogStatusNotice, type CatalogMetadata } from "@/components/catalog-status-notice";
+import { useActiveProfile } from "@/lib/profile-context";
+import { SurpriseMe } from "@/components/surprise-me";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -62,8 +65,10 @@ async function fetchClips(): Promise<ClipItem[]> {
   return data.results ?? [];
 }
 
-async function fetchPersonalizedMovies(): Promise<RowMovie[]> {
-  const res = await fetch("/api/recommendations?limit=20");
+async function fetchPersonalizedMovies(profileId?: number): Promise<RowMovie[]> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (profileId) params.set("profileId", String(profileId));
+  const res = await fetch(`/api/recommendations?${params.toString()}`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.results ?? data;
@@ -182,11 +187,11 @@ const DISCOVERY_TABS: Array<{
   id: DiscoveryTab;
   label: string;
 }> = [
-  { id: "for-you", label: "For You" },
-  { id: "trending", label: "Trending" },
-  { id: "genres", label: "Genres" },
-  { id: "india", label: "India" },
-  { id: "watch-next", label: "Watch Next" },
+  { id: "for-you", label: "Your Orbit" },
+  { id: "trending", label: "Live Signal" },
+  { id: "genres", label: "Story Threads" },
+  { id: "india", label: "Across Places" },
+  { id: "watch-next", label: "Keepers" },
 ];
 
 function DiscoveryMenu({
@@ -347,49 +352,13 @@ function TrendingNewsSection() {
   );
 }
 
-function DiscoveryPrimer({ onSelect }: { onSelect: (tab: DiscoveryTab) => void }) {
-  return (
-    <section className="home-primer" aria-labelledby="discovery-primer-title">
-      <div className="container relative z-10 mx-auto grid gap-8 px-4 py-9 md:grid-cols-[1.1fr_0.9fr] md:items-end md:gap-16 md:py-11">
-        <div>
-          <p className="editorial-kicker">The FILMIO method</p>
-          <h2 id="discovery-primer-title" className="editorial-heading mt-4 max-w-xl">
-            Start with instinct. Keep the context close.
-          </h2>
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-            Take a clear first step, then look closer when you want to. No countdowns,
-            pressure, or endless feed — just better signals for the film in front of you.
-          </p>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1">
-          <button
-            type="button"
-            onClick={() => onSelect("genres")}
-            className="home-primer-link w-full text-left"
-            data-testid="button-primer-browse-mood"
-          >
-            Browse by feeling <ArrowRight className="h-4 w-4 shrink-0" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelect("watch-next")}
-            className="home-primer-link w-full text-left"
-            data-testid="button-primer-plan-watch"
-          >
-            Plan what comes next <ArrowRight className="h-4 w-4 shrink-0" />
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [activeTab, setActiveTab] = useState<DiscoveryTab>("for-you");
   const progressRef = useRef<HTMLDivElement>(null);
   const discoveryShellRef = useRef<HTMLDivElement>(null);
   const belowFoldReady = useNearViewport(discoveryShellRef);
+  const { activeProfile, isReady: profileReady } = useActiveProfile();
   const { data: trendingMovies, isLoading: loadingTrending } = useMovieCategory("trending", "trending", 1);
 
   const { data: animeMovies, isLoading: loadingAnime } = useQuery<RowMovie[]>({
@@ -400,7 +369,7 @@ export default function Home() {
   });
   const { data: tvTopRated, isLoading: loadingTvTopRated } = useMovieCategoryWhen("tv-top-rated", "tv-top-rated", 1, belowFoldReady);
   const { data: tvUpcoming, isLoading: loadingTvUpcoming } = useMovieCategoryWhen("tv-upcoming", "tv-upcoming", 1, belowFoldReady);
-  const { data: upcomingMovies, isLoading: loadingUpcoming } = useMovieCategoryWhen("upcoming", "upcoming", 1, belowFoldReady);
+  const { data: upcomingMovies, isLoading: loadingUpcoming } = useMovieCategoryWhen("upcoming", "upcoming", 1, true);
   const { data: theaterMovies, isLoading: loadingTheaters } = useMovieCategoryWhen("in-theaters", "in-theaters", 1, belowFoldReady);
   const homeCatalogMetadata = [trendingMovies, tvTopRated, tvUpcoming, upcomingMovies, theaterMovies]
     .map((movies) => movies?.metadata)
@@ -412,9 +381,9 @@ export default function Home() {
     staleTime: 15 * 60 * 1000,
   });
   const { data: personalizedFeed, isLoading: loadingPersonalized } = useQuery<RowMovie[]>({
-    queryKey: ["personalized-recommendations"],
-    queryFn: fetchPersonalizedMovies,
-    enabled: belowFoldReady,
+    queryKey: ["personalized-recommendations", activeProfile?.id ?? null],
+    queryFn: () => fetchPersonalizedMovies(activeProfile?.id),
+    enabled: belowFoldReady && profileReady,
     staleTime: 5 * 60 * 1000,
   });
   const loadGenreFallback =
@@ -433,16 +402,6 @@ export default function Home() {
     loadGenreFallback &&
     [actionMovies, comedyMovies, dramaMovies, sciFiMovies].some((movies) => movies === undefined);
   const genreRows = GENRE_ROWS;
-
-  const choosePrimerTab = (tab: DiscoveryTab) => {
-    setActiveTab(tab);
-    window.requestAnimationFrame(() => {
-      document.getElementById("discovery-program")?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-        block: "start",
-      });
-    });
-  };
 
   useEffect(() => {
     const progress = progressRef.current;
@@ -467,21 +426,34 @@ export default function Home() {
   }, []);
 
   return (
-      <div className="film-grain min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
       <Navbar />
       <div
         ref={progressRef}
         aria-hidden="true"
-        className="pointer-events-none fixed left-0 right-0 top-[4.72rem] z-[51] h-px origin-left scale-x-0 bg-primary shadow-[0_0_14px_hsl(var(--primary)/0.55)] sm:top-[4.48rem]"
+        className="pointer-events-none fixed left-0 right-0 top-[4.72rem] z-[51] h-px origin-left scale-x-0 bg-primary sm:top-[4.48rem]"
       />
 
       {/* The image leads; catalog context follows it like a programme note. */}
       <HeroCarousel movies={(trendingMovies ?? []) as HeroMovie[]} />
+      <CinemaNow
+        movies={trendingMovies ?? []}
+        upcomingMovies={upcomingMovies ?? []}
+        isLoading={loadingTrending}
+        isUpcomingLoading={loadingUpcoming}
+      />
+      <section className="container mx-auto px-4 py-5" aria-label="One-film discovery">
+        <div className="flex flex-col gap-4 border-y border-primary/20 bg-primary/[0.035] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div>
+            <p className="cinema-kicker">One film. One reason.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Let Vishnuva choose a live-catalog watch for the night you have.</p>
+          </div>
+          <SurpriseMe className="self-start sm:self-auto" />
+        </div>
+      </section>
       <div className="container mx-auto px-4 pt-5">
         <CatalogStatusNotice metadata={homeCatalogMetadata} />
       </div>
-
-      <DiscoveryPrimer onSelect={choosePrimerTab} />
 
       <div ref={discoveryShellRef} className="home-program-shell space-y-3 border-t border-border/30 pb-10 pt-5">
         <DiscoveryMenu activeTab={activeTab} onChange={setActiveTab} />
@@ -489,12 +461,17 @@ export default function Home() {
         {activeTab === "for-you" && (
           <>
             <DiscoveryHeading
-              eyebrow="Your genre mix"
-              title="One strong starting point"
-              description="Action, sci-fi, comedy, and drama picks selected from real movie genres. Choose a film, then decide with the details that matter."
+              eyebrow="Your orbit"
+              title="A place to begin"
+              description="Your current signals are not a verdict. They are a point of entry into a larger world of stories."
+            />
+            <StoryConstellation
+              anchor={personalizedMovies[0] ?? trendingMovies?.[0]}
+              threads={uniqueMovies(personalizedMovies.slice(1), trendingMovies, theaterMovies)}
+              isLoading={!belowFoldReady || loadingPersonalized || loadingGenreFallback}
             />
             <MovieRow
-              title="Action, Sci-Fi, Comedy & Drama"
+              title="More from this orbit"
               movies={personalizedMovies}
                 isLoading={!belowFoldReady || loadingPersonalized || loadingGenreFallback}
               className="border-b border-border/30"
@@ -503,25 +480,25 @@ export default function Home() {
              {belowFoldReady && <MoodAgentRow />}
              {belowFoldReady && <RecentlyViewedRow />}
             <MovieRow
-              title="Top 10 Web Series"
+               title="Series with momentum"
               movies={tvTopRated ?? []}
               isLoading={!belowFoldReady || loadingTvTopRated}
               className="border-b border-border/30"
             />
             <MovieRow
-              title="Upcoming TV Shows"
+              title="Next transmissions"
               movies={tvUpcoming ?? []}
               isLoading={!belowFoldReady || loadingTvUpcoming}
               className="border-b border-border/30"
             />
             <MovieRow
-              title="Now Playing in Indian Theatres"
+              title="India, right now"
               movies={theaterMovies ?? []}
               isLoading={!belowFoldReady || loadingTheaters}
               className="border-b border-border/30"
             />
             <MovieRow
-              title="Coming Soon in India"
+              title="Coming into focus"
               movies={upcomingMovies ?? []}
               isLoading={!belowFoldReady || loadingUpcoming}
               className="border-b border-border/30"
@@ -532,36 +509,34 @@ export default function Home() {
 
         {activeTab === "trending" && (
           <>
-            <DiscoveryHeading eyebrow="What people are watching" title="Trending now" description="The most watched movies, anime, theater releases, and picks based on your mood." centered />
-            <TopTen movies={trendingMovies ?? []} isLoading={loadingTrending} />
-            <MovieRow title="Trending Now Movies" movies={trendingMovies ?? []} isLoading={loadingTrending} className="border-b border-border/30" />
-            <MovieRow title="Trending Anime" movies={animeMovies ?? []} isLoading={loadingAnime} className="border-b border-border/30" />
-            <MovieRow title="Trending in Theaters" movies={theaterMovies ?? []} isLoading={loadingTheaters} className="border-b border-border/30" />
-            <MoodAgentRow heading="Trending on Your Mood" />
+            <DiscoveryHeading eyebrow="The shared atmosphere" title="What is moving through cinema" description="Not a chart. A live cross-section of the stories currently finding their way to people." centered />
+            <StoryConstellation anchor={trendingMovies?.[0]} threads={uniqueMovies(trendingMovies?.slice(1), animeMovies, theaterMovies)} isLoading={loadingTrending} />
+            <MovieRow title="More from the live signal" movies={trendingMovies ?? []} isLoading={loadingTrending} className="border-b border-border/30" />
+            <MoodAgentRow heading="What people felt" />
           </>
         )}
 
         {activeTab === "genres" && (
           <>
-            <DiscoveryHeading eyebrow="Choose a feeling" title="Browse by mood" description="Start with the kind of story you want right now." />
+            <DiscoveryHeading eyebrow="Choose a feeling" title="Find your frequency" description="Start with the kind of story you want right now." />
             {genreRows.map((g) => <GenreRow key={g.id} id={g.id} name={g.name} />)}
           </>
         )}
 
         {activeTab === "india" && (
           <>
-            <DiscoveryHeading eyebrow="Made for India" title="Indian cinema" description="Explore the latest favorites across Hindi, Tamil, and Telugu cinema." />
+            <DiscoveryHeading eyebrow="Made for India" title="The Indian cinema universe" description="Explore the latest favorites across Hindi, Tamil, Telugu, Malayalam, and beyond." />
             {INDIAN_ROWS.map((r) => <IndianRow key={r.language} language={r.language} name={r.name} />)}
           </>
         )}
 
         {activeTab === "watch-next" && (
           <>
-            <DiscoveryHeading eyebrow="Plan your next watch" title="Watch next" description="Movies, series, and cinema releases worth keeping an eye on." />
-            <MovieRow title="Top 10 Web Series" movies={tvTopRated ?? []} isLoading={!belowFoldReady || loadingTvTopRated} className="border-b border-border/30" />
-            <MovieRow title="Upcoming TV Shows" movies={tvUpcoming ?? []} isLoading={!belowFoldReady || loadingTvUpcoming} className="border-b border-border/30" />
-            <MovieRow title="Now Playing in Indian Theatres" movies={theaterMovies ?? []} isLoading={!belowFoldReady || loadingTheaters} className="border-b border-border/30" />
-            <MovieRow title="Coming Soon in India" movies={upcomingMovies ?? []} isLoading={!belowFoldReady || loadingUpcoming} className="border-b border-border/30" />
+            <DiscoveryHeading eyebrow="Plan your next screen" title="Your next screen" description="Movies, series, and cinema releases worth keeping an eye on." />
+            <MovieRow title="Series with momentum" movies={tvTopRated ?? []} isLoading={!belowFoldReady || loadingTvTopRated} className="border-b border-border/30" />
+            <MovieRow title="Next transmissions" movies={tvUpcoming ?? []} isLoading={!belowFoldReady || loadingTvUpcoming} className="border-b border-border/30" />
+            <MovieRow title="India, right now" movies={theaterMovies ?? []} isLoading={!belowFoldReady || loadingTheaters} className="border-b border-border/30" />
+            <MovieRow title="Coming into focus" movies={upcomingMovies ?? []} isLoading={!belowFoldReady || loadingUpcoming} className="border-b border-border/30" />
             <ClipSection clips={clips ?? []} isLoading={!belowFoldReady || loadingClips} />
           </>
         )}
@@ -570,7 +545,7 @@ export default function Home() {
       <section className="home-approach border-t border-border/30 py-16 md:py-20">
         <div className="container mx-auto max-w-4xl px-4">
           <p className="editorial-kicker">The FILMIO approach</p>
-          <h2 className="editorial-heading mt-4">Find films worth talking about</h2>
+          <h2 className="editorial-heading mt-4">Stories do not end at the credits</h2>
           <div className="mt-6 grid gap-6 text-sm leading-8 text-muted-foreground md:grid-cols-2">
             <div className="space-y-4">
               <p>
