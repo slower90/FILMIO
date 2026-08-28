@@ -1,13 +1,21 @@
 import {
-  Facebook,
-  Instagram,
-  Music2,
-  QrCode,
-  Twitter,
-  Youtube,
+  ExternalLink,
+  Mail,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useUser } from "@clerk/react";
+
+const appLandingUrl = "https://vishnuva.in/";
+const appStoreLinks = [
+  {
+    href: "https://play.google.com/store/apps/details?id=com.squad.filmio",
+    label: "Android",
+  },
+  {
+    href: "https://apps.apple.com/in/app/filmio-movie-tv-anime-tracker/id6736888724",
+    label: "iOS",
+  },
+];
 
 const footerLinks = [
   { href: "/help", label: "Help" },
@@ -22,25 +30,17 @@ const footerLinks = [
   { href: "/privacy", label: "Privacy Policy" },
 ];
 
-const socialLinks = [
-  { href: "https://www.tiktok.com", label: "TikTok", Icon: Music2 },
-  { href: "https://www.instagram.com", label: "Instagram", Icon: Instagram },
-  { href: "https://www.x.com", label: "X", Icon: Twitter },
-  { href: "https://www.youtube.com", label: "YouTube", Icon: Youtube },
-  { href: "https://www.facebook.com", label: "Facebook", Icon: Facebook },
-];
-
 export default function PrismFooter() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
 
   return (
-    <footer className="w-full bg-black px-6 pb-8 pt-14 text-white">
+    <footer className="w-full border-t border-border/70 bg-[hsl(var(--surface-deep))] px-6 pb-8 pt-14 text-foreground">
       <div className="mx-auto max-w-4xl">
         {isLoaded && (
           <div className="mb-10 flex justify-center">
             {isSignedIn ? (
               <Link
-                href="/profile"
+                href={user ? `/profile/${user.id}` : "/"}
                 className="rounded-full bg-primary px-6 py-2.5 text-sm font-bold tracking-wide text-primary-foreground transition-colors hover:bg-primary/85"
               >
                 Open your profile
@@ -57,32 +57,45 @@ export default function PrismFooter() {
         )}
 
         <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-neutral-700 p-6">
-          <p className="text-sm font-bold tracking-wide">Follow FILMIO on social</p>
-            <div className="flex gap-5 text-neutral-200">
-              {socialLinks.map(({ href, label, Icon }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={label}
-                   className="transition-colors hover:text-primary"
-                >
-                  <Icon className="h-5 w-5" />
-                </a>
-              ))}
-            </div>
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-neutral-700 p-6 text-center">
+            <Mail className="h-5 w-5 text-primary" aria-hidden="true" />
+            <p className="text-sm font-bold tracking-wide">Need to reach FILMIO?</p>
+            <Link href="/help#contact-form" className="text-sm text-neutral-300 underline underline-offset-4 transition-colors hover:text-primary">
+              Open the contact form
+            </Link>
           </div>
 
           <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-700 p-6">
             <div>
               <p className="text-sm font-bold">Get the FILMIO app</p>
               <p className="text-sm text-neutral-400">For Android and iOS</p>
+              <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold uppercase tracking-wider">
+                {appStoreLinks.map(({ href, label }) => (
+                  <a
+                    key={href}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-neutral-300 underline underline-offset-4 transition-colors hover:text-primary"
+                  >
+                    {label} <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                  </a>
+                ))}
+              </div>
             </div>
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded bg-white">
-              <QrCode className="h-11 w-11 text-black" />
-            </div>
+            <a
+              href={appLandingUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open FILMIO"
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-sm bg-foreground p-1 transition-opacity hover:opacity-80"
+            >
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appLandingUrl)}`}
+                alt="QR code linking to FILMIO"
+                className="h-full w-full"
+              />
+            </a>
           </div>
         </div>
 
@@ -99,8 +112,8 @@ export default function PrismFooter() {
               {label}
             </Link>
           ))}
-          <Link href="/privacy-choices" className="flex items-center gap-1 hover:text-white">
-            <span className="rounded bg-blue-600 px-1 py-0.5 text-[10px] font-bold">✓✕</span>
+          <Link href="/privacy-choices" className="flex items-center gap-1 hover:text-primary">
+            <span className="rounded-sm bg-primary px-1 py-0.5 text-[10px] font-bold text-primary-foreground">PC</span>
             Your Ads Privacy Choices
           </Link>
         </nav>

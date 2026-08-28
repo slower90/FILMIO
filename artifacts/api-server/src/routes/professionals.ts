@@ -1,7 +1,18 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
-import { db, professionalsTable, usersTable, professionalWorkEntriesTable, professionalAuditionsTable } from "@workspace/db";
-import { and, eq, ilike, or, sql } from "drizzle-orm";
+import {
+  db,
+  professionalsTable,
+  usersTable,
+  professionalWorkEntriesTable,
+  professionalAuditionsTable,
+  professionalProfileMediaTable,
+  professionalPostsTable,
+  professionalPostLikesTable,
+  professionalPostCommentsTable,
+} from "@workspace/db";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
 import { requireAuth } from "../middlewares/auth";
 import {
   CreateProfessionalProfileBody,
@@ -11,6 +22,8 @@ import { deletePrivateObject } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 const SIDECAR = "http://127.0.0.1:1106";
+export const COMMUNITY_MAX_UPLOAD = 100 * 1024 * 1024;
+export const PROFILE_MEDIA_MAX_UPLOAD = 100 * 1024 * 1024;
 
 export type AuditionFileAccessError = "unauthorized" | "forbidden" | null;
 
@@ -49,6 +62,46 @@ async function signedObjectUrl(objectName: string, method: "PUT" | "GET") {
   if (!response.ok) throw new Error(`Unable to sign object URL (${response.status})`);
   const body = await response.json() as { signed_url: string };
   return { url: body.signed_url, objectPath: `/objects/${objectName}` };
+}
+
+export function isCommunityMediaType(contentType: unknown): contentType is string {
+  return typeof contentType === "string" && /^(image|video)\//.test(contentType);
+}
+
+export function isOwnedCommunityObjectPath(objectPath: unknown, userId: string): objectPath is string {
+  return typeof objectPath === "string" && objectPath.startsWith(`/objects/professional-posts/${userId}/`) && !objectPath.includes("..");
+}
+
+export function isProfessionalProfileMediaType(contentType: unknown): contentType is string {
+  return typeof contentType === "string" && /^(image|video)\//.test(contentType);
+}
+
+export function isOwnedProfessionalProfileObjectPath(objectPath: unknown, userId: string): objectPath is string {
+  return typeof objectPath === "string"
+    && objectPath.startsWith(`/objects/professional-profile-media/${userId}/`)
+    && !objectPath.includes("..");
+}
+
+function profileMediaResponse(media: any, professionalId: number) {
+  return {
+    id: media.id,
+    mediaType: media.mediaType,
+    mediaUrl: `/api/professionals/${professionalId}/media/${media.id}/file`,
+    fileName: media.fileName,
+    contentType: media.contentType,
+    fileSize: media.fileSize,
+    createdAt: media.createdAt,
+  };
+}
+
+function communityAuthor(professional: any, user?: { displayName: string | null; avatarUrl: string | null }) {
+  return {
+    id: professional.id,
+    displayName: professional.displayName ?? user?.displayName ?? "FILMIO professional",
+    headshotUrl: professional.headshotUrl ?? user?.avatarUrl ?? null,
+    roles: professional.roles ?? [],
+    verified: professional.verified,
+  };
 }
 
 const enrichProfile = async (prof: any) => {
@@ -125,11 +178,157 @@ router.patch("/professionals/me", requireAuth as any, async (req: any, res): Pro
 router.get("/professionals/me/portfolio", requireAuth as any, async (req: any, res): Promise<void> => {
   const [prof] = await db.select({ id: professionalsTable.id }).from(professionalsTable).where(eq(professionalsTable.userId, req.userId));
   if (!prof) { res.status(404).json({ error: "Profile not found" }); return; }
-  const [work, auditions] = await Promise.all([
+  const [work, auditions, media] = await Promise.all([
     db.select().from(professionalWorkEntriesTable).where(eq(professionalWorkEntriesTable.professionalId, prof.id)),
     db.select().from(professionalAuditionsTable).where(eq(professionalAuditionsTable.professionalId, prof.id)),
+    db.select().from(professionalProfileMediaTable)
+      .where(eq(professionalProfileMediaTable.professionalId, prof.id))
+      .orderBy(desc(professionalProfileMediaTable.createdAt)),
   ]);
-  res.json({ work, auditions });
+  res.json({ work, auditions, media: media.map((item) => profileMediaResponse(item, prof.id)) });
+});
+
+router.post("/professionals/me/media/request-upload", requireAuth as any, async (req: any, res): Promise<void> => {
+  const [professional] = await db
+    .select({ id: professionalsTable.id })
+    .from(professionalsTable)
+    .where(eq(professionalsTable.userId, req.userId));
+  if (!professional) {
+    res.status(404).json({ error: "Create your professional profile first." });
+    return;
+  }
+
+  const { name, size, contentType } = req.body || {};
+  const numericSize = Number(size);
+  if (
+    typeof name !== "string" ||
+    !name.trim() ||
+    name.length > 240 ||
+    !Number.isSafeInteger(numericSize) ||
+    numericSize <= 0 ||
+    numericSize > PROFILE_MEDIA_MAX_UPLOAD ||
+    !isProfessionalProfileMediaType(contentType)
+  ) {
+    res.status(400).json({ error: "Upload an image or video up to 100MB." });
+    return;
+  }
+
+  try {
+    const objectName = `professional-profile-media/${req.userId}/${randomUUID()}`;
+    const signed = await signedObjectUrl(objectName, "PUT");
+    res.json({ uploadURL: signed.url, objectPath: signed.objectPath, name: name.trim(), size: numericSize, contentType });
+  } catch (error) {
+    req.log.error({ error }, "profile media upload signing failed");
+    res.status(500).json({ error: "Could not prepare the upload." });
+  }
+});
+
+router.delete("/professionals/me/media/upload", requireAuth as any, async (req: any, res): Promise<void> => {
+  if (!isOwnedProfessionalProfileObjectPath(req.body?.objectPath, req.userId)) {
+    res.status(400).json({ error: "Invalid profile media object path." });
+    return;
+  }
+  try {
+    await deletePrivateObject(req.body.objectPath);
+    res.status(204).end();
+  } catch (error) {
+    req.log.warn({ error }, "profile media upload cleanup failed");
+    res.status(404).json({ error: "Uploaded object could not be removed." });
+  }
+});
+
+router.post("/professionals/me/media", requireAuth as any, async (req: any, res): Promise<void> => {
+  const [professional] = await db
+    .select({ id: professionalsTable.id })
+    .from(professionalsTable)
+    .where(eq(professionalsTable.userId, req.userId));
+  if (!professional) {
+    res.status(404).json({ error: "Create your professional profile first." });
+    return;
+  }
+
+  const { objectPath, fileName, contentType, fileSize } = req.body || {};
+  const numericFileSize = Number(fileSize);
+  if (
+    !isOwnedProfessionalProfileObjectPath(objectPath, req.userId) ||
+    typeof fileName !== "string" ||
+    !fileName.trim() ||
+    fileName.length > 240 ||
+    !isProfessionalProfileMediaType(contentType) ||
+    !Number.isSafeInteger(numericFileSize) ||
+    numericFileSize <= 0 ||
+    numericFileSize > PROFILE_MEDIA_MAX_UPLOAD
+  ) {
+    res.status(400).json({ error: "Complete image/video upload details are required." });
+    return;
+  }
+
+  const mediaType = contentType.startsWith("image/") ? "photo" : "video";
+  try {
+    const [media] = await db.insert(professionalProfileMediaTable).values({
+      professionalId: professional.id,
+      mediaType,
+      objectPath,
+      fileName: fileName.trim(),
+      contentType,
+      fileSize: numericFileSize,
+    }).returning();
+    res.status(201).json(profileMediaResponse(media, professional.id));
+  } catch (error) {
+    await deletePrivateObject(objectPath).catch((cleanupError) => {
+      req.log.warn({ cleanupError }, "failed to clean up unpublished profile media");
+    });
+    req.log.error({ error }, "profile media creation failed");
+    res.status(500).json({ error: "Could not save this media." });
+  }
+});
+
+router.delete("/professionals/me/media/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id)) {
+    res.status(400).json({ error: "Invalid media id." });
+    return;
+  }
+  const deleted = await db.delete(professionalProfileMediaTable).where(and(
+    eq(professionalProfileMediaTable.id, id),
+    sql`${professionalProfileMediaTable.professionalId} IN (SELECT id FROM professionals WHERE user_id = ${req.userId})`,
+  )).returning({ id: professionalProfileMediaTable.id, objectPath: professionalProfileMediaTable.objectPath });
+  if (!deleted.length) {
+    res.status(404).json({ error: "Profile media not found." });
+    return;
+  }
+  try {
+    await deletePrivateObject(deleted[0].objectPath);
+  } catch (error) {
+    req.log.warn({ error, mediaId: id }, "profile media cleanup failed");
+  }
+  res.status(204).end();
+});
+
+router.get("/professionals/:id/media/:mediaId/file", async (req: any, res): Promise<void> => {
+  const professionalId = Number(req.params.id);
+  const mediaId = Number(req.params.mediaId);
+  if (!Number.isSafeInteger(professionalId) || !Number.isSafeInteger(mediaId)) {
+    res.status(400).json({ error: "Invalid media reference." });
+    return;
+  }
+  const [media] = await db.select({ item: professionalProfileMediaTable })
+    .from(professionalProfileMediaTable)
+    .where(and(
+      eq(professionalProfileMediaTable.id, mediaId),
+      eq(professionalProfileMediaTable.professionalId, professionalId),
+    ));
+  if (!media) {
+    res.status(404).json({ error: "Profile media not found." });
+    return;
+  }
+  try {
+    const signed = await signedObjectUrl(media.item.objectPath.replace("/objects/", ""), "GET");
+    res.redirect(signed.url);
+  } catch (error) {
+    req.log.warn({ error, mediaId }, "profile media unavailable");
+    res.status(404).json({ error: "Profile media unavailable." });
+  }
 });
 
 router.post("/professionals/me/work", requireAuth as any, async (req: any, res): Promise<void> => {
@@ -255,6 +454,330 @@ router.get("/professionals/auditions/:id/file", async (req: any, res): Promise<v
   } catch { res.status(404).json({ error: "Audition file unavailable" }); }
 });
 
+// GET /professionals/community/feed
+router.get("/professionals/community/feed", async (req: any, res): Promise<void> => {
+  const requestedPage = Number(req.query.page);
+  const requestedLimit = Number(req.query.limit);
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 40) : 20;
+  const offset = (page - 1) * limit;
+  const authUserId = getAuth(req).userId;
+
+  const rows = await db
+    .select({
+      post: professionalPostsTable,
+      professional: professionalsTable,
+      user: { displayName: usersTable.displayName, avatarUrl: usersTable.avatarUrl },
+    })
+    .from(professionalPostsTable)
+    .innerJoin(professionalsTable, eq(professionalPostsTable.professionalId, professionalsTable.id))
+    .leftJoin(usersTable, eq(professionalsTable.userId, usersTable.clerkId))
+    .orderBy(desc(professionalPostsTable.createdAt))
+    .limit(limit + 1)
+    .offset(offset);
+
+  const visibleRows = rows.slice(0, limit);
+  const postIds = visibleRows.map(({ post }) => post.id);
+  const [likeRows, commentRows, viewerLikeRows] = await Promise.all([
+    postIds.length
+      ? db.select({ postId: professionalPostLikesTable.postId, count: sql<number>`count(*)` })
+        .from(professionalPostLikesTable)
+        .where(inArray(professionalPostLikesTable.postId, postIds))
+        .groupBy(professionalPostLikesTable.postId)
+      : Promise.resolve([]),
+    postIds.length
+      ? db.select({ postId: professionalPostCommentsTable.postId, count: sql<number>`count(*)` })
+        .from(professionalPostCommentsTable)
+        .where(inArray(professionalPostCommentsTable.postId, postIds))
+        .groupBy(professionalPostCommentsTable.postId)
+      : Promise.resolve([]),
+    authUserId && postIds.length
+      ? db.select({ postId: professionalPostLikesTable.postId })
+        .from(professionalPostLikesTable)
+        .where(and(eq(professionalPostLikesTable.userId, authUserId), inArray(professionalPostLikesTable.postId, postIds)))
+      : Promise.resolve([]),
+  ]);
+
+  const likesByPost = new Map(likeRows.map((row) => [row.postId, Number(row.count)]));
+  const commentsByPost = new Map(commentRows.map((row) => [row.postId, Number(row.count)]));
+  const likedPostIds = new Set(viewerLikeRows.map((row) => row.postId));
+
+  res.json({
+    posts: visibleRows.map(({ post, professional, user }) => ({
+      id: post.id,
+      caption: post.caption,
+      mediaUrl: post.objectPath ? `/api/professionals/community/posts/${post.id}/media` : null,
+      mediaType: post.contentType,
+      createdAt: post.createdAt,
+      likeCount: likesByPost.get(post.id) ?? 0,
+      commentCount: commentsByPost.get(post.id) ?? 0,
+      viewerLiked: likedPostIds.has(post.id),
+      author: communityAuthor(professional, user ?? undefined),
+    })),
+    page,
+    limit,
+    hasMore: rows.length > limit,
+  });
+});
+
+// POST /professionals/community/posts/request-upload
+router.post("/professionals/community/posts/request-upload", requireAuth as any, async (req: any, res): Promise<void> => {
+  const [professional] = await db
+    .select({ id: professionalsTable.id })
+    .from(professionalsTable)
+    .where(eq(professionalsTable.userId, req.userId));
+  if (!professional) {
+    res.status(403).json({ error: "Create your professional profile before sharing work." });
+    return;
+  }
+
+  const { name, size, contentType } = req.body || {};
+  const numericSize = Number(size);
+  if (
+    typeof name !== "string" ||
+    !name.trim() ||
+    name.length > 240 ||
+    !Number.isSafeInteger(numericSize) ||
+    numericSize <= 0 ||
+    numericSize > COMMUNITY_MAX_UPLOAD ||
+    !isCommunityMediaType(contentType)
+  ) {
+    res.status(400).json({ error: "Upload an image or video up to 100MB." });
+    return;
+  }
+
+  try {
+    const objectName = `professional-posts/${req.userId}/${randomUUID()}`;
+    const signed = await signedObjectUrl(objectName, "PUT");
+    res.json({ uploadURL: signed.url, objectPath: signed.objectPath, name: name.trim(), size: numericSize, contentType });
+  } catch (error) {
+    req.log.error({ error }, "community upload signing failed");
+    res.status(500).json({ error: "Could not prepare the upload." });
+  }
+});
+
+// DELETE /professionals/community/uploads — clean up an upload that was not published
+router.delete("/professionals/community/uploads", requireAuth as any, async (req: any, res): Promise<void> => {
+  if (!isOwnedCommunityObjectPath(req.body?.objectPath, req.userId)) {
+    res.status(400).json({ error: "Invalid community object path." });
+    return;
+  }
+  try {
+    await deletePrivateObject(req.body.objectPath);
+    res.status(204).end();
+  } catch (error) {
+    req.log.warn({ error }, "community upload cleanup failed");
+    res.status(404).json({ error: "Uploaded object could not be removed." });
+  }
+});
+
+// POST /professionals/community/posts
+router.post("/professionals/community/posts", requireAuth as any, async (req: any, res): Promise<void> => {
+  const [professional] = await db
+    .select({ id: professionalsTable.id })
+    .from(professionalsTable)
+    .where(eq(professionalsTable.userId, req.userId));
+  if (!professional) {
+    res.status(403).json({ error: "Create your professional profile before sharing work." });
+    return;
+  }
+
+  const body = req.body || {};
+  if (body.caption != null && typeof body.caption !== "string") {
+    res.status(400).json({ error: "Caption must be text." });
+    return;
+  }
+  const caption = String(body.caption ?? "").trim();
+  if (caption.length > 2000) {
+    res.status(400).json({ error: "Keep your caption under 2,000 characters." });
+    return;
+  }
+
+  const hasMedia = body.objectPath != null;
+  const numericFileSize = Number(body.fileSize);
+  if (!caption && !hasMedia) {
+    res.status(400).json({ error: "Add a caption or an image/video." });
+    return;
+  }
+  if (hasMedia && (
+    !isOwnedCommunityObjectPath(body.objectPath, req.userId) ||
+    typeof body.fileName !== "string" ||
+    !body.fileName.trim() ||
+    body.fileName.length > 240 ||
+    !isCommunityMediaType(body.contentType) ||
+    !Number.isSafeInteger(numericFileSize) ||
+    numericFileSize <= 0 ||
+    numericFileSize > COMMUNITY_MAX_UPLOAD
+  )) {
+    res.status(400).json({ error: "Complete image/video upload details are required." });
+    return;
+  }
+
+  let post;
+  try {
+    [post] = await db.insert(professionalPostsTable).values({
+      professionalId: professional.id,
+      caption,
+      objectPath: hasMedia ? body.objectPath : null,
+      fileName: hasMedia ? body.fileName.trim() : null,
+      contentType: hasMedia ? body.contentType : null,
+      fileSize: hasMedia ? numericFileSize : null,
+    }).returning();
+  } catch (error) {
+    if (hasMedia) {
+      await deletePrivateObject(body.objectPath).catch((cleanupError) => {
+        req.log.warn({ cleanupError }, "failed to clean up unpublished community object");
+      });
+    }
+    req.log.error({ error }, "community post creation failed");
+    res.status(500).json({ error: "Could not publish this post." });
+    return;
+  }
+
+  res.status(201).json({
+    id: post.id,
+    caption: post.caption,
+    mediaUrl: post.objectPath ? `/api/professionals/community/posts/${post.id}/media` : null,
+    mediaType: post.contentType,
+    createdAt: post.createdAt,
+    likeCount: 0,
+    commentCount: 0,
+    viewerLiked: false,
+  });
+});
+
+// GET /professionals/community/posts/:id/media
+router.get("/professionals/community/posts/:id/media", async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id)) {
+    res.status(400).json({ error: "Invalid post id." });
+    return;
+  }
+  const [post] = await db.select({ objectPath: professionalPostsTable.objectPath })
+    .from(professionalPostsTable)
+    .where(eq(professionalPostsTable.id, id));
+  if (!post?.objectPath) {
+    res.status(404).json({ error: "Media not found." });
+    return;
+  }
+  try {
+    const signed = await signedObjectUrl(post.objectPath.replace("/objects/", ""), "GET");
+    res.redirect(signed.url);
+  } catch (error) {
+    req.log.warn({ error, postId: id }, "community media unavailable");
+    res.status(404).json({ error: "Media unavailable." });
+  }
+});
+
+// DELETE /professionals/community/posts/:id
+router.delete("/professionals/community/posts/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const [found] = await db
+    .select({ post: professionalPostsTable })
+    .from(professionalPostsTable)
+    .innerJoin(professionalsTable, eq(professionalPostsTable.professionalId, professionalsTable.id))
+    .where(and(eq(professionalPostsTable.id, id), eq(professionalsTable.userId, req.userId)));
+  if (!found) {
+    res.status(404).json({ error: "Post not found." });
+    return;
+  }
+
+  const [deleted] = await db.delete(professionalPostsTable)
+    .where(eq(professionalPostsTable.id, id))
+    .returning({ id: professionalPostsTable.id, objectPath: professionalPostsTable.objectPath });
+  if (deleted?.objectPath) {
+    await deletePrivateObject(deleted.objectPath).catch((error) => {
+      req.log.warn({ error, postId: id }, "community post media cleanup failed");
+    });
+  }
+  res.status(204).end();
+});
+
+// POST /professionals/community/posts/:id/like
+router.post("/professionals/community/posts/:id/like", requireAuth as any, async (req: any, res): Promise<void> => {
+  const postId = Number(req.params.id);
+  if (!Number.isSafeInteger(postId)) {
+    res.status(400).json({ error: "Invalid post id." });
+    return;
+  }
+  const [post] = await db.select({ id: professionalPostsTable.id }).from(professionalPostsTable).where(eq(professionalPostsTable.id, postId));
+  if (!post) {
+    res.status(404).json({ error: "Post not found." });
+    return;
+  }
+  const [existing] = await db.select({ id: professionalPostLikesTable.id })
+    .from(professionalPostLikesTable)
+    .where(and(eq(professionalPostLikesTable.postId, postId), eq(professionalPostLikesTable.userId, req.userId)));
+  let liked = false;
+  if (existing) {
+    await db.delete(professionalPostLikesTable).where(eq(professionalPostLikesTable.id, existing.id));
+  } else {
+    await db.insert(professionalPostLikesTable).values({ postId, userId: req.userId }).onConflictDoNothing();
+    liked = true;
+  }
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` })
+    .from(professionalPostLikesTable)
+    .where(eq(professionalPostLikesTable.postId, postId));
+  res.json({ liked, likeCount: Number(count) });
+});
+
+// GET /professionals/community/posts/:id/comments
+router.get("/professionals/community/posts/:id/comments", async (req: any, res): Promise<void> => {
+  const postId = Number(req.params.id);
+  const [post] = await db.select({ id: professionalPostsTable.id }).from(professionalPostsTable).where(eq(professionalPostsTable.id, postId));
+  if (!post) {
+    res.status(404).json({ error: "Post not found." });
+    return;
+  }
+  const rows = await db.select({
+    comment: professionalPostCommentsTable,
+    user: { clerkId: usersTable.clerkId, displayName: usersTable.displayName, avatarUrl: usersTable.avatarUrl },
+  })
+    .from(professionalPostCommentsTable)
+    .leftJoin(usersTable, eq(professionalPostCommentsTable.userId, usersTable.clerkId))
+    .where(eq(professionalPostCommentsTable.postId, postId))
+    .orderBy(professionalPostCommentsTable.createdAt);
+  res.json({
+    comments: rows.map(({ comment, user }) => ({
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.createdAt,
+      author: {
+        id: user?.clerkId ?? comment.userId,
+        displayName: user?.displayName ?? "FILMIO member",
+        headshotUrl: user?.avatarUrl ?? null,
+      },
+    })),
+  });
+});
+
+// POST /professionals/community/posts/:id/comments
+router.post("/professionals/community/posts/:id/comments", requireAuth as any, async (req: any, res): Promise<void> => {
+  const postId = Number(req.params.id);
+  const content = req.body?.content;
+  if (!Number.isSafeInteger(postId) || typeof content !== "string" || !content.trim() || content.trim().length > 1000) {
+    res.status(400).json({ error: "Write a note between 1 and 1,000 characters." });
+    return;
+  }
+  const [post] = await db.select({ id: professionalPostsTable.id }).from(professionalPostsTable).where(eq(professionalPostsTable.id, postId));
+  if (!post) {
+    res.status(404).json({ error: "Post not found." });
+    return;
+  }
+  const [comment] = await db.insert(professionalPostCommentsTable)
+    .values({ postId, userId: req.userId, content: content.trim() })
+    .returning();
+  const [user] = await db.select({ displayName: usersTable.displayName, avatarUrl: usersTable.avatarUrl })
+    .from(usersTable)
+    .where(eq(usersTable.clerkId, req.userId));
+  res.status(201).json({
+    id: comment.id,
+    content: comment.content,
+    createdAt: comment.createdAt,
+    author: { id: req.userId, displayName: user?.displayName ?? "FILMIO member", headshotUrl: user?.avatarUrl ?? null },
+  });
+});
+
 // GET /professionals/search — must be before /:id
 router.get("/professionals/search", async (req, res): Promise<void> => {
   const q = req.query.q as string | undefined;
@@ -296,7 +819,15 @@ router.get("/professionals/:id", async (req, res): Promise<void> => {
     db.select().from(professionalWorkEntriesTable).where(eq(professionalWorkEntriesTable.professionalId, prof.id)),
     db.select().from(professionalAuditionsTable).where(and(eq(professionalAuditionsTable.professionalId, prof.id), eq(professionalAuditionsTable.isPublic, true))),
   ]);
-  res.json({ ...(await enrichProfile(prof)), workHistory: work, publicAuditions: auditions.map(({ objectPath: _objectPath, ...audition }) => audition) });
+  const media = await db.select().from(professionalProfileMediaTable)
+    .where(eq(professionalProfileMediaTable.professionalId, prof.id))
+    .orderBy(desc(professionalProfileMediaTable.createdAt));
+  res.json({
+    ...(await enrichProfile(prof)),
+    workHistory: work,
+    publicAuditions: auditions.map(({ objectPath: _objectPath, ...audition }) => audition),
+    media: media.map((item) => profileMediaResponse(item, prof.id)),
+  });
 });
 
 export default router;

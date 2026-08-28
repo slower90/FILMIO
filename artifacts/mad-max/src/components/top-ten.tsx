@@ -73,8 +73,10 @@ export function TopTen({ movies, isLoading }: TopTenProps) {
                       {String(rank).padStart(2, "0")}
                     </span>
                     <img
-                      src={tmdbPosterUrl(movie.posterPath)}
+                      src={tmdbPosterUrl(movie.posterPath, "w185")}
                       alt={movie.title}
+                      width={185}
+                      height={278}
                       className="w-12 h-[72px] shrink-0 rounded-md object-cover shadow-lg"
                       loading="lazy"
                       decoding="async"

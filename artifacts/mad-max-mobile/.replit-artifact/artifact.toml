@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/mad-max-mobile/"
+title = "FILMIO Mobile"
+description = "The mobile companion for FILMIO, giving movie and anime fans a focused way to discover, track, review, and share what they watch on Android and iOS."
+version = "1.0.0"
+id = "artifacts/mad-max-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/mad-max-mobile/" ]
+localPort = 19055
+
+[services.development]
+run = "pnpm --filter @workspace/mad-max-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/mad-max-mobile", "run", "build:check" ]
+run = [ "pnpm", "--filter", "@workspace/mad-max-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "19055"
+BASE_PATH = "/mad-max-mobile/"

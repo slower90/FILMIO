@@ -9,6 +9,8 @@ import professionalsRouter from "./professionals";
 import chatRouter from "./chat";
 import animeRouter from "./anime";
 import newsRouter from "./news";
+import postsRouter from "./posts";
+import adminSearchRouter from "./admin-search";
 
 const router: IRouter = Router();
 
@@ -22,5 +24,7 @@ router.use(professionalsRouter);
 router.use(chatRouter);
 router.use(animeRouter);
 router.use(newsRouter);
+router.use(postsRouter);
+router.use(adminSearchRouter);
 
 export default router;

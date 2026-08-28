@@ -104,8 +104,10 @@ export function ReviewCard({ review, showMovie = true }: ReviewCardProps) {
           className="group flex items-center gap-3 bg-secondary/30 rounded p-2 hover:bg-secondary/50 transition-colors"
         >
           <img
-            src={tmdbPosterUrl(review.moviePosterPath)}
+            src={tmdbPosterUrl(review.moviePosterPath, "w92")}
             alt={review.movieTitle || "Movie"}
+            width={92}
+            height={138}
             className="w-8 h-12 object-cover rounded shrink-0"
           />
           <span className="font-display uppercase tracking-wide text-sm font-bold group-hover:text-primary transition-colors line-clamp-1">

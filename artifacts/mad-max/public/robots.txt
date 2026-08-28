@@ -2,9 +2,12 @@ User-agent: *
 Allow: /
 Disallow: /sign-in
 Disallow: /sign-up
+Disallow: /search
 Disallow: /watchlist
 Disallow: /feed
 Disallow: /chat
 Disallow: /professionals
 Disallow: /profile
-Sitemap: https://vishnuva.in/sitemap.xml
+Allow: /api/sitemap.xml
+Disallow: /api/
+Sitemap: https://vishnuva.in/api/sitemap.xml

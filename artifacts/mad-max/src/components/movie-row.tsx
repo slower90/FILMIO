@@ -63,11 +63,13 @@ function MovieCard({
 
   const openMovie = (
     <div
-      className="poster-shell relative aspect-[2/3] overflow-hidden rounded-[0.35rem] border border-border/70"
+        className="poster-shell poster-lift relative aspect-[2/3] overflow-hidden rounded-[0.35rem] border border-border/70"
     >
       <img
         src={tmdbPosterUrl(movie.posterPath)}
         alt={movie.title}
+        width={342}
+        height={513}
         className="h-full w-full object-cover"
         loading="lazy"
         decoding="async"
@@ -119,7 +121,9 @@ function MovieCard({
 
   return (
     <div
-      className="group w-36 flex-none transform-gpu transition-[transform,opacity] duration-200 hover:-translate-y-1.5 hover:scale-[1.025] focus-within:-translate-y-1.5 md:w-40"
+      className="group w-[8.35rem] flex-none transform-gpu transition-[transform,opacity] duration-200 hover:-translate-y-1.5 hover:scale-[1.025] focus-within:-translate-y-1.5 sm:w-36 md:w-40"
+      data-row-card
+      data-testid={`card-movie-${movie.id}`}
     >
       {movie.externalLink ? (
         <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open ${movie.title}`}>
@@ -130,18 +134,19 @@ function MovieCard({
           {openMovie}
         </Link>
       )}
-       <p className="mt-2 line-clamp-1 text-xs font-display font-semibold uppercase tracking-[0.08em] leading-tight group-hover:text-primary">
+       <p className="mt-2 line-clamp-1 text-xs font-display font-semibold uppercase leading-tight tracking-[0.08em] transition-colors group-hover:text-primary">
         {movie.title}
       </p>
-      {year && <p className="mt-0.5 text-[10px] text-muted-foreground">{year}</p>}
+      {year && <p className="tabular-nums mt-0.5 text-[10px] text-muted-foreground">{year}</p>}
       {isSignedIn ? (
         <button
           type="button"
           onClick={handleWatchlist}
           disabled={isSaving}
           aria-label={isSaved ? `Remove ${movie.title} from watchlist` : `Add ${movie.title} to watchlist`}
+          data-testid={`button-watchlist-${movie.id}`}
           className={cn(
-             "mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded border px-1.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] transition-colors",
+             "mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded border px-1.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:ring-2 focus-visible:ring-primary",
             isSaved
               ? "border-primary/50 bg-primary/15 text-primary hover:bg-primary/25"
               : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary",
@@ -155,6 +160,7 @@ function MovieCard({
           href="/sign-in"
           onClick={(event) => event.stopPropagation()}
            className="mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded border border-border bg-card px-1.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+           data-testid={`link-sign-in-watchlist-${movie.id}`}
         >
           <Plus className="h-3 w-3" />
           Watchlist
@@ -168,6 +174,7 @@ function MovieCard({
 export function MovieRow({ title, movies, isLoading, className }: MovieRowProps) {
   const scrollRef  = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const ratingIds = movies.map((movie) => movie.id);
   const { data: prismRatings } = useQuery<PrismRatings>({
@@ -182,6 +189,7 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
     const el = sectionRef.current;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const cards = Array.from(el.querySelectorAll<HTMLElement>("[data-row-card]"));
     // Start invisible so there's no flash before GSAP takes over
     gsap.set(el, { opacity: 0, y: 48 });
     const ctx = gsap.context(() => {
@@ -196,6 +204,25 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
           once: true,
         },
       });
+      if (headingRef.current) {
+        gsap.fromTo(headingRef.current, { opacity: 0, x: -14 }, {
+          opacity: 1,
+          x: 0,
+          duration: 0.5,
+          ease: "power2.out",
+          scrollTrigger: { trigger: el, start: "top 90%", once: true },
+        });
+      }
+      if (cards.length > 0) {
+        gsap.fromTo(cards, { opacity: 0, y: 16 }, {
+          opacity: 1,
+          y: 0,
+          duration: 0.42,
+          stagger: 0.045,
+          ease: "power2.out",
+          scrollTrigger: { trigger: el, start: "top 88%", once: true },
+        });
+      }
     });
     return () => ctx.revert();
   }, []);
@@ -233,8 +260,11 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
       <div className="container mx-auto px-4">
         {/* Header */}
         {title ? (
-           <div className="mb-5 flex items-end justify-between border-l-2 border-primary pl-3">
-             <h2 className="text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">{title}</h2>
+           <div ref={headingRef} className="mb-5 flex items-end justify-between border-l-2 border-primary pl-3">
+             <div>
+               <h2 className="text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">{title}</h2>
+               <span className="mt-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:hidden">Swipe to browse</span>
+             </div>
              <span className="hidden text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:block">Curated for tonight</span>
           </div>
         ) : null}
@@ -243,6 +273,7 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
         <div
           ref={scrollRef}
           className="flex gap-3 overflow-x-auto pb-4"
+           aria-label={title ? `${title} movies` : "Movie selection"}
           style={{
             scrollbarWidth: "none",
             msOverflowStyle: "none",
@@ -253,7 +284,7 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
             ? Array.from({ length: SKELETON_COUNT }).map((_, i) => (
                 <div
                   key={i}
-                   className="flex-none w-36 md:w-40"
+                   className="w-[8.35rem] flex-none sm:w-36 md:w-40"
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
                    <div className="poster-shell aspect-[2/3] rounded animate-pulse" />
@@ -272,8 +303,9 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
             <button
               type="button"
               onClick={() => setExpanded(true)}
-               className="group flex-none w-36 md:w-40 aspect-[2/3] rounded border border-primary/35 bg-primary/[0.06] flex flex-col items-center justify-center gap-3 text-primary transition-colors hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                className="group flex-none aspect-[2/3] w-[8.35rem] rounded border border-primary/35 bg-primary/[0.06] flex flex-col items-center justify-center gap-3 text-primary transition-[background-color,color,border-color] hover:border-primary hover:bg-primary hover:text-primary-foreground sm:w-36 md:w-40"
               aria-label={`See more movies in ${title}`}
+                data-testid={`button-see-more-${title?.toLowerCase().replace(/\W+/g, "-")}`}
             >
                <span className="w-11 h-11 rounded-full border border-current flex items-center justify-center transition-transform group-hover:translate-x-1">
                 <ChevronRight className="w-5 h-5" />

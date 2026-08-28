@@ -3,14 +3,26 @@ import {
   db,
   usersTable,
   followsTable,
+  friendRequestsTable,
   reviewsTable,
   ratingsTable,
   watchlistTable,
   viewingHistoryTable,
 } from "@workspace/db";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middlewares/auth";
-import { UpdateMyProfileBody } from "@workspace/api-zod";
+import {
+  AcceptFriendRequestParams,
+  AcceptFriendRequestResponse,
+  CancelFriendRequestParams,
+  DeclineFriendRequestParams,
+  GetFriendsOverviewQueryParams,
+  GetFriendsOverviewResponse,
+  SendFriendRequestParams,
+  SendFriendRequestResponse,
+  UnfriendUserParams,
+  UpdateMyProfileBody,
+} from "@workspace/api-zod";
 
 const router: IRouter = Router();
 type ViewingHistoryMovie = {
@@ -210,12 +222,19 @@ router.patch("/users/me", requireAuth as any, async (req: any, res): Promise<voi
 });
 
 // GET /users/:id
-router.get("/users/:id", optionalAuth as any, async (req: any, res): Promise<void> => {
+router.get("/users/:id", optionalAuth as any, async (req: any, res, next): Promise<void> => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  if (id === "friends") {
+    next();
+    return;
+  }
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.clerkId, id));
+    .where(or(
+      eq(usersTable.clerkId, id),
+      sql`${usersTable.id}::text = ${id}`,
+    ));
   if (!user) {
     res.status(404).json({ error: "User not found" });
     return;
@@ -306,6 +325,361 @@ router.get("/users/:id/stats", async (req, res): Promise<void> => {
     watchlistCount: Number(watchlistCount.count),
     credibilityScore: parseFloat(String(user?.credibilityScore ?? "1.0")),
   });
+});
+
+type FriendRelationship = "none" | "incoming" | "outgoing" | "friends";
+type FriendRequestLike = {
+  status: string;
+  senderId: string;
+  receiverId: string;
+};
+
+export function friendRequestConflict(
+  currentUserId: string,
+  targetUserId: string,
+  existing?: FriendRequestLike,
+) {
+  if (currentUserId === targetUserId) return "self";
+  if (!existing) return null;
+  if (existing.status === "accepted") return "accepted";
+  if (existing.senderId === currentUserId) return "outgoing";
+  return "incoming";
+}
+
+export function canMutateFriendRequest(
+  action: "accept" | "decline" | "cancel",
+  currentUserId: string,
+  request: FriendRequestLike,
+) {
+  if (request.status !== "pending") return false;
+  if (action === "cancel") return request.senderId === currentUserId;
+  return request.receiverId === currentUserId;
+}
+
+export function canUnfriend(
+  currentUserId: string,
+  targetUserId: string,
+  relationship?: FriendRequestLike,
+) {
+  if (!relationship || relationship.status !== "accepted") return false;
+  return (
+    (relationship.senderId === currentUserId && relationship.receiverId === targetUserId) ||
+    (relationship.senderId === targetUserId && relationship.receiverId === currentUserId)
+  );
+}
+
+type FriendUserRecord = {
+  id: number;
+  clerkId: string;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  isProfessional: boolean;
+};
+
+function publicFriendUser(
+  user: FriendUserRecord,
+  relationship: FriendRelationship,
+  requestId: number | null,
+) {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    isProfessional: user.isProfessional,
+    relationship,
+    requestId,
+  };
+}
+
+function friendRequestResponse(
+  request: typeof friendRequestsTable.$inferSelect,
+  user: FriendUserRecord,
+  relationship: FriendRelationship,
+) {
+  return {
+    id: request.id,
+    status: request.status,
+    createdAt: request.createdAt.toISOString(),
+    user: publicFriendUser(user, relationship, request.id),
+  };
+}
+
+async function friendUserMap(clerkIds: string[]) {
+  if (!clerkIds.length) return new Map<string, FriendUserRecord>();
+  const users = await db
+    .select({
+      id: usersTable.id,
+      clerkId: usersTable.clerkId,
+      username: usersTable.username,
+      displayName: usersTable.displayName,
+      avatarUrl: usersTable.avatarUrl,
+      isProfessional: usersTable.isProfessional,
+    })
+    .from(usersTable)
+    .where(inArray(usersTable.clerkId, clerkIds));
+  return new Map(users.map((user) => [user.clerkId, user]));
+}
+
+// GET /users/friends
+router.get("/users/friends", requireAuth as any, async (req: any, res): Promise<void> => {
+  const parsed = GetFriendsOverviewQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const query = parsed.data.q?.trim();
+  const userFilter = query
+    ? or(ilike(usersTable.displayName, `%${query}%`), ilike(usersTable.username, `%${query}%`))
+    : undefined;
+  const directoryRows = await db
+    .select({
+      id: usersTable.id,
+      clerkId: usersTable.clerkId,
+      username: usersTable.username,
+      displayName: usersTable.displayName,
+      avatarUrl: usersTable.avatarUrl,
+      isProfessional: usersTable.isProfessional,
+    })
+    .from(usersTable)
+    .where(and(ne(usersTable.clerkId, req.userId), userFilter))
+    .orderBy(desc(usersTable.createdAt))
+    .limit(parsed.data.limit);
+
+  const relationships = await db
+    .select()
+    .from(friendRequestsTable)
+    .where(or(eq(friendRequestsTable.senderId, req.userId), eq(friendRequestsTable.receiverId, req.userId)))
+    .orderBy(desc(friendRequestsTable.updatedAt), desc(friendRequestsTable.createdAt));
+
+  const otherIds = relationships.map((relationship) =>
+    relationship.senderId === req.userId ? relationship.receiverId : relationship.senderId,
+  );
+  const usersByClerkId = await friendUserMap([...new Set(otherIds)]);
+  const relationshipByOtherId = new Map<string, typeof relationships[number]>();
+
+  for (const relationship of relationships) {
+    const otherId = relationship.senderId === req.userId ? relationship.receiverId : relationship.senderId;
+    const current = relationshipByOtherId.get(otherId);
+    if (!current || relationship.status === "accepted" || current.status !== "accepted") {
+      relationshipByOtherId.set(otherId, relationship);
+    }
+  }
+
+  const relationshipFor = (user: FriendUserRecord) => {
+    const relationship = relationshipByOtherId.get(user.clerkId);
+    if (!relationship) return publicFriendUser(user, "none", null);
+    if (relationship.status === "accepted") return publicFriendUser(user, "friends", relationship.id);
+    return publicFriendUser(
+      user,
+      relationship.senderId === req.userId ? "outgoing" : "incoming",
+      relationship.id,
+    );
+  };
+
+  const incomingRequests = relationships
+    .filter((relationship) => relationship.status === "pending" && relationship.receiverId === req.userId)
+    .map((relationship) => {
+      const user = usersByClerkId.get(relationship.senderId);
+      return user ? friendRequestResponse(relationship, user, "incoming") : null;
+    })
+    .filter((request): request is NonNullable<typeof request> => request !== null);
+  const outgoingRequests = relationships
+    .filter((relationship) => relationship.status === "pending" && relationship.senderId === req.userId)
+    .map((relationship) => {
+      const user = usersByClerkId.get(relationship.receiverId);
+      return user ? friendRequestResponse(relationship, user, "outgoing") : null;
+    })
+    .filter((request): request is NonNullable<typeof request> => request !== null);
+  const friends = relationships
+    .filter((relationship) => relationship.status === "accepted")
+    .map((relationship) => {
+      const otherId = relationship.senderId === req.userId ? relationship.receiverId : relationship.senderId;
+      const user = usersByClerkId.get(otherId);
+      return user ? publicFriendUser(user, "friends", relationship.id) : null;
+    })
+    .filter((user): user is NonNullable<typeof user> => user !== null);
+
+  res.json(GetFriendsOverviewResponse.parse({
+    users: directoryRows.map(relationshipFor),
+    incomingRequests,
+    outgoingRequests,
+    friends,
+    counts: {
+      incoming: incomingRequests.length,
+      outgoing: outgoingRequests.length,
+      friends: friends.length,
+    },
+  }));
+});
+
+// POST /users/:id/friend-request
+router.post("/users/:id/friend-request", requireAuth as any, async (req: any, res): Promise<void> => {
+  const parsed = SendFriendRequestParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [target] = await db
+    .select({
+      id: usersTable.id,
+      clerkId: usersTable.clerkId,
+      username: usersTable.username,
+      displayName: usersTable.displayName,
+      avatarUrl: usersTable.avatarUrl,
+      isProfessional: usersTable.isProfessional,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, parsed.data.id));
+  if (!target) {
+    res.status(404).json({ error: "User not found." });
+    return;
+  }
+  if (friendRequestConflict(req.userId, target.clerkId) === "self") {
+    res.status(400).json({ error: "You cannot send a friend request to yourself." });
+    return;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(friendRequestsTable)
+    .where(or(
+      and(eq(friendRequestsTable.senderId, req.userId), eq(friendRequestsTable.receiverId, target.clerkId)),
+      and(eq(friendRequestsTable.senderId, target.clerkId), eq(friendRequestsTable.receiverId, req.userId)),
+    ))
+    .orderBy(desc(friendRequestsTable.updatedAt));
+  const conflict = friendRequestConflict(req.userId, target.clerkId, existing);
+  if (conflict === "accepted") {
+    res.status(409).json({ error: "You are already friends." });
+    return;
+  }
+  if (conflict === "outgoing" || conflict === "incoming") {
+    res.status(409).json({
+      error: conflict === "outgoing"
+        ? "Friend request already sent."
+        : "This user has already sent you a friend request.",
+    });
+    return;
+  }
+
+  try {
+    const [request] = await db.insert(friendRequestsTable).values({
+      senderId: req.userId,
+      receiverId: target.clerkId,
+      status: "pending",
+    }).returning();
+    res.status(201).json(SendFriendRequestResponse.parse(friendRequestResponse(request, target, "outgoing")));
+  } catch (error) {
+    req.log.warn({ error }, "friend request creation conflict");
+    res.status(409).json({ error: "Friend request could not be sent. Please refresh and try again." });
+  }
+});
+
+// POST /users/friend-requests/:id/accept
+router.post("/users/friend-requests/:id/accept", requireAuth as any, async (req: any, res): Promise<void> => {
+  const parsed = AcceptFriendRequestParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [request] = await db
+    .update(friendRequestsTable)
+    .set({ status: "accepted", updatedAt: new Date() })
+    .where(and(
+      eq(friendRequestsTable.id, parsed.data.id),
+      eq(friendRequestsTable.receiverId, req.userId),
+      eq(friendRequestsTable.status, "pending"),
+    ))
+    .returning();
+  if (!request) {
+    res.status(404).json({ error: "Incoming friend request not found." });
+    return;
+  }
+  const users = await friendUserMap([request.senderId]);
+  const sender = users.get(request.senderId);
+  if (!sender) {
+    res.status(404).json({ error: "Request sender not found." });
+    return;
+  }
+  res.json(AcceptFriendRequestResponse.parse(friendRequestResponse(request, sender, "friends")));
+});
+
+// POST /users/friend-requests/:id/decline
+router.post("/users/friend-requests/:id/decline", requireAuth as any, async (req: any, res): Promise<void> => {
+  const parsed = DeclineFriendRequestParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const deleted = await db.delete(friendRequestsTable)
+    .where(and(
+      eq(friendRequestsTable.id, parsed.data.id),
+      eq(friendRequestsTable.receiverId, req.userId),
+      eq(friendRequestsTable.status, "pending"),
+    ))
+    .returning({ id: friendRequestsTable.id });
+  if (!deleted.length) {
+    res.status(404).json({ error: "Incoming friend request not found." });
+    return;
+  }
+  res.sendStatus(204);
+});
+
+// DELETE /users/friend-requests/:id
+router.delete("/users/friend-requests/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const parsed = CancelFriendRequestParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const deleted = await db.delete(friendRequestsTable)
+    .where(and(
+      eq(friendRequestsTable.id, parsed.data.id),
+      eq(friendRequestsTable.senderId, req.userId),
+      eq(friendRequestsTable.status, "pending"),
+    ))
+    .returning({ id: friendRequestsTable.id });
+  if (!deleted.length) {
+    res.status(404).json({ error: "Outgoing friend request not found." });
+    return;
+  }
+  res.sendStatus(204);
+});
+
+// DELETE /users/:id/friend
+router.delete("/users/:id/friend", requireAuth as any, async (req: any, res): Promise<void> => {
+  const parsed = UnfriendUserParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [target] = await db.select({ clerkId: usersTable.clerkId }).from(usersTable)
+    .where(eq(usersTable.id, parsed.data.id));
+  if (!target) {
+    res.status(404).json({ error: "User not found." });
+    return;
+  }
+  const deleted = await db.delete(friendRequestsTable)
+    .where(and(
+      eq(friendRequestsTable.status, "accepted"),
+      or(
+        and(eq(friendRequestsTable.senderId, req.userId), eq(friendRequestsTable.receiverId, target.clerkId)),
+        and(eq(friendRequestsTable.senderId, target.clerkId), eq(friendRequestsTable.receiverId, req.userId)),
+      ),
+    ))
+    .returning({ id: friendRequestsTable.id });
+  if (!deleted.length) {
+    res.status(404).json({ error: "Friendship not found." });
+    return;
+  }
+  res.sendStatus(204);
 });
 
 // GET /feed

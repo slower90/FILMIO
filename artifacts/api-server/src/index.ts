@@ -1,5 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startStoryCleanup } from "./routes/posts";
+import { initializeSearchIndex } from "./lib/meilisearch";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +24,8 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  startStoryCleanup();
+  void initializeSearchIndex().catch((error) => {
+    logger.warn({ err: error }, "Meilisearch startup initialization failed");
+  });
 });

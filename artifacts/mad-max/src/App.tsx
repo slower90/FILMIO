@@ -7,6 +7,7 @@ import { shadcn } from '@clerk/themes';
 import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Link } from "wouter";
 import { Clapperboard } from "lucide-react";
@@ -25,14 +26,18 @@ import Feed from '@/pages/feed';
 import Profile from '@/pages/profile';
 import Professionals from '@/pages/professionals';
 import ProfessionalDetail from '@/pages/professional-detail';
+import IndustryCommunity from '@/pages/industry-community';
 import Chat from '@/pages/chat';
 import Genres from '@/pages/genres';
 import GenrePage from '@/pages/genre';
 import Anime from '@/pages/anime';
 import News from '@/pages/news';
+import Events from '@/pages/events';
 import FooterPage from '@/pages/footer-page';
 import Pricing from '@/pages/pricing';
 import FreeMovies from '@/pages/free-movies';
+import MovieStory from '@/pages/movie-story';
+import Friends from '@/pages/friends';
 
 // Setup QueryClient
 const queryClient = new QueryClient({
@@ -102,16 +107,69 @@ const clerkAppearance = {
     footerActionLink: "text-[#F59E0B] hover:text-[#F59E0B]/80",
     footerActionText: "text-[#9999A1]",
     dividerText: "text-[#9999A1] uppercase tracking-widest text-[10px]",
+    formButtonPrimary:
+      "!relative !min-h-12 !overflow-hidden !bg-[#F59E0B] !text-[#111118] !font-semibold !tracking-wide hover:!bg-[#fbbf24] !transition-all !duration-300",
+    formFieldInput:
+      "!min-h-12 !border-[#2a2a36] !bg-[#12121a] !text-white !shadow-[0_5px_0_#08080c,0_12px_24px_rgba(0,0,0,0.24)]",
+    otpCodeFieldInput:
+      "!h-14 !w-12 !rounded-[0.3rem] !border-[#353541] !bg-[#12121a] !text-xl !font-semibold !text-white !shadow-[0_7px_0_#08080c,0_14px_24px_rgba(0,0,0,0.3)] !transition-all !duration-200",
   },
 };
 
+function useAuthSubmitMotion() {
+  const authMotionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = authMotionRef.current;
+    if (!root) return;
+
+    const clearSubmittingState = () => {
+      root
+        .querySelectorAll<HTMLElement>(".cl-formButtonPrimary[data-filmio-submitting]")
+        .forEach((button) => {
+          if (
+            !button.hasAttribute("disabled") &&
+            button.getAttribute("aria-busy") !== "true"
+          ) {
+            button.removeAttribute("data-filmio-submitting");
+          }
+        });
+    };
+
+    const observer = new MutationObserver(clearSubmittingState);
+    observer.observe(root, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled", "aria-busy", "data-loading"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const handleAuthClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const button = target.closest<HTMLButtonElement>(".cl-formButtonPrimary");
+    if (button && !button.disabled) {
+      button.setAttribute("data-filmio-submitting", "true");
+    }
+  };
+
+  return { authMotionRef, handleAuthClick };
+}
+
 function SignInPage() {
+  const { authMotionRef, handleAuthClick } = useAuthSubmitMotion();
   const redirectPath = new URLSearchParams(window.location.search).get("redirect");
   const redirectUrl = redirectPath
     ? `${basePath}${redirectPath}`.replace(/\/{2,}/g, "/")
     : basePath || "/";
+
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 relative overflow-hidden">
+    <div
+      ref={authMotionRef}
+      onClickCapture={handleAuthClick}
+      className="filmio-auth-page flex min-h-[100dvh] items-center justify-center bg-background px-4 relative overflow-hidden"
+    >
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[100px]" />
       </div>
@@ -134,12 +192,18 @@ function SignInPage() {
 }
 
 function SignUpPage() {
+  const { authMotionRef, handleAuthClick } = useAuthSubmitMotion();
   const redirectPath = new URLSearchParams(window.location.search).get("redirect");
   const redirectUrl = redirectPath
     ? `${basePath}${redirectPath}`.replace(/\/{2,}/g, "/")
     : basePath || "/";
+
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 relative overflow-hidden">
+    <div
+      ref={authMotionRef}
+      onClickCapture={handleAuthClick}
+      className="filmio-auth-page flex min-h-[100dvh] items-center justify-center bg-background px-4 relative overflow-hidden"
+    >
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[100px]" />
       </div>
@@ -241,13 +305,20 @@ function PageFade({ children }: { children: React.ReactNode }) {
 function SiteFooter() {
   const [location] = useLocation();
   const isAuthPage = location.startsWith("/sign-in") || location.startsWith("/sign-up");
+  const isSocialWorkspace =
+    location === "/feed" ||
+    location.startsWith("/feed?") ||
+    location === "/friends" ||
+    location.startsWith("/friends?") ||
+    location === "/chat" ||
+    location.startsWith("/chat?");
 
-  if (isAuthPage) return null;
+  if (isAuthPage || isSocialWorkspace) return null;
   return <PrismFooter />;
 }
 
-function AuthRequiredPage() {
-  const redirect = encodeURIComponent("/professionals");
+function AuthRequiredPage({ redirectPath = "/professionals" }: { redirectPath?: string }) {
+  const redirect = encodeURIComponent(redirectPath);
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
       <div className="w-full max-w-lg rounded-md border border-border bg-card p-8 text-center shadow-2xl">
@@ -279,7 +350,7 @@ function AuthRequiredPage() {
 function ProtectedProfessionals() {
   const { isLoaded, isSignedIn } = useUser();
   if (!isLoaded) return <div className="min-h-screen bg-background" />;
-  return isSignedIn ? <Pricing /> : <AuthRequiredPage />;
+  return isSignedIn ? <Professionals /> : <AuthRequiredPage />;
 }
 
 function ProtectedProfessionalDetail() {
@@ -334,15 +405,18 @@ function ClerkProviderWithRoutes() {
 
           <Route path="/discover" component={Discover} />
           <Route path="/search" component={Search} />
+          <Route path="/blog/movies/:id/:slug?" component={MovieStory} />
           <Route path="/movies/:id/:slug" component={MovieDetail} />
           <Route path="/movies/:id" component={MovieDetail} />
           <Route path="/watchlist" component={Watchlist} />
           <Route path="/actors" component={Actors} />
           <Route path="/actors/:id" component={ActorDetail} />
           <Route path="/feed" component={Feed} />
+          <Route path="/friends" component={Friends} />
           <Route path="/profile/:id" component={Profile} />
           <Route path="/professionals" component={ProtectedProfessionals} />
           <Route path="/professionals/dashboard" component={ProtectedProfessionalDashboard} />
+          <Route path="/professionals/community" component={IndustryCommunity} />
           <Route path="/professionals/:id" component={ProtectedProfessionalDetail} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/free-movies" component={FreeMovies} />
@@ -351,7 +425,15 @@ function ClerkProviderWithRoutes() {
           <Route path="/genre/:id" component={GenrePage} />
           <Route path="/anime" component={Anime} />
           <Route path="/news" component={News} />
-          <Route path="/:slug" component={FooterPage} />
+          <Route path="/events" component={Events} />
+          <Route path="/help" component={FooterPage} />
+          <Route path="/advertising" component={FooterPage} />
+          <Route path="/data-license" component={FooterPage} />
+          <Route path="/press" component={FooterPage} />
+          <Route path="/jobs" component={FooterPage} />
+          <Route path="/terms" component={FooterPage} />
+          <Route path="/privacy" component={FooterPage} />
+          <Route path="/privacy-choices" component={FooterPage} />
 
           <Route>
             <div className="min-h-screen bg-background flex flex-col items-center justify-center">
@@ -368,6 +450,10 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
+  useEffect(() => {
+    document.getElementById("seo-prerender")?.remove();
+  }, []);
+
   return (
     <HelmetProvider>
       <TooltipProvider>
@@ -375,6 +461,7 @@ function App() {
           <ClerkProviderWithRoutes />
         </WouterRouter>
         <Toaster />
+        <SonnerToaster />
       </TooltipProvider>
     </HelmetProvider>
   );

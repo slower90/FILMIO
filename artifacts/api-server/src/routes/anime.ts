@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, animeCacheTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, animeCacheTable, ratingsTable } from "@workspace/db";
+import { avg, count, eq, inArray } from "drizzle-orm";
+import { animeToSearchCatalogRecord, upsertSearchCatalog } from "../lib/smart-search";
 
 const router: IRouter = Router();
 
@@ -19,6 +20,7 @@ interface NormalizedAnime {
   anilistId: number | null;
   malId: number | null;
   title: string;
+  alternateTitles: string[];
   posterPath: string | null;
   backdropPath: string | null;
   synopsis: string;
@@ -71,6 +73,37 @@ async function setCache(key: string, data: any, source: "anilist" | "jikan"): Pr
       });
   } catch (e) {
     console.warn("[anime] DB cache write error:", (e as Error).message);
+  }
+}
+
+async function rankAnimeByPlatformRating(results: NormalizedAnime[]): Promise<NormalizedAnime[]> {
+  if (!results.length) return results;
+  try {
+    const ratings = await db
+      .select({
+        movieId: ratingsTable.movieId,
+        averageRating: avg(ratingsTable.score),
+        totalRatings: count(ratingsTable.id),
+      })
+      .from(ratingsTable)
+      .where(inArray(ratingsTable.movieId, results.map((anime) => anime.id)))
+      .groupBy(ratingsTable.movieId);
+    const byId = new Map(ratings.map((rating) => [
+      rating.movieId,
+      {
+        average: rating.averageRating ? Number(rating.averageRating) : 0,
+        total: Number(rating.totalRatings ?? 0),
+      },
+    ]));
+    return [...results].sort((left, right) => {
+      const a = byId.get(left.id);
+      const b = byId.get(right.id);
+      const aScore = a?.total ? a.average : -1;
+      const bScore = b?.total ? b.average : -1;
+      return bScore - aScore || right.score - left.score;
+    });
+  } catch {
+    return results;
   }
 }
 
@@ -157,6 +190,9 @@ const mapAnilist = (m: any): NormalizedAnime => ({
   anilistId: m.id,
   malId: m.idMal ?? null,
   title: m.title?.english || m.title?.romaji || m.title?.native || "Unknown",
+  alternateTitles: [m.title?.english, m.title?.romaji, m.title?.native]
+    .map((title) => String(title ?? "").trim())
+    .filter((title, index, titles) => title && titles.indexOf(title) === index),
   posterPath: m.coverImage?.extraLarge || m.coverImage?.large || m.coverImage?.medium || null,
   backdropPath: m.bannerImage || null,
   synopsis: m.description || "",
@@ -202,6 +238,9 @@ const mapJikan = (a: any): NormalizedAnime => ({
   anilistId: null,
   malId: a.mal_id,
   title: a.title_english || a.title || "Unknown",
+  alternateTitles: [a.title_english, a.title, a.title_japanese]
+    .map((title) => String(title ?? "").trim())
+    .filter((title, index, titles) => title && titles.indexOf(title) === index),
   posterPath: a.images?.jpg?.large_image_url || a.images?.jpg?.image_url || null,
   backdropPath: null,
   synopsis: a.synopsis || "",
@@ -276,23 +315,35 @@ router.get("/anime/top", async (req, res): Promise<void> => {
   const type   = (req.query.type   as string) || "tv";
   const filter = (req.query.filter as string) || "bypopularity";
   const key    = `top:${filter}:${type}:${page}`;
+  const limit  = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
 
   try {
     // 1 — DB / memory cache
     const cached = await getCache(key);
-    if (cached) { res.json({ ...cached, cached: true }); return; }
+    if (cached) {
+      const ranked = await rankAnimeByPlatformRating((cached.results ?? []) as NormalizedAnime[]);
+      res.json({ ...cached, results: ranked.slice(0, limit), cached: true });
+      return;
+    }
 
     // 2 — Live fetch (AniList → Jikan)
     const result = await fetchTopList(filter, type, page);
+    result.results = await rankAnimeByPlatformRating(result.results);
+    await upsertSearchCatalog(result.results.map((anime) => animeToSearchCatalogRecord(anime, result.source as "anilist" | "jikan")));
     await setCache(key, result, result.source as "anilist" | "jikan");
-    res.json(result);
+    res.json({ ...result, results: result.results.slice(0, limit) });
   } catch (e: any) {
     console.error("[anime] top error:", e.message);
     // 3 — Serve stale DB cache rather than a 500
     try {
       const rows = await db.select().from(animeCacheTable)
         .where(eq(animeCacheTable.cacheKey, key)).limit(1);
-      if (rows.length) { res.json({ ...(rows[0].data as object), stale: true }); return; }
+      if (rows.length) {
+        const stale = rows[0].data as { results?: NormalizedAnime[] };
+        const ranked = await rankAnimeByPlatformRating(stale.results ?? []);
+        res.json({ ...stale, results: ranked.slice(0, limit), stale: true });
+        return;
+      }
     } catch {}
     res.status(500).json({ error: e.message });
   }
@@ -322,6 +373,7 @@ router.get("/anime/search", async (req, res): Promise<void> => {
       source = "jikan";
     }
 
+    await upsertSearchCatalog(results.map((anime) => animeToSearchCatalogRecord(anime, source)));
     const result = { results, source };
     await setCache(key, result, source);
     res.json(result);
@@ -355,6 +407,7 @@ router.get("/anime/:id", async (req, res): Promise<void> => {
     }
 
     await setCache(key, result, source);
+    await upsertSearchCatalog([animeToSearchCatalogRecord(result, source)]);
     res.json(result);
   } catch (e: any) {
     console.error("[anime] detail error:", e.message);

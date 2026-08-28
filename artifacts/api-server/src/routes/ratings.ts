@@ -3,6 +3,7 @@ import { db, ratingsTable } from "@workspace/db";
 import { and, avg, count, eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { UpsertRatingBody } from "@workspace/api-zod";
+import { syncSearchDocumentsForProviderId } from "../lib/meilisearch";
 
 const router: IRouter = Router();
 
@@ -33,6 +34,9 @@ router.post("/ratings", requireAuth as any, async (req: any, res): Promise<void>
       .values({ userId: req.userId, movieId, score })
       .returning();
   }
+  void syncSearchDocumentsForProviderId(movieId).catch((error) => {
+    console.warn("[ratings] Meilisearch rating sync failed:", (error as Error).message);
+  });
   res.json(rating);
 });
 

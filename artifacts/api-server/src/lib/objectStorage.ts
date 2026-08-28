@@ -18,7 +18,10 @@ function privateObjectName(objectPath: string): { bucket: string; objectName: st
   };
 }
 
-export async function deletePrivateObject(objectPath: string): Promise<void> {
+export async function deletePrivateObject(
+  objectPath: string,
+  options: { ignoreNotFound?: boolean } = {},
+): Promise<void> {
   const { bucket, objectName } = privateObjectName(objectPath);
   const response = await fetch(`${SIDECAR}/object-storage/signed-object-url`, {
     method: "POST",
@@ -36,7 +39,7 @@ export async function deletePrivateObject(objectPath: string): Promise<void> {
 
   const { signed_url: signedUrl } = await response.json() as { signed_url: string };
   const deletion = await fetch(signedUrl, { method: "DELETE" });
-  if (!deletion.ok) {
+  if (!deletion.ok && !(options.ignoreNotFound && deletion.status === 404)) {
     throw new Error(`Unable to delete private object (${deletion.status})`);
   }
 }

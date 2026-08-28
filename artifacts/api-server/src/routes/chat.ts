@@ -7,15 +7,30 @@ import {
   chatDevicesTable,
   usersTable,
 } from "@workspace/db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { CreateConversationBody, SendMessageBody } from "@workspace/api-zod";
 import { activeDeliveryDevices, conversationAccessError } from "./chat-security";
 
-const router: IRouter = Router();
 const deviceLinkChallenges = new Map<string, { userId: string; expiresAt: number }>();
 
-router.post("/chat/device-links", requireAuth as any, async (req: any, res): Promise<void> => {
+export function createChatRouter(authMiddleware: any = requireAuth as any): IRouter {
+const router: IRouter = Router();
+
+async function resolveParticipantId(rawParticipantId: string) {
+  const participantId = rawParticipantId.trim();
+  if (!participantId) return null;
+  const [user] = await db
+    .select({ clerkId: usersTable.clerkId })
+    .from(usersTable)
+    .where(or(
+      eq(usersTable.clerkId, participantId),
+      sql`${usersTable.id}::text = ${participantId}`,
+    ));
+  return user?.clerkId ?? null;
+}
+
+router.post("/chat/device-links", authMiddleware, async (req: any, res): Promise<void> => {
   const { challenge } = req.body || {};
   if (typeof challenge !== "string" || challenge.length < 32 || challenge.length > 200) {
     res.status(400).json({ error: "A valid device link challenge is required" }); return;
@@ -24,7 +39,7 @@ router.post("/chat/device-links", requireAuth as any, async (req: any, res): Pro
   res.status(201).json({ challenge, expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString() });
 });
 
-router.post("/chat/device-links/:challenge/complete", requireAuth as any, async (req: any, res): Promise<void> => {
+router.post("/chat/device-links/:challenge/complete", authMiddleware, async (req: any, res): Promise<void> => {
   const pending = deviceLinkChallenges.get(req.params.challenge);
   if (!pending || pending.expiresAt < Date.now()) {
     deviceLinkChallenges.delete(req.params.challenge);
@@ -50,7 +65,7 @@ router.post("/chat/device-links/:challenge/complete", requireAuth as any, async 
   res.status(201).json(device);
 });
 
-router.get("/chat/devices", requireAuth as any, async (req: any, res): Promise<void> => {
+router.get("/chat/devices", authMiddleware, async (req: any, res): Promise<void> => {
   const devices = await db.select({
     deviceId: chatDevicesTable.deviceId, deviceName: chatDevicesTable.deviceName,
     publicKey: chatDevicesTable.publicKey, revoked: chatDevicesTable.revoked,
@@ -59,7 +74,7 @@ router.get("/chat/devices", requireAuth as any, async (req: any, res): Promise<v
   res.json(devices);
 });
 
-router.post("/chat/devices", requireAuth as any, async (req: any, res): Promise<void> => {
+router.post("/chat/devices", authMiddleware, async (req: any, res): Promise<void> => {
   const { deviceId, publicKey, deviceName } = req.body || {};
   if (!deviceId || !publicKey || typeof deviceId !== "string" || typeof publicKey !== "string") {
     res.status(400).json({ error: "deviceId and publicKey are required" }); return;
@@ -70,14 +85,14 @@ router.post("/chat/devices", requireAuth as any, async (req: any, res): Promise<
   res.status(201).json(device);
 });
 
-router.delete("/chat/devices/:deviceId", requireAuth as any, async (req: any, res): Promise<void> => {
+router.delete("/chat/devices/:deviceId", authMiddleware, async (req: any, res): Promise<void> => {
   const updated = await db.update(chatDevicesTable).set({ revoked: true, lastSeenAt: new Date() })
     .where(and(eq(chatDevicesTable.deviceId, req.params.deviceId), eq(chatDevicesTable.userId, req.userId))).returning();
   if (!updated.length) { res.status(404).json({ error: "Device not found" }); return; }
   res.status(204).end();
 });
 
-router.get("/chat/conversations/:id/devices", requireAuth as any, async (req: any, res): Promise<void> => {
+router.get("/chat/conversations/:id/devices", authMiddleware, async (req: any, res): Promise<void> => {
   const conversationId = Number(req.params.id);
   const [participant] = await db.select().from(conversationParticipantsTable).where(and(
     eq(conversationParticipantsTable.conversationId, conversationId), eq(conversationParticipantsTable.userId, req.userId),
@@ -90,12 +105,12 @@ router.get("/chat/conversations/:id/devices", requireAuth as any, async (req: an
   const ids = participants.map((item) => item.userId);
   const devices = ids.length ? await db.select({
     deviceId: chatDevicesTable.deviceId, userId: chatDevicesTable.userId, publicKey: chatDevicesTable.publicKey,
-  }).from(chatDevicesTable).where(and(sql`${chatDevicesTable.userId} = ANY(${ids})`, eq(chatDevicesTable.revoked, false))) : [];
+  }).from(chatDevicesTable).where(and(inArray(chatDevicesTable.userId, ids), eq(chatDevicesTable.revoked, false))) : [];
   res.json(activeDeliveryDevices(devices));
 });
 
 // GET /chat/conversations
-router.get("/chat/conversations", requireAuth as any, async (req: any, res): Promise<void> => {
+router.get("/chat/conversations", authMiddleware, async (req: any, res): Promise<void> => {
   // Get conversations where user is a participant
   const participations = await db
     .select({ conversationId: conversationParticipantsTable.conversationId })
@@ -111,7 +126,7 @@ router.get("/chat/conversations", requireAuth as any, async (req: any, res): Pro
   const conversations = await db
     .select()
     .from(conversationsTable)
-    .where(sql`${conversationsTable.id} = ANY(${convIds})`)
+    .where(inArray(conversationsTable.id, convIds))
     .orderBy(desc(conversationsTable.lastMessageAt));
 
   const enriched = await Promise.all(
@@ -126,7 +141,7 @@ router.get("/chat/conversations", requireAuth as any, async (req: any, res): Pro
         ? await db
             .select()
             .from(usersTable)
-            .where(sql`${usersTable.clerkId} = ANY(${participantIds})`)
+            .where(inArray(usersTable.clerkId, participantIds))
         : [];
 
       return {
@@ -156,13 +171,21 @@ router.get("/chat/conversations", requireAuth as any, async (req: any, res): Pro
 });
 
 // POST /chat/conversations
-router.post("/chat/conversations", requireAuth as any, async (req: any, res): Promise<void> => {
+router.post("/chat/conversations", authMiddleware, async (req: any, res): Promise<void> => {
   const parsed = CreateConversationBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { participantId } = parsed.data;
+  const participantId = await resolveParticipantId(parsed.data.participantId);
+  if (!participantId) {
+    res.status(404).json({ error: "That FILMIO member could not be found." });
+    return;
+  }
+  if (participantId === req.userId) {
+    res.status(400).json({ error: "You cannot start a conversation with yourself." });
+    return;
+  }
 
   // Check if conversation already exists between these two users
   const existing = await db
@@ -214,7 +237,7 @@ router.post("/chat/conversations", requireAuth as any, async (req: any, res): Pr
 // GET /chat/conversations/:id/messages
 router.get(
   "/chat/conversations/:id/messages",
-  requireAuth as any,
+  authMiddleware,
   async (req: any, res): Promise<void> => {
     const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const id = parseInt(raw, 10);
@@ -245,7 +268,7 @@ router.get(
       ? await db
           .select()
           .from(usersTable)
-          .where(sql`${usersTable.clerkId} = ANY(${senderIds})`)
+          .where(inArray(usersTable.clerkId, senderIds))
       : [];
     const userMap = Object.fromEntries(users.map((u) => [u.clerkId, u]));
 
@@ -266,7 +289,7 @@ router.get(
 // POST /chat/conversations/:id/messages
 router.post(
   "/chat/conversations/:id/messages",
-  requireAuth as any,
+  authMiddleware,
   async (req: any, res): Promise<void> => {
     const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const id = parseInt(raw, 10);
@@ -337,4 +360,7 @@ router.post(
   },
 );
 
-export default router;
+return router;
+}
+
+export default createChatRouter();

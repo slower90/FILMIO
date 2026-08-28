@@ -13,6 +13,7 @@ import {
   Film,
   Tv,
   Users,
+  UserPlus,
   Newspaper,
   TrendingUp,
   ChevronRight,
@@ -88,8 +89,8 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
   };
 
   const mediaIcon = (type: string) => {
-    if (type === "tv") return <Tv className="w-3 h-3 text-blue-400 flex-none" />;
-    if (type === "person") return <Users className="w-3 h-3 text-purple-400 flex-none" />;
+    if (type === "tv") return <Tv className="w-3 h-3 text-primary flex-none" />;
+    if (type === "person") return <Users className="w-3 h-3 text-accent-foreground flex-none" />;
     return <Film className="w-3 h-3 text-primary flex-none" />;
   };
 
@@ -133,6 +134,7 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
         <input
           type="text"
           value={query}
+          data-testid="input-nav-search"
           onChange={handleChange}
           onFocus={() => {
             setFocused(true);
@@ -236,12 +238,15 @@ const DRAWER_LINKS = [
   { href: "/genres", label: "Browse by Genre", icon: Film },
   { href: "/anime", label: "Anime", icon: Tv },
   { href: "/news", label: "News", icon: Newspaper },
-  { href: "/professionals", label: "Industry Professionals", icon: Users },
+  { href: "/friends", label: "Friends", icon: UserPlus, requiresSignIn: true },
+  { href: "/professionals", label: "Industry Professionals", icon: Clapperboard },
+  { href: "/feed", label: "Join FILMIO", icon: MessageSquare, requiresSignIn: true },
   { href: "/watchlist", label: "Watchlist", icon: Bookmark },
   { href: "/search", label: "Advanced Search", icon: Search },
 ];
 
 function SideDrawer({ open, onClose }: DrawerProps) {
+  const { isSignedIn } = useUser();
   const [, setLocation] = useLocation();
 
   const go = (href: string) => {
@@ -287,11 +292,12 @@ function SideDrawer({ open, onClose }: DrawerProps) {
           <p className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Navigation
           </p>
-          {DRAWER_LINKS.map(({ href, label, icon: Icon }) => (
-             <button
+          {DRAWER_LINKS.map(({ href, label, icon: Icon, requiresSignIn }) => (
+            <button
               key={href}
-              onClick={() => go(href)}
-               className="w-full min-h-11 flex items-center gap-3 px-5 text-sm hover:bg-accent/15 hover:text-primary transition-colors group"
+              onClick={() => go(requiresSignIn && !isSignedIn ? `/sign-in?redirect=${encodeURIComponent(href)}` : href)}
+              className="w-full min-h-11 flex items-center gap-3 px-5 text-sm hover:bg-accent/15 hover:text-primary transition-colors group"
+              data-testid={`drawer-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
             >
               <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
               <span className="font-display uppercase tracking-wider text-xs font-semibold">
@@ -318,6 +324,7 @@ function SideDrawer({ open, onClose }: DrawerProps) {
               key={id}
               onClick={() => go(`/genre/${id}`)}
                className="w-full min-h-11 flex items-center justify-between px-5 text-xs text-muted-foreground hover:text-primary hover:bg-accent/15 transition-colors"
+                data-testid={`drawer-genre-${id}`}
             >
               <span className="font-display uppercase tracking-widest">{label}</span>
               <ChevronRight className="w-3 h-3" />
@@ -342,7 +349,8 @@ export function Navbar() {
   const watchlistCount = watchlist?.length ?? 0;
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => setScrolled(window.scrollY > 28);
+    handleScroll();
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -353,18 +361,21 @@ export function Navbar() {
 
       <header
         className={cn(
-          "fixed top-0 w-full z-50 transition-colors duration-300 border-b border-transparent",
+          "fixed top-0 z-50 w-full border-b border-transparent transition-[background-color,border-color,box-shadow,backdrop-filter] duration-500",
           scrolled
-            ? "bg-background/90 backdrop-blur-md border-border box-glow"
-            : "bg-gradient-to-b from-background/80 to-transparent",
+            ? "border-border/80 bg-background/92 shadow-[0_14px_38px_-28px_hsl(var(--primary)/0.65)] backdrop-blur-xl"
+            : location === "/"
+              ? "bg-gradient-to-b from-[hsl(var(--ink)/0.72)] via-[hsl(var(--ink)/0.2)] to-transparent"
+              : "bg-background/82 backdrop-blur-md",
         )}
       >
-        <div className="container relative mx-auto h-[8.5rem] px-4 pt-2 sm:h-[4.5rem] sm:pt-0 flex items-start sm:items-center gap-3 sm:gap-4">
+        <div className="container relative mx-auto flex h-[4.75rem] items-center gap-2 px-3 sm:h-[4.5rem] sm:gap-4 sm:px-4">
           {/* Hamburger */}
           <button
             onClick={() => setDrawerOpen(true)}
-             className="mt-1 flex h-11 w-11 flex-none items-center justify-center text-muted-foreground hover:text-primary transition-colors sm:mt-0"
+            className="flex h-11 w-11 flex-none items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
             aria-label="Open menu"
+            data-testid="button-open-menu"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -377,29 +388,64 @@ export function Navbar() {
           {/* Logo */}
           <Link
             href="/"
-             className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-1 text-primary transition-colors hover:text-primary/80 sm:top-1/2 sm:-translate-y-1/2 sm:gap-2"
+            className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 text-primary transition-colors hover:text-primary/80 sm:gap-2"
             aria-label="FILMIO homepage"
+            data-testid="link-home-brand"
           >
             <Clapperboard className="h-4 w-4 sm:h-5 sm:w-5" />
-             <span className="brand-wordmark mobile-brand-mark text-glow">
+            <span className="brand-wordmark mobile-brand-mark text-glow">
               FILMIO
             </span>
           </Link>
 
           {/* Desktop search — grows to fill space */}
-           <div className="absolute bottom-3 left-4 right-4 hidden sm:static sm:mr-auto sm:flex sm:flex-1 sm:justify-start sm:pl-3 md:max-w-[220px] lg:max-w-[calc(50%-4rem)]">
+          <div className="absolute bottom-3 left-4 right-4 hidden sm:static sm:mr-auto sm:flex sm:flex-1 sm:justify-start sm:pl-3 md:max-w-[260px] lg:max-w-[calc(50%-4rem)]">
             <NavSearch />
           </div>
 
+          <nav className="ml-auto hidden items-center gap-5 lg:flex" aria-label="Primary navigation">
+            <Link
+              href="/discover"
+              className={cn(
+                "text-[10px] font-bold uppercase tracking-[0.18em] transition-colors",
+                location === "/discover" ? "text-primary" : "text-muted-foreground hover:text-primary",
+              )}
+              data-testid="link-discover"
+            >
+              Discover
+            </Link>
+            <Link
+              href="/anime"
+              className={cn(
+                "text-[10px] font-bold uppercase tracking-[0.18em] transition-colors",
+                location === "/anime" ? "text-primary" : "text-muted-foreground hover:text-primary",
+              )}
+              data-testid="link-anime"
+            >
+              Anime
+            </Link>
+            <Link
+              href="/news"
+              className={cn(
+                "text-[10px] font-bold uppercase tracking-[0.18em] transition-colors",
+                location === "/news" ? "text-primary" : "text-muted-foreground hover:text-primary",
+              )}
+              data-testid="link-news"
+            >
+              News
+            </Link>
+          </nav>
+
           {/* Right: auth */}
-            <div className="ml-auto flex flex-none items-center gap-1.5 sm:gap-3">
+          <div className="ml-auto flex flex-none items-center gap-1.5 sm:gap-3 lg:ml-5">
             <Link
               href="/watchlist"
               className={cn(
-                 "relative hidden min-h-11 items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-colors sm:flex",
+                "relative hidden min-h-11 items-center gap-1.5 text-xs font-bold uppercase tracking-wider transition-colors sm:flex",
                 location === "/watchlist" ? "text-primary" : "text-muted-foreground hover:text-primary",
               )}
               aria-label={`Open watchlist${watchlistCount ? `, ${watchlistCount} saved` : ""}`}
+              data-testid="link-watchlist"
             >
               <Bookmark className="h-4 w-4" />
               <span>Watchlist</span>
@@ -411,30 +457,32 @@ export function Navbar() {
             </Link>
             {isSignedIn ? (
               <>
-                 <Link href="/chat" className="hidden h-11 w-11 items-center justify-center text-muted-foreground hover:text-primary transition-colors sm:flex" aria-label="Open messages">
+                  <Link href="/chat" className="hidden h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary sm:flex" aria-label="Open messages" data-testid="link-chat">
                   <MessageSquare className="w-5 h-5" />
                 </Link>
-                 <Link href={`/profile/${user.id}`} className="flex h-11 w-11 items-center justify-center">
+                  <Link href={`/profile/${user.id}`} className="flex h-11 w-11 items-center justify-center rounded-sm" data-testid="link-profile">
                    <img
                     src={user.imageUrl}
                     alt={user.fullName || "User"}
-                     className="h-8 w-8 rounded-sm object-cover border border-border"
+                    className="h-8 w-8 rounded-sm border border-border object-cover transition-colors hover:border-primary"
                   />
                 </Link>
                  <button
                   onClick={() => signOut()}
-                   className="hidden h-11 w-11 items-center justify-center text-muted-foreground hover:text-destructive transition-colors sm:flex"
+                    className="hidden h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive sm:flex"
                   title="Sign Out"
+                   aria-label="Sign out"
+                   data-testid="button-sign-out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
               </>
             ) : (
               <div className="flex items-center gap-2">
-                 <Button variant="ghost" asChild size="sm" className="hidden sm:inline-flex">
+                  <Button variant="ghost" asChild size="sm" className="hidden sm:inline-flex" data-testid="button-sign-in">
                   <Link href="/sign-in">Sign In</Link>
                 </Button>
-                <Button asChild size="sm">
+                 <Button asChild size="sm" data-testid="button-sign-up">
                   <Link href="/sign-up">Sign Up</Link>
                 </Button>
               </div>

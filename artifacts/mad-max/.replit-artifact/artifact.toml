@@ -21,6 +21,26 @@ serve = "static"
 publicDir = "artifacts/mad-max/dist/public"
 
 [[services.production.rewrites]]
+from = "/movies/*"
+to = "/movies/*/index.html"
+
+[[services.production.rewrites]]
+from = "/blog/movies/*"
+to = "/blog/movies/*/index.html"
+
+[[services.production.rewrites]]
+from = "/actors/*"
+to = "/actors/*/index.html"
+
+[[services.production.rewrites]]
+from = "/genre/*"
+to = "/genre/*/index.html"
+
+[[services.production.rewrites]]
+from = "/anime"
+to = "/anime/index.html"
+
+[[services.production.rewrites]]
 from = "/*"
 to = "/index.html"
 

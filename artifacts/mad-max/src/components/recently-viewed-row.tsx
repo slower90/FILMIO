@@ -31,7 +31,7 @@ export function RecentlyViewedRow() {
   if (movies.length === 0) return null;
   return (
     <div className="relative border-b border-border/30">
-      <MovieRow title="🕘 Recently Viewed" movies={movies} />
+      <MovieRow title="Recently Viewed" movies={movies} />
       <Button
         variant="ghost"
         size="sm"

@@ -10,6 +10,15 @@ import {
   mergeCatalogItems,
   type CatalogMetadata,
 } from "../lib/catalog";
+import { getMovieStory } from "../lib/movie-stories";
+import {
+  getIndexedLanguages,
+  parseSearchIntent,
+  searchCatalog,
+  tmdbToSearchCatalogRecord,
+  upsertSearchCatalog,
+} from "../lib/smart-search";
+import { searchMeilisearch } from "../lib/meilisearch";
 
 const router: IRouter = Router();
 
@@ -49,6 +58,107 @@ const tmdbFetch = (path: string, params: Record<string, string | number> = {}) =
 const tmdbFetchWithMetadata = (path: string, params: Record<string, string | number> = {}) => {
   return tmdbClient.fetchWithMetadata(path, params);
 };
+
+const SITEMAP_CACHE_TTL_MS = 15 * 60 * 1000;
+const SITEMAP_SITE_URL = (process.env.SITE_URL || "https://vishnuva.in").replace(/\/+$/, "");
+let sitemapCache: { xml: string; expiresAt: number } | null = null;
+
+const sitemapSlug = (title: string) =>
+  title
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
+const xmlEscape = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
+const isReleasedCatalogItem = (item: any) => {
+  if (item.adult === true || !Number.isInteger(Number(item.id)) || Number(item.id) <= 0) return false;
+  const title = String(item.title ?? item.name ?? "").trim();
+  if (!title) return false;
+  const date = String(item.release_date ?? item.first_air_date ?? "").trim();
+  if (!date) return true;
+  const releaseTime = new Date(`${date.slice(0, 10)}T23:59:59.999Z`).getTime();
+  return Number.isNaN(releaseTime) || releaseTime <= Date.now();
+};
+
+async function buildSitemapXml(): Promise<string> {
+  const staticPaths = [
+    ["/", "daily", "1.0"],
+    ["/discover", "daily", "0.9"],
+    ["/anime", "weekly", "0.8"],
+    ["/actors", "weekly", "0.7"],
+    ["/genres", "weekly", "0.7"],
+    ["/news", "daily", "0.7"],
+    ["/free-movies", "weekly", "0.7"],
+    ["/privacy", "yearly", "0.2"],
+    ["/terms", "yearly", "0.2"],
+  ] as const;
+  const catalogRequests = [
+    ["/movie/popular", "movie"],
+    ["/trending/movie/week", "movie"],
+    ["/movie/top_rated", "movie"],
+    ["/tv/popular", "tv"],
+    ["/tv/top_rated", "tv"],
+  ] as const;
+
+  const [catalogResults, actorData, genreData] = await Promise.all([
+    Promise.allSettled(catalogRequests.map(([path]) => tmdbFetch(path, { page: 1 }))),
+    tmdbFetch("/person/popular", { page: 1 }).catch(() => ({ results: [] })),
+    tmdbFetch("/genre/movie/list").catch(() => ({ genres: [] })),
+  ]);
+
+  const dynamicPaths = new Map<string, { changefreq: string; priority: string }>();
+  for (const [index, result] of catalogResults.entries()) {
+    if (result.status !== "fulfilled") continue;
+    const mediaType = catalogRequests[index][1];
+    for (const item of (result.value as any).results ?? []) {
+      if (!isReleasedCatalogItem(item)) continue;
+      const slug = sitemapSlug(String(item.title ?? item.name ?? ""));
+      const path = `/movies/${Number(item.id)}${slug ? `/${slug}` : ""}${mediaType === "tv" ? "?type=tv" : ""}`;
+      dynamicPaths.set(path, { changefreq: "weekly", priority: "0.6" });
+      const storyPath = `/blog/movies/${Number(item.id)}${slug ? `/${slug}` : ""}${mediaType === "tv" ? "?type=tv" : ""}`;
+      dynamicPaths.set(storyPath, { changefreq: "weekly", priority: "0.55" });
+    }
+  }
+
+  for (const person of (actorData as any).results ?? []) {
+    if (!Number.isInteger(Number(person.id)) || Number(person.id) <= 0 || !String(person.name ?? "").trim()) continue;
+    dynamicPaths.set(`/actors/${Number(person.id)}`, { changefreq: "weekly", priority: "0.5" });
+  }
+  for (const genre of (genreData as any).genres ?? []) {
+    if (!Number.isInteger(Number(genre.id)) || Number(genre.id) <= 0 || !String(genre.name ?? "").trim()) continue;
+    dynamicPaths.set(`/genre/${Number(genre.id)}`, { changefreq: "weekly", priority: "0.5" });
+  }
+
+  const urls = [
+    ...staticPaths.map(([path, changefreq, priority]) => ({ path, changefreq, priority })),
+    ...[...dynamicPaths.entries()].map(([path, metadata]) => ({ path, ...metadata })),
+  ];
+  const body = urls.map(({ path, changefreq, priority }) =>
+    `  <url><loc>${xmlEscape(`${SITEMAP_SITE_URL}${path}`)}</loc><changefreq>${changefreq}</changefreq><priority>${priority}</priority></url>`,
+  ).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`;
+}
+
+router.get("/sitemap.xml", async (_req, res): Promise<void> => {
+  try {
+    if (!sitemapCache || sitemapCache.expiresAt <= Date.now()) {
+      sitemapCache = { xml: await buildSitemapXml(), expiresAt: Date.now() + SITEMAP_CACHE_TTL_MS };
+    }
+    res.type("application/xml").set("Cache-Control", "public, max-age=900").send(sitemapCache.xml);
+  } catch (error) {
+    console.error("[sitemap] generation failed", error);
+    res.status(503).type("application/xml").send(
+      `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`,
+    );
+  }
+});
 
 const mapMovie = (m: any) => ({
   id: m.id,
@@ -113,10 +223,17 @@ const tmdbFetchMultiPageWithMetadata = async (
   const responses = await Promise.all(
     pages.map((page) => tmdbFetchWithMetadata(path, { ...extraParams, page }).catch(() => null)),
   );
-  const movies = mergeCatalogItems(
-    responses.filter(Boolean).map((response) => (response?.data?.results ?? []).map(mapMovie)),
+  const rawItems = mergeCatalogItems(
+    responses.filter(Boolean).map((response) => response?.data?.results ?? []),
     catalogIdentity,
-  ) as ReturnType<typeof mapMovie>[];
+  ) as any[];
+  const mediaType = path.includes("/tv") ? "tv" : "movie";
+  await upsertSearchCatalog(
+    rawItems
+      .map((item) => tmdbToSearchCatalogRecord(item, mediaType))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+  );
+  const movies = rawItems.map(mapMovie);
   const first = responses.find(Boolean);
   return {
     results: includeUnreleased ? movies : movies.filter(hasReleased),
@@ -140,6 +257,13 @@ router.get("/movies/search-multi", async (req, res): Promise<void> => {
     return;
   }
   const data = await tmdbFetch("/search/multi", { query: q, page });
+  await upsertSearchCatalog(
+    (data.results ?? [])
+      .map((item: any) => item.media_type === "tv" || item.media_type === "movie"
+        ? tmdbToSearchCatalogRecord(item, item.media_type)
+        : null)
+      .filter((item: any) => Boolean(item)),
+  );
   const results = (data.results ?? []).map((r: any) => ({
     id: r.id,
     mediaType: r.media_type, // "movie" | "tv" | "person"
@@ -162,63 +286,111 @@ router.get("/movies/search-smart", async (req, res): Promise<void> => {
     return;
   }
 
-  const normalized = rawQuery.toLowerCase().replace(/[^\w\s-]/g, " ");
-  const isAdultSearch = /\b(porn|pornography|xxx|18\+)\b/i.test(normalized);
-  const limitMatch = normalized.match(/\b(\d{1,2})\b/);
+  const indexedLanguages = await getIndexedLanguages().catch(() => []);
+  const intent = parseSearchIntent(rawQuery, indexedLanguages);
   const requestedLimit = Number(req.query.limit);
-   const limit = Math.min(Math.max(Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : Number(limitMatch?.[1] ?? 20), 1), 100);
-  const searchPages = Math.min(Math.max(Math.ceil(limit / 20), 1), 5);
-  const yearMatch = normalized.match(/\b(19\d{2}|20\d{2})\b/);
-
-  const genres: Record<string, number> = {
-    action: 28, adventure: 12, animation: 16, comedy: 35, crime: 80,
-    documentary: 99, drama: 18, family: 10751, fantasy: 14, history: 36,
-    horror: 27, music: 10402, mystery: 9648, romance: 10749,
-    "science fiction": 878, "sci fi": 878, thriller: 53, war: 10752,
-    western: 37,
-  };
-  const genreEntry = Object.entries(genres).find(([name]) =>
-    new RegExp(`\\b${name.replace(" ", "\\s+")}\\b`, "i").test(normalized),
+  const limit = Math.min(
+    Math.max(Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : intent.limit, 1),
+    100,
   );
+  intent.limit = limit;
+  const hasExplicitIntent = Boolean(
+    intent.genre ||
+    intent.language ||
+    intent.india ||
+    intent.anime ||
+    intent.mediaType ||
+    intent.year ||
+    intent.adult ||
+    intent.sort !== "relevance",
+  );
+  const databaseIntentResult = !intent.residual && hasExplicitIntent
+    ? await searchCatalog(intent)
+    : null;
+  if (databaseIntentResult && databaseIntentResult.results.length > 0) {
+    res.json({
+      query: rawQuery,
+      intent: {
+        limit,
+        genre: intent.genre,
+        language: intent.language,
+        india: intent.india,
+        anime: intent.anime,
+        adult: intent.adult,
+        sort: intent.sort,
+        year: intent.year,
+      },
+      results: databaseIntentResult.results,
+      totalResults: databaseIntentResult.totalResults,
+      metadata: {
+        source: "postgres-intent",
+        fetchedAt: new Date().toISOString(),
+        stale: false,
+        partial: false,
+      },
+    });
+    return;
+  }
 
-  const languageTerms: Array<[string, string, string]> = [
-    ["tamil", "ta", "Tamil"],
-    ["telugu", "te", "Telugu"],
-    ["malayalam", "ml", "Malayalam"],
-    ["kannada", "kn", "Kannada"],
-    ["hindi", "hi", "Hindi"],
-    ["bollywood", "hi", "Bollywood"],
-    ["korean", "ko", "Korean"],
-    ["japanese", "ja", "Japanese"],
-    ["french", "fr", "French"],
-    ["spanish", "es", "Spanish"],
-  ];
-  const languageEntry = languageTerms.find(([term]) => normalized.includes(term));
-  const isIndia = /\b(india|indian|bollywood|desi)\b/i.test(normalized);
-  const isAnime = /\banime\b/i.test(normalized);
+  if (!hasExplicitIntent || intent.residual) {
+    const meilisearchResult = await searchMeilisearch(
+      intent.residual || rawQuery,
+      limit,
+    ).catch((error) => {
+      console.warn("[search] Meilisearch unavailable:", (error as Error).message);
+      return null;
+    });
+    if (meilisearchResult && meilisearchResult.results.length > 0) {
+      res.json({
+        query: rawQuery,
+        intent: {
+          limit,
+          genre: intent.genre,
+          language: intent.language,
+          india: intent.india,
+          anime: intent.anime,
+          adult: intent.adult,
+          sort: intent.sort,
+          year: intent.year,
+        },
+        results: meilisearchResult.results,
+        totalResults: meilisearchResult.totalResults,
+        metadata: {
+          source: "meilisearch",
+          fetchedAt: new Date().toISOString(),
+          stale: false,
+          partial: false,
+        },
+      });
+      return;
+    }
+  }
+
+  // Provider fallback remains available while the catalog is warming up or
+  // when a deployment has not yet applied the search index migration.
+  const normalized = rawQuery.toLowerCase().replace(/[^\w\s-]/g, " ");
+  const isAdultSearch = intent.adult;
+  const searchPages = Math.min(Math.max(Math.ceil(limit / 20), 1), 5);
+  const yearMatch = intent.year ? [String(intent.year), String(intent.year)] : null;
+
+  const genreEntry = intent.genre && intent.genreId ? [intent.genre, String(intent.genreId)] : null;
+  const languageEntry = intent.language && intent.languageCode
+    ? [intent.language.toLowerCase(), intent.languageCode, intent.language]
+    : null;
+  const isIndia = intent.india;
+  const isAnime = intent.anime;
   // A constrained discovery request such as "10 horror movies" should still
   // surface the strongest titles first, even when the user did not type
   // "best" explicitly.
-  const wantsRating =
-    /\b(best|top|highest|rated|rating|greatest|must watch)\b/i.test(normalized) ||
-    Boolean(genreEntry || languageEntry || isIndia);
-  const wantsRecent = /\b(new|latest|recent|upcoming)\b/i.test(normalized);
-  const wantsPopular = /\b(popular|trending)\b/i.test(normalized);
-
-  const genericWords = /\b(best|top|highest|rated|rating|greatest|must watch|popular|trending|movies?|films?|watch|new|latest|recent|upcoming|in|from|of|the|202\d|19\d)\b/gi;
-  const residual = normalized
-    .replace(/\b\d{1,2}\b/g, " ")
-    .replace(genericWords, " ")
-    .replace(genreEntry ? new RegExp(`\\b${genreEntry[0].replace(" ", "\\s+")}\\b`, "gi") : /$^/, " ")
-    .replace(languageEntry ? new RegExp(`\\b${languageEntry[0]}\\b`, "gi") : /$^/, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const wantsRating = intent.sort === "rating";
+  const wantsRecent = intent.sort === "recent";
+  const wantsPopular = intent.sort === "popular";
+  const residual = intent.residual;
+  const mediaType = intent.mediaType;
 
   const sortBy = wantsRecent
-      ? "primary_release_date.desc"
-      : wantsPopular
-        ? "popularity.desc"
-        : "popularity.desc";
+      ? mediaType === "tv" ? "first_air_date.desc" : "primary_release_date.desc"
+      : "popularity.desc";
   const params: Record<string, string | number> = {
     sort_by: sortBy,
     page: 1,
@@ -229,7 +401,7 @@ router.get("/movies/search-smart", async (req, res): Promise<void> => {
     params.with_origin_country = "IN";
     params.region = "IN";
   }
-  if (yearMatch) {
+  if (yearMatch && mediaType !== "tv") {
     params.primary_release_year = Number(yearMatch[1]);
   }
 
@@ -258,12 +430,27 @@ router.get("/movies/search-smart", async (req, res): Promise<void> => {
     const page = await tmdbFetchMultiPageWithMetadata("/discover/movie", searchPages, adultParams);
     results = page.results;
     catalogMetadata = page.metadata;
+  } else if (isAnime) {
+    // Anime is indexed through AniList/Jikan. If the index is still warming,
+    // return a compatible empty response rather than querying TMDB for
+    // unrelated titles.
+    results = [];
   } else if (residual && !genreEntry && !languageEntry && !isIndia) {
-    const page = await tmdbFetchMultiPageWithMetadata("/search/movie", searchPages, { query: residual });
+    const page = await tmdbFetchMultiPageWithMetadata(
+      mediaType === "tv" ? "/search/tv" : "/search/movie",
+      searchPages,
+      { query: residual },
+    );
     results = page.results;
     catalogMetadata = page.metadata;
   } else {
-    const page = await tmdbFetchMultiPageWithMetadata("/discover/movie", searchPages, params);
+    const page = await tmdbFetchMultiPageWithMetadata(
+      mediaType === "tv" ? "/discover/tv" : "/discover/movie",
+      searchPages,
+      mediaType === "tv" && yearMatch
+        ? { ...params, first_air_date_year: Number(yearMatch[1]) }
+        : params,
+    );
     results = page.results;
     catalogMetadata = page.metadata;
   }
@@ -706,6 +893,36 @@ router.get("/movies/ratings", async (req, res): Promise<void> => {
     ]),
   );
   res.json({ ratings });
+});
+
+// GET /movies/:movieId/story?type=movie|tv — source-backed FILMIO editorial story.
+router.get("/movies/:movieId/story", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
+  const id = parseInt(raw, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid movie id" });
+    return;
+  }
+
+  try {
+    const story = await getMovieStory({
+      id,
+      mediaType: req.query.type === "tv" ? "tv" : "movie",
+      fetchCatalog: tmdbFetchWithMetadata,
+    });
+    res.json(story);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === "Movie not found") {
+      res.status(404).json({ error: "Movie not found" });
+      return;
+    }
+    console.error("[movie-story] generation failed", error);
+    res.status(503).json({
+      error: "Movie story is temporarily unavailable",
+      status: "unavailable",
+    });
+  }
 });
 
 // Fetch the data needed to paint the movie hero in one TMDB round-trip.

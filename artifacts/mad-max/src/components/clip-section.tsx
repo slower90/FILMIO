@@ -189,8 +189,12 @@ export function ClipSection({ clips, isLoading }: { clips: ClipItem[]; isLoading
                 >
                   <img
                     src={`https://image.tmdb.org/t/p/w780${clip.posterPath ?? ""}`}
-                    alt=""
+                    alt={`${clip.movieTitle}: ${clip.title}`}
+                    width={780}
+                    height={439}
                     className="absolute inset-0 w-full h-full object-cover opacity-70 transition duration-300 group-hover:scale-105 group-hover:opacity-50"
+                    loading="lazy"
+                    decoding="async"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                   <span className="absolute left-3 top-3 rounded-full bg-primary p-2 text-primary-foreground shadow-lg">

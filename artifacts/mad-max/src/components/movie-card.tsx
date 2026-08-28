@@ -1,17 +1,18 @@
 import { Link } from "wouter";
 import { type MovieSummary } from "@workspace/api-client-react";
 import { tmdbPosterUrl } from "@/lib/utils";
-import { Star } from "lucide-react";
+import { BookOpen, Star } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPrismRatings, getPrismDisplayRating } from "@/lib/mad-max-ratings";
-import { withMovieTitle } from "@/lib/movie-links";
+import { movieStoryPath, withMovieTitle } from "@/lib/movie-links";
 
 interface MovieCardProps {
   movie: Pick<MovieSummary, "id" | "title" | "posterPath" | "releaseDate" | "overview" | "voteAverage">;
   showDescription?: boolean;
+  mediaType?: "movie" | "tv";
 }
 
-export function MovieCard({ movie, showDescription = false }: MovieCardProps) {
+export function MovieCard({ movie, showDescription = false, mediaType = "movie" }: MovieCardProps) {
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : "";
   const { data: ratings } = useQuery({
     queryKey: ["mad-max-rating", movie.id],
@@ -22,12 +23,15 @@ export function MovieCard({ movie, showDescription = false }: MovieCardProps) {
   const displayRating = getPrismDisplayRating(movie.voteAverage, rating);
 
   return (
-    <Link href={withMovieTitle(`/movies/${movie.id}`, movie.title)}>
-      <div className="group relative h-full cursor-pointer overflow-hidden rounded-md border border-border bg-card flex flex-col transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-1 hover:border-primary/45 hover:shadow-[0_16px_28px_-20px_hsl(var(--primary)/0.7)] focus-within:border-primary/60">
+    <div className="flex h-full min-w-0 flex-col">
+      <Link href={withMovieTitle(`/movies/${movie.id}${mediaType === "tv" ? "?type=tv" : ""}`, movie.title)} className="block h-full" data-testid={`link-movie-card-${movie.id}`}>
+        <div className="poster-lift group relative h-full cursor-pointer overflow-hidden rounded-md border border-border bg-card flex flex-col transition-[transform,border-color,box-shadow] duration-200 focus-within:border-primary/60" data-testid={`card-movie-${movie.id}`}>
         <div className="aspect-[2/3] w-full overflow-hidden relative">
           <img
             src={tmdbPosterUrl(movie.posterPath)}
             alt={movie.title}
+            width={342}
+            height={513}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
             decoding="async"
@@ -35,7 +39,7 @@ export function MovieCard({ movie, showDescription = false }: MovieCardProps) {
           <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-background/95 via-background/25 to-transparent p-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
             <div className="mb-2 flex items-center gap-1 text-primary">
               <Star className="h-4 w-4 fill-primary text-primary" />
-              <span className="text-sm font-bold">
+              <span className="tabular-nums text-sm font-bold">
                 FILMIO {displayRating.toFixed(1)}
               </span>
             </div>
@@ -55,7 +59,16 @@ export function MovieCard({ movie, showDescription = false }: MovieCardProps) {
             </p>
           )}
         </div>
-      </div>
-    </Link>
+        </div>
+      </Link>
+      <Link
+        href={movieStoryPath(movie.id, movie.title, mediaType)}
+        className="mt-2 inline-flex items-center gap-2 self-start px-1 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-primary"
+        data-testid={`link-movie-story-${movie.id}`}
+      >
+        <BookOpen className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+        Read the story
+      </Link>
+    </div>
   );
 }
