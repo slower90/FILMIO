@@ -172,6 +172,13 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface CatalogMetadata {
+  source: string;
+  fetchedAt: string;
+  stale: boolean;
+  partial?: boolean;
+}
+
 export interface MovieSummary {
   id: number;
   title: string;
@@ -235,6 +242,21 @@ export interface MovieStorySection {
   body: string[];
 }
 
+export type MovieStoryTopicKind = typeof MovieStoryTopicKind[keyof typeof MovieStoryTopicKind];
+
+
+export const MovieStoryTopicKind = {
+  person: 'person',
+  genre: 'genre',
+  country: 'country',
+} as const;
+
+export interface MovieStoryTopic {
+  label: string;
+  href: string;
+  kind: MovieStoryTopicKind;
+}
+
 export type MovieStoryStatus = typeof MovieStoryStatus[keyof typeof MovieStoryStatus];
 
 
@@ -280,10 +302,48 @@ export interface MovieStory {
   updatedAt: string;
   sections: MovieStorySection[];
   sources: StorySource[];
+  topics: MovieStoryTopic[];
 }
 
 export interface GenreListResult {
   genres: Genre[];
+}
+
+export interface SurpriseMovie {
+  id: number;
+  title: string;
+  /** @nullable */
+  posterPath: string | null;
+  /** @nullable */
+  backdropPath: string | null;
+  overview: string;
+  releaseDate: string;
+  /** @nullable */
+  runtime: number | null;
+  genres: Genre[];
+  voteAverage: number;
+}
+
+export type SurprisePickRuntimeMatch = typeof SurprisePickRuntimeMatch[keyof typeof SurprisePickRuntimeMatch];
+
+
+export const SurprisePickRuntimeMatch = {
+  exact: 'exact',
+  'nearest-available': 'nearest-available',
+  'not-applicable': 'not-applicable',
+} as const;
+
+export interface SurprisePick {
+  lens: string;
+  lensLabel: string;
+  movie: SurpriseMovie;
+  explanation: string;
+  signals: string[];
+  personalized: boolean;
+  runtimeMatch: SurprisePickRuntimeMatch;
+  /** @nullable */
+  requestedRuntime: number | null;
+  metadata: CatalogMetadata;
 }
 
 export interface MoviePagedResult {
@@ -441,6 +501,8 @@ export interface Rating {
   id: number;
   userId: string;
   movieId: number;
+  /** @nullable */
+  profileId: number | null;
   /**
      * @minimum 1
      * @maximum 10
@@ -452,6 +514,8 @@ export interface Rating {
 
 export interface RatingInput {
   movieId: number;
+  /** @minimum 1 */
+  profileId?: number;
   /**
      * @minimum 1
      * @maximum 10
@@ -461,6 +525,8 @@ export interface RatingInput {
 
 export interface MovieRatingAggregate {
   movieId: number;
+  /** @nullable */
+  profileId?: number | null;
   averageScore: number;
   totalRatings: number;
   weightedScore: number;
@@ -498,6 +564,8 @@ export const WatchlistInputStatus = {
 
 export interface WatchlistInput {
   movieId: number;
+  /** @minimum 1 */
+  profileId?: number;
   status?: WatchlistInputStatus;
   movieTitle?: string;
   /** @nullable */
@@ -516,6 +584,358 @@ export const WatchlistUpdateStatus = {
 
 export interface WatchlistUpdate {
   status: WatchlistUpdateStatus;
+}
+
+export type ViewingProfileAvatarKey = typeof ViewingProfileAvatarKey[keyof typeof ViewingProfileAvatarKey];
+
+
+export const ViewingProfileAvatarKey = {
+  orbit: 'orbit',
+  nova: 'nova',
+  ember: 'ember',
+  cine: 'cine',
+  prism: 'prism',
+  lunar: 'lunar',
+} as const;
+
+export type ViewingProfileLanguage = typeof ViewingProfileLanguage[keyof typeof ViewingProfileLanguage];
+
+
+export const ViewingProfileLanguage = {
+  en: 'en',
+  hi: 'hi',
+  ta: 'ta',
+  te: 'te',
+  ml: 'ml',
+  bn: 'bn',
+  ja: 'ja',
+  ko: 'ko',
+  es: 'es',
+  fr: 'fr',
+} as const;
+
+export type ViewingProfileMaturity = typeof ViewingProfileMaturity[keyof typeof ViewingProfileMaturity];
+
+
+export const ViewingProfileMaturity = {
+  all: 'all',
+  NUMBER_7: 7,
+  NUMBER_13: 13,
+  NUMBER_16: 16,
+  NUMBER_18: 18,
+} as const;
+
+export interface ViewingProfile {
+  id: number;
+  userId: string;
+  name: string;
+  avatarKey: ViewingProfileAvatarKey;
+  /** @nullable */
+  avatarUrl: string | null;
+  kidsMode: boolean;
+  language: ViewingProfileLanguage;
+  maturity: ViewingProfileMaturity;
+  autoplay: boolean;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteActor?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteDirector?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteGenre?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteCountry?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  favoriteDecade?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteLanguage?: string | null;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ViewingProfileInputAvatarKey = typeof ViewingProfileInputAvatarKey[keyof typeof ViewingProfileInputAvatarKey];
+
+
+export const ViewingProfileInputAvatarKey = {
+  orbit: 'orbit',
+  nova: 'nova',
+  ember: 'ember',
+  cine: 'cine',
+  prism: 'prism',
+  lunar: 'lunar',
+} as const;
+
+export type ViewingProfileInputLanguage = typeof ViewingProfileInputLanguage[keyof typeof ViewingProfileInputLanguage];
+
+
+export const ViewingProfileInputLanguage = {
+  en: 'en',
+  hi: 'hi',
+  ta: 'ta',
+  te: 'te',
+  ml: 'ml',
+  bn: 'bn',
+  ja: 'ja',
+  ko: 'ko',
+  es: 'es',
+  fr: 'fr',
+} as const;
+
+export type ViewingProfileInputMaturity = typeof ViewingProfileInputMaturity[keyof typeof ViewingProfileInputMaturity];
+
+
+export const ViewingProfileInputMaturity = {
+  all: 'all',
+  NUMBER_7: 7,
+  NUMBER_13: 13,
+  NUMBER_16: 16,
+  NUMBER_18: 18,
+} as const;
+
+export interface ViewingProfileInput {
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  name: string;
+  avatarKey?: ViewingProfileInputAvatarKey;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+  kidsMode?: boolean;
+  language?: ViewingProfileInputLanguage;
+  maturity?: ViewingProfileInputMaturity;
+  autoplay?: boolean;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteActor?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteDirector?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteGenre?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteCountry?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  favoriteDecade?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteLanguage?: string | null;
+}
+
+export type ViewingProfileUpdateAvatarKey = typeof ViewingProfileUpdateAvatarKey[keyof typeof ViewingProfileUpdateAvatarKey];
+
+
+export const ViewingProfileUpdateAvatarKey = {
+  orbit: 'orbit',
+  nova: 'nova',
+  ember: 'ember',
+  cine: 'cine',
+  prism: 'prism',
+  lunar: 'lunar',
+} as const;
+
+export type ViewingProfileUpdateLanguage = typeof ViewingProfileUpdateLanguage[keyof typeof ViewingProfileUpdateLanguage];
+
+
+export const ViewingProfileUpdateLanguage = {
+  en: 'en',
+  hi: 'hi',
+  ta: 'ta',
+  te: 'te',
+  ml: 'ml',
+  bn: 'bn',
+  ja: 'ja',
+  ko: 'ko',
+  es: 'es',
+  fr: 'fr',
+} as const;
+
+export type ViewingProfileUpdateMaturity = typeof ViewingProfileUpdateMaturity[keyof typeof ViewingProfileUpdateMaturity];
+
+
+export const ViewingProfileUpdateMaturity = {
+  all: 'all',
+  NUMBER_7: 7,
+  NUMBER_13: 13,
+  NUMBER_16: 16,
+  NUMBER_18: 18,
+} as const;
+
+export interface ViewingProfileUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  name?: string;
+  avatarKey?: ViewingProfileUpdateAvatarKey;
+  /** @nullable */
+  avatarObjectPath?: string | null;
+  kidsMode?: boolean;
+  language?: ViewingProfileUpdateLanguage;
+  maturity?: ViewingProfileUpdateMaturity;
+  autoplay?: boolean;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteActor?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteDirector?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteGenre?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteCountry?: string | null;
+  /**
+     * @maxLength 20
+     * @nullable
+     */
+  favoriteDecade?: string | null;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  favoriteLanguage?: string | null;
+}
+
+export type ProfileAvatarUploadInputContentType = typeof ProfileAvatarUploadInputContentType[keyof typeof ProfileAvatarUploadInputContentType];
+
+
+export const ProfileAvatarUploadInputContentType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+} as const;
+
+export interface ProfileAvatarUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 5242880
+     */
+  size: number;
+  contentType: ProfileAvatarUploadInputContentType;
+}
+
+export interface ProfileAvatarUploadResponse {
+  uploadURL: string;
+  objectPath: string;
+  name: string;
+  size: number;
+  contentType: string;
+}
+
+export interface ViewingHistoryEntry {
+  id: number;
+  title: string;
+  /** @nullable */
+  posterPath: string | null;
+  /** @nullable */
+  releaseDate: string | null;
+  /** @nullable */
+  voteAverage: number | null;
+}
+
+export type ViewingHistoryInputMoviesItem = {
+  id: number;
+  title: string;
+  /** @nullable */
+  posterPath?: string | null;
+  /** @nullable */
+  releaseDate?: string | null;
+  /** @nullable */
+  voteAverage?: number | null;
+};
+
+export interface ViewingHistoryInput {
+  /** @maxItems 12 */
+  movies: ViewingHistoryInputMoviesItem[];
+}
+
+export type SignalKind = typeof SignalKind[keyof typeof SignalKind];
+
+
+export const SignalKind = {
+  'review-agreement': 'review-agreement',
+  'review-conversation': 'review-conversation',
+  'rated-trending': 'rated-trending',
+  'director-release': 'director-release',
+  'taste-graph': 'taste-graph',
+} as const;
+
+export type SignalLabel = typeof SignalLabel[keyof typeof SignalLabel];
+
+
+export const SignalLabel = {
+  SIGNAL: 'SIGNAL',
+} as const;
+
+export interface Signal {
+  id: number;
+  kind: SignalKind;
+  label: SignalLabel;
+  body: string;
+  /** @nullable */
+  movieId: number | null;
+  /** @nullable */
+  movieTitle: string | null;
+  /** @nullable */
+  moviePosterPath: string | null;
+  /** @nullable */
+  href: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface SignalsResponse {
+  items: Signal[];
+  /** @minimum 0 */
+  unreadCount: number;
 }
 
 export interface UserProfile {
@@ -716,6 +1136,8 @@ export interface ChatMessageInput {
   content: string;
 }
 
+export type ProfileIdQueryParameter = number;
+
 export type SearchMoviesParams = {
 q: string;
 page?: number;
@@ -762,6 +1184,84 @@ export type GetTrendingReviewsParams = {
 limit?: number;
 };
 
+export type UpsertRatingParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type ListMyRatingsParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type GetMyMovieRatingParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type ListSignalsParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+unreadOnly?: boolean;
+};
+
+export type GetWatchlistParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type AddToWatchlistParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type RemoveFromWatchlistParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type UpdateWatchlistEntryParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type GetViewingHistoryParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type MergeViewingHistoryParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type ClearViewingHistoryParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
 export type GetFriendsOverviewParams = {
 /**
  * @maxLength 80
@@ -792,7 +1292,37 @@ page?: number;
 
 export type GetRecommendationsParams = {
 limit?: number;
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
 };
+
+export type GetSurprisePickParams = {
+lens: GetSurprisePickLens;
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+avoidMovieId?: number;
+seed?: string;
+};
+
+export type GetSurprisePickLens = typeof GetSurprisePickLens[keyof typeof GetSurprisePickLens];
+
+
+export const GetSurprisePickLens = {
+  tonight: 'tonight',
+  '15-minutes': '15-minutes',
+  '90-minutes': '90-minutes',
+  '3-hours': '3-hours',
+  obscure: 'obscure',
+  emotional: 'emotional',
+  'visually-insane': 'visually-insane',
+  'everyone-missed': 'everyone-missed',
+  india: 'india',
+  'outside-taste': 'outside-taste',
+} as const;
 
 export type SearchProfessionalsParams = {
 q?: string;

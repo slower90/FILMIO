@@ -489,6 +489,8 @@ paths:
       operationId: upsertRating
       tags: [ratings]
       summary: Create or update a movie rating
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
       requestBody:
         required: true
         content:
@@ -528,6 +530,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/MovieRatingAggregate"
 
+  /ratings/my:
+    get:
+      operationId: listMyRatings
+      tags: [ratings]
+      summary: List the current profile's movie ratings
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "200":
+          description: Current profile ratings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rating"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /ratings/my/{movieId}:
     get:
       operationId: getMyMovieRating
@@ -539,6 +564,7 @@ paths:
           required: true
           schema:
             type: integer
+        - $ref: "#/components/parameters/ProfileIdQuery"
       responses:
         "200":
           description: User's rating
@@ -553,12 +579,95 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # ─── SIGNALS ──────────────────────────────────────────────────────────────────
+  /signals:
+    get:
+      operationId: listSignals
+      tags: [signals]
+      summary: List personal FILMIO signals
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+        - name: unreadOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Personal signals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignalsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Viewing profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /signals/{id}/read:
+    patch:
+      operationId: markSignalRead
+      tags: [signals]
+      summary: Mark a signal as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Updated signal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Signal"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Signal not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /signals/read-all:
+    post:
+      operationId: markAllSignalsRead
+      tags: [signals]
+      summary: Mark all personal signals as read
+      responses:
+        "204":
+          description: Signals marked as read
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ─── WATCHLIST ────────────────────────────────────────────────────────────────
   /watchlist:
     get:
       operationId: getWatchlist
       tags: [watchlist]
       summary: Get current user's watchlist
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
       responses:
         "200":
           description: Watchlist
@@ -578,6 +687,8 @@ paths:
       operationId: addToWatchlist
       tags: [watchlist]
       summary: Add a movie to watchlist
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
       requestBody:
         required: true
         content:
@@ -609,6 +720,7 @@ paths:
           required: true
           schema:
             type: integer
+        - $ref: "#/components/parameters/ProfileIdQuery"
       responses:
         "204":
           description: Removed
@@ -628,6 +740,7 @@ paths:
           required: true
           schema:
             type: integer
+        - $ref: "#/components/parameters/ProfileIdQuery"
       requestBody:
         required: true
         content:
@@ -684,6 +797,232 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /users/me/viewing-history:
+    get:
+      operationId: getViewingHistory
+      tags: [users]
+      summary: Get the current profile's viewing history
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "200":
+          description: Viewing history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ViewingHistoryEntry"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: mergeViewingHistory
+      tags: [users]
+      summary: Merge movies into the current profile's viewing history
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ViewingHistoryInput"
+      responses:
+        "200":
+          description: Updated viewing history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ViewingHistoryEntry"
+        "400":
+          description: Invalid history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: clearViewingHistory
+      tags: [users]
+      summary: Clear the current profile's viewing history
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "204":
+          description: History cleared
+        "401":
+          description: Unauthorized
+
+  /profiles:
+    get:
+      operationId: listProfiles
+      tags: [users]
+      summary: List viewing profiles for the current account
+      responses:
+        "200":
+          description: Viewing profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ViewingProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createProfile
+      tags: [users]
+      summary: Create a viewing profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ViewingProfileInput"
+      responses:
+        "201":
+          description: Created profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ViewingProfile"
+        "400":
+          description: Invalid profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Profile limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /profiles/{profileId}:
+    patch:
+      operationId: updateProfile
+      tags: [users]
+      summary: Update a viewing profile
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ViewingProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ViewingProfile"
+        "400":
+          description: Invalid profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteProfile
+      tags: [users]
+      summary: Delete a non-default viewing profile
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: The default profile cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /profiles/{profileId}/select:
+    post:
+      operationId: selectProfile
+      tags: [users]
+      summary: Select a viewing profile
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "200":
+          description: Selected profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ViewingProfile"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /profiles/{profileId}/avatar/upload-url:
+    post:
+      operationId: requestProfileAvatarUpload
+      tags: [users]
+      summary: Request a private profile avatar upload URL
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileAvatarUploadInput"
+      responses:
+        "200":
+          description: Signed upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileAvatarUploadResponse"
+        "400":
+          description: Invalid image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /profiles/{profileId}/avatar:
+    get:
+      operationId: getProfileAvatar
+      tags: [users]
+      summary: Get a private profile avatar
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "302":
+          description: Redirect to a temporary private image URL
+        "404":
+          description: Avatar not found
 
   /users/{id}:
     get:
@@ -1324,6 +1663,7 @@ paths:
           schema:
             type: integer
             default: 20
+        - $ref: "#/components/parameters/ProfileIdQuery"
       responses:
         "200":
           description: Recommendations
@@ -1333,6 +1673,47 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/MovieSummary"
+
+  /surprise-me:
+    get:
+      operationId: getSurprisePick
+      tags: [recommendations]
+      summary: Choose one explainable film for a discovery lens
+      parameters:
+        - name: lens
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [tonight, 15-minutes, 90-minutes, 3-hours, obscure, emotional, visually-insane, everyone-missed, india, outside-taste]
+        - $ref: "#/components/parameters/ProfileIdQuery"
+        - name: avoidMovieId
+          in: query
+          schema:
+            type: integer
+        - name: seed
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: One selected film and its explanation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurprisePick"
+        "400":
+          description: Unsupported lens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Catalog temporarily unavailable or no safe match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ─── PROFESSIONALS ────────────────────────────────────────────────────────────
   /professionals/me:
@@ -1528,6 +1909,20 @@ paths:
 
 components:
   parameters:
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    ProfileIdQuery:
+      name: profileId
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
     PostId:
       name: id
       in: path
@@ -1781,6 +2176,19 @@ components:
           type: string
       required: [error]
 
+    CatalogMetadata:
+      type: object
+      properties:
+        source:
+          type: string
+        fetchedAt:
+          type: string
+        stale:
+          type: boolean
+        partial:
+          type: boolean
+      required: [source, fetchedAt, stale]
+
     # ── Movie schemas ──
     MovieSummary:
       type: object
@@ -1870,6 +2278,18 @@ components:
             type: string
       required: [id, heading, body]
 
+    MovieStoryTopic:
+      type: object
+      properties:
+        label:
+          type: string
+        href:
+          type: string
+        kind:
+          type: string
+          enum: [person, genre, country]
+      required: [label, href, kind]
+
     MovieStory:
       type: object
       properties:
@@ -1922,7 +2342,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StorySource"
-      required: [status, movie, headline, dek, readTimeMinutes, updatedAt, sections, sources]
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/MovieStoryTopic"
+      required: [status, movie, headline, dek, readTimeMinutes, updatedAt, sections, sources, topics]
 
     Genre:
       type: object
@@ -1941,6 +2365,57 @@ components:
           items:
             $ref: "#/components/schemas/Genre"
       required: [genres]
+
+    SurpriseMovie:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        posterPath:
+          type: ["string", "null"]
+        backdropPath:
+          type: ["string", "null"]
+        overview:
+          type: string
+        releaseDate:
+          type: string
+        runtime:
+          type: ["integer", "null"]
+        genres:
+          type: array
+          items:
+            $ref: "#/components/schemas/Genre"
+        voteAverage:
+          type: number
+      required: [id, title, posterPath, backdropPath, overview, releaseDate, runtime, genres, voteAverage]
+
+    SurprisePick:
+      type: object
+      properties:
+        lens:
+          type: string
+        lensLabel:
+          type: string
+        movie:
+          $ref: "#/components/schemas/SurpriseMovie"
+        explanation:
+          type: string
+        signals:
+          type: array
+          items:
+            type: string
+        personalized:
+          type: boolean
+        runtimeMatch:
+          type: string
+          enum: [exact, nearest-available, not-applicable]
+        requestedRuntime:
+          type: ["integer", "null"]
+        metadata:
+          $ref: "#/components/schemas/CatalogMetadata"
+      required: [lens, lensLabel, movie, explanation, signals, personalized, runtimeMatch, requestedRuntime, metadata]
 
     MoviePagedResult:
       type: object
@@ -2214,6 +2689,8 @@ components:
           type: string
         movieId:
           type: integer
+        profileId:
+          type: ["integer", "null"]
         score:
           type: integer
           minimum: 1
@@ -2222,13 +2699,16 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, userId, movieId, score, createdAt, updatedAt]
+      required: [id, userId, movieId, profileId, score, createdAt, updatedAt]
 
     RatingInput:
       type: object
       properties:
         movieId:
           type: integer
+        profileId:
+          type: integer
+          minimum: 1
         score:
           type: integer
           minimum: 1
@@ -2240,6 +2720,8 @@ components:
       properties:
         movieId:
           type: integer
+        profileId:
+          type: ["integer", "null"]
         averageScore:
           type: number
         totalRatings:
@@ -2269,13 +2751,16 @@ components:
           type: ["string", "null"]
         addedAt:
           type: string
-      required: [id, userId, movieId, status, addedAt]
+      required: [id, userId, movieId, profileId, status, addedAt]
 
     WatchlistInput:
       type: object
       properties:
         movieId:
           type: integer
+        profileId:
+          type: integer
+          minimum: 1
         status:
           type: string
           enum: [want_to_watch, watched]
@@ -2295,6 +2780,248 @@ components:
           type: string
           enum: [want_to_watch, watched]
       required: [status]
+
+    # ── Viewing profile schemas ──
+    ViewingProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        name:
+          type: string
+        avatarKey:
+          type: string
+          enum: [orbit, nova, ember, cine, prism, lunar]
+        avatarUrl:
+          type: ["string", "null"]
+        kidsMode:
+          type: boolean
+        language:
+          type: string
+          enum: [en, hi, ta, te, ml, bn, ja, ko, es, fr]
+        maturity:
+          type: string
+          enum: [all, 7, 13, 16, 18]
+        autoplay:
+          type: boolean
+        favoriteActor:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteDirector:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteGenre:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteCountry:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteDecade:
+          type: ["string", "null"]
+          maxLength: 20
+        favoriteLanguage:
+          type: ["string", "null"]
+          maxLength: 120
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, userId, name, avatarKey, avatarUrl, kidsMode, language, maturity, autoplay, isDefault, createdAt, updatedAt]
+
+    ViewingProfileInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        avatarKey:
+          type: string
+          enum: [orbit, nova, ember, cine, prism, lunar]
+        avatarObjectPath:
+          type: ["string", "null"]
+        kidsMode:
+          type: boolean
+        language:
+          type: string
+          enum: [en, hi, ta, te, ml, bn, ja, ko, es, fr]
+        maturity:
+          type: string
+          enum: [all, 7, 13, 16, 18]
+        autoplay:
+          type: boolean
+        favoriteActor:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteDirector:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteGenre:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteCountry:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteDecade:
+          type: ["string", "null"]
+          maxLength: 20
+        favoriteLanguage:
+          type: ["string", "null"]
+          maxLength: 120
+      required: [name]
+
+    ViewingProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 40
+        avatarKey:
+          type: string
+          enum: [orbit, nova, ember, cine, prism, lunar]
+        avatarObjectPath:
+          type: ["string", "null"]
+        kidsMode:
+          type: boolean
+        language:
+          type: string
+          enum: [en, hi, ta, te, ml, bn, ja, ko, es, fr]
+        maturity:
+          type: string
+          enum: [all, 7, 13, 16, 18]
+        autoplay:
+          type: boolean
+        favoriteActor:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteDirector:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteGenre:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteCountry:
+          type: ["string", "null"]
+          maxLength: 120
+        favoriteDecade:
+          type: ["string", "null"]
+          maxLength: 20
+        favoriteLanguage:
+          type: ["string", "null"]
+          maxLength: 120
+
+    ProfileAvatarUploadInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 240
+        size:
+          type: integer
+          minimum: 1
+          maximum: 5242880
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+      required: [name, size, contentType]
+
+    ProfileAvatarUploadResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required: [uploadURL, objectPath, name, size, contentType]
+
+    ViewingHistoryEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        posterPath:
+          type: ["string", "null"]
+        releaseDate:
+          type: ["string", "null"]
+        voteAverage:
+          type: ["number", "null"]
+      required: [id, title, posterPath, releaseDate, voteAverage]
+
+    ViewingHistoryInput:
+      type: object
+      properties:
+        movies:
+          type: array
+          maxItems: 12
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              title:
+                type: string
+              posterPath:
+                type: ["string", "null"]
+              releaseDate:
+                type: ["string", "null"]
+              voteAverage:
+                type: ["number", "null"]
+            required: [id, title]
+      required: [movies]
+
+    # ── Signal schemas ──
+    Signal:
+      type: object
+      properties:
+        id:
+          type: integer
+        kind:
+          type: string
+          enum: [review-agreement, review-conversation, rated-trending, director-release, taste-graph]
+        label:
+          type: string
+          enum: [SIGNAL]
+        body:
+          type: string
+        movieId:
+          type: ["integer", "null"]
+        movieTitle:
+          type: ["string", "null"]
+        moviePosterPath:
+          type: ["string", "null"]
+        href:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, kind, label, body, movieId, movieTitle, moviePosterPath, href, isRead, createdAt]
+
+    SignalsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Signal"
+        unreadCount:
+          type: integer
+          minimum: 0
+      required: [items, unreadCount]
 
     # ── User schemas ──
     UserProfile:

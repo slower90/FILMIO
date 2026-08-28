@@ -273,6 +273,11 @@ export const GetMovieStoryResponse = zod.object({
   "url": zod.string().url(),
   "kind": zod.enum(['catalog', 'reference', 'official']),
   "note": zod.string()
+})),
+  "topics": zod.array(zod.object({
+  "label": zod.string(),
+  "href": zod.string(),
+  "kind": zod.enum(['person', 'genre', 'country'])
 }))
 })
 
@@ -515,12 +520,21 @@ export const CreateCommentResponse = zod.object({
 /**
  * @summary Create or update a movie rating
  */
+
+
+
+export const UpsertRatingQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
+
 export const upsertRatingBodyScoreMax = 10;
 
 
 
 export const UpsertRatingBody = zod.object({
   "movieId": zod.number().int(),
+  "profileId": zod.number().int().min(1).optional(),
   "score": zod.number().int().min(1).max(upsertRatingBodyScoreMax)
 })
 
@@ -532,6 +546,7 @@ export const UpsertRatingResponse = zod.object({
   "id": zod.number().int(),
   "userId": zod.string(),
   "movieId": zod.number().int(),
+  "profileId": zod.number().int().nullable(),
   "score": zod.number().int().min(1).max(upsertRatingResponseScoreMax),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
@@ -547,6 +562,7 @@ export const GetMovieRatingParams = zod.object({
 
 export const GetMovieRatingResponse = zod.object({
   "movieId": zod.number().int(),
+  "profileId": zod.number().int().nullish(),
   "averageScore": zod.number(),
   "totalRatings": zod.number().int(),
   "weightedScore": zod.number()
@@ -554,10 +570,43 @@ export const GetMovieRatingResponse = zod.object({
 
 
 /**
+ * @summary List the current profile's movie ratings
+ */
+
+
+
+export const ListMyRatingsQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
+export const listMyRatingsResponseScoreMax = 10;
+
+
+
+export const ListMyRatingsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "movieId": zod.number().int(),
+  "profileId": zod.number().int().nullable(),
+  "score": zod.number().int().min(1).max(listMyRatingsResponseScoreMax),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListMyRatingsResponse = zod.array(ListMyRatingsResponseItem)
+
+
+/**
  * @summary Get current user's rating for a movie
  */
 export const GetMyMovieRatingParams = zod.object({
   "movieId": zod.coerce.number().int()
+})
+
+
+
+
+export const GetMyMovieRatingQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
 })
 
 export const getMyMovieRatingResponseScoreMax = 10;
@@ -568,6 +617,7 @@ export const GetMyMovieRatingResponse = zod.object({
   "id": zod.number().int(),
   "userId": zod.string(),
   "movieId": zod.number().int(),
+  "profileId": zod.number().int().nullable(),
   "score": zod.number().int().min(1).max(getMyMovieRatingResponseScoreMax),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
@@ -575,8 +625,77 @@ export const GetMyMovieRatingResponse = zod.object({
 
 
 /**
+ * @summary List personal FILMIO signals
+ */
+
+export const listSignalsQueryUnreadOnlyDefault = false;
+
+export const ListSignalsQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional(),
+  "unreadOnly": zod.coerce.boolean().default(listSignalsQueryUnreadOnlyDefault)
+})
+
+export const listSignalsResponseUnreadCountMin = 0;
+
+
+
+export const ListSignalsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['review-agreement', 'review-conversation', 'rated-trending', 'director-release', 'taste-graph']),
+  "label": zod.enum(['SIGNAL']),
+  "body": zod.string(),
+  "movieId": zod.number().int().nullable(),
+  "movieTitle": zod.string().nullable(),
+  "moviePosterPath": zod.string().nullable(),
+  "href": zod.string().nullable(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.string()
+})),
+  "unreadCount": zod.number().int().min(listSignalsResponseUnreadCountMin)
+})
+
+
+/**
+ * @summary Mark a signal as read
+ */
+
+
+
+export const MarkSignalReadParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const MarkSignalReadResponse = zod.object({
+  "id": zod.number().int(),
+  "kind": zod.enum(['review-agreement', 'review-conversation', 'rated-trending', 'director-release', 'taste-graph']),
+  "label": zod.enum(['SIGNAL']),
+  "body": zod.string(),
+  "movieId": zod.number().int().nullable(),
+  "movieTitle": zod.string().nullable(),
+  "moviePosterPath": zod.string().nullable(),
+  "href": zod.string().nullable(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Mark all personal signals as read
+ */
+export const MarkAllSignalsReadResponse = zod.void()
+
+
+/**
  * @summary Get current user's watchlist
  */
+
+
+
+export const GetWatchlistQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
 export const GetWatchlistResponseItem = zod.object({
   "id": zod.number().int(),
   "userId": zod.string(),
@@ -593,10 +712,19 @@ export const GetWatchlistResponse = zod.array(GetWatchlistResponseItem)
 /**
  * @summary Add a movie to watchlist
  */
+
+
+
+export const AddToWatchlistQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
+
 export const addToWatchlistBodyStatusDefault = `want_to_watch`;
 
 export const AddToWatchlistBody = zod.object({
   "movieId": zod.number().int(),
+  "profileId": zod.number().int().min(1).optional(),
   "status": zod.enum(['want_to_watch', 'watched']).default(addToWatchlistBodyStatusDefault),
   "movieTitle": zod.string().optional(),
   "moviePosterPath": zod.string().nullish(),
@@ -622,6 +750,13 @@ export const RemoveFromWatchlistParams = zod.object({
   "movieId": zod.coerce.number().int()
 })
 
+
+
+
+export const RemoveFromWatchlistQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
 export const RemoveFromWatchlistResponse = zod.void()
 
 
@@ -630,6 +765,13 @@ export const RemoveFromWatchlistResponse = zod.void()
  */
 export const UpdateWatchlistEntryParams = zod.object({
   "movieId": zod.coerce.number().int()
+})
+
+
+
+
+export const UpdateWatchlistEntryQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
 })
 
 export const UpdateWatchlistEntryBody = zod.object({
@@ -693,6 +835,365 @@ export const UpdateMyProfileResponse = zod.object({
   "isFollowedByMe": zod.boolean(),
   "createdAt": zod.string()
 })
+
+
+/**
+ * @summary Get the current profile's viewing history
+ */
+
+
+
+export const GetViewingHistoryQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
+export const GetViewingHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "posterPath": zod.string().nullable(),
+  "releaseDate": zod.string().nullable(),
+  "voteAverage": zod.number().nullable()
+})
+export const GetViewingHistoryResponse = zod.array(GetViewingHistoryResponseItem)
+
+
+/**
+ * @summary Merge movies into the current profile's viewing history
+ */
+
+
+
+export const MergeViewingHistoryQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
+export const mergeViewingHistoryBodyMoviesMax = 12;
+
+
+
+export const MergeViewingHistoryBody = zod.object({
+  "movies": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "posterPath": zod.string().nullish(),
+  "releaseDate": zod.string().nullish(),
+  "voteAverage": zod.number().nullish()
+})).max(mergeViewingHistoryBodyMoviesMax)
+})
+
+export const MergeViewingHistoryResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "posterPath": zod.string().nullable(),
+  "releaseDate": zod.string().nullable(),
+  "voteAverage": zod.number().nullable()
+})
+export const MergeViewingHistoryResponse = zod.array(MergeViewingHistoryResponseItem)
+
+
+/**
+ * @summary Clear the current profile's viewing history
+ */
+
+
+
+export const ClearViewingHistoryQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
+export const ClearViewingHistoryResponse = zod.void()
+
+
+/**
+ * @summary List viewing profiles for the current account
+ */
+export const listProfilesResponseFavoriteActorMax = 120;
+
+export const listProfilesResponseFavoriteDirectorMax = 120;
+
+export const listProfilesResponseFavoriteGenreMax = 120;
+
+export const listProfilesResponseFavoriteCountryMax = 120;
+
+export const listProfilesResponseFavoriteDecadeMax = 20;
+
+export const listProfilesResponseFavoriteLanguageMax = 120;
+
+
+
+export const ListProfilesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "name": zod.string(),
+  "avatarKey": zod.enum(['orbit', 'nova', 'ember', 'cine', 'prism', 'lunar']),
+  "avatarUrl": zod.string().nullable(),
+  "kidsMode": zod.boolean(),
+  "language": zod.enum(['en', 'hi', 'ta', 'te', 'ml', 'bn', 'ja', 'ko', 'es', 'fr']),
+  "maturity": zod.union([zod.literal('all'),zod.literal(7),zod.literal(13),zod.literal(16),zod.literal(18)]),
+  "autoplay": zod.boolean(),
+  "favoriteActor": zod.string().max(listProfilesResponseFavoriteActorMax).nullish(),
+  "favoriteDirector": zod.string().max(listProfilesResponseFavoriteDirectorMax).nullish(),
+  "favoriteGenre": zod.string().max(listProfilesResponseFavoriteGenreMax).nullish(),
+  "favoriteCountry": zod.string().max(listProfilesResponseFavoriteCountryMax).nullish(),
+  "favoriteDecade": zod.string().max(listProfilesResponseFavoriteDecadeMax).nullish(),
+  "favoriteLanguage": zod.string().max(listProfilesResponseFavoriteLanguageMax).nullish(),
+  "isDefault": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListProfilesResponse = zod.array(ListProfilesResponseItem)
+
+
+/**
+ * @summary Create a viewing profile
+ */
+export const createProfileBodyNameMax = 40;
+
+export const createProfileBodyFavoriteActorMax = 120;
+
+export const createProfileBodyFavoriteDirectorMax = 120;
+
+export const createProfileBodyFavoriteGenreMax = 120;
+
+export const createProfileBodyFavoriteCountryMax = 120;
+
+export const createProfileBodyFavoriteDecadeMax = 20;
+
+export const createProfileBodyFavoriteLanguageMax = 120;
+
+
+
+export const CreateProfileBody = zod.object({
+  "name": zod.string().min(1).max(createProfileBodyNameMax),
+  "avatarKey": zod.enum(['orbit', 'nova', 'ember', 'cine', 'prism', 'lunar']).optional(),
+  "avatarObjectPath": zod.string().nullish(),
+  "kidsMode": zod.boolean().optional(),
+  "language": zod.enum(['en', 'hi', 'ta', 'te', 'ml', 'bn', 'ja', 'ko', 'es', 'fr']).optional(),
+  "maturity": zod.union([zod.literal('all'),zod.literal(7),zod.literal(13),zod.literal(16),zod.literal(18)]).optional(),
+  "autoplay": zod.boolean().optional(),
+  "favoriteActor": zod.string().max(createProfileBodyFavoriteActorMax).nullish(),
+  "favoriteDirector": zod.string().max(createProfileBodyFavoriteDirectorMax).nullish(),
+  "favoriteGenre": zod.string().max(createProfileBodyFavoriteGenreMax).nullish(),
+  "favoriteCountry": zod.string().max(createProfileBodyFavoriteCountryMax).nullish(),
+  "favoriteDecade": zod.string().max(createProfileBodyFavoriteDecadeMax).nullish(),
+  "favoriteLanguage": zod.string().max(createProfileBodyFavoriteLanguageMax).nullish()
+})
+
+export const createProfileResponseFavoriteActorMax = 120;
+
+export const createProfileResponseFavoriteDirectorMax = 120;
+
+export const createProfileResponseFavoriteGenreMax = 120;
+
+export const createProfileResponseFavoriteCountryMax = 120;
+
+export const createProfileResponseFavoriteDecadeMax = 20;
+
+export const createProfileResponseFavoriteLanguageMax = 120;
+
+
+
+export const CreateProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "name": zod.string(),
+  "avatarKey": zod.enum(['orbit', 'nova', 'ember', 'cine', 'prism', 'lunar']),
+  "avatarUrl": zod.string().nullable(),
+  "kidsMode": zod.boolean(),
+  "language": zod.enum(['en', 'hi', 'ta', 'te', 'ml', 'bn', 'ja', 'ko', 'es', 'fr']),
+  "maturity": zod.union([zod.literal('all'),zod.literal(7),zod.literal(13),zod.literal(16),zod.literal(18)]),
+  "autoplay": zod.boolean(),
+  "favoriteActor": zod.string().max(createProfileResponseFavoriteActorMax).nullish(),
+  "favoriteDirector": zod.string().max(createProfileResponseFavoriteDirectorMax).nullish(),
+  "favoriteGenre": zod.string().max(createProfileResponseFavoriteGenreMax).nullish(),
+  "favoriteCountry": zod.string().max(createProfileResponseFavoriteCountryMax).nullish(),
+  "favoriteDecade": zod.string().max(createProfileResponseFavoriteDecadeMax).nullish(),
+  "favoriteLanguage": zod.string().max(createProfileResponseFavoriteLanguageMax).nullish(),
+  "isDefault": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Update a viewing profile
+ */
+
+
+
+export const UpdateProfileParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1)
+})
+
+export const updateProfileBodyNameMax = 40;
+
+export const updateProfileBodyFavoriteActorMax = 120;
+
+export const updateProfileBodyFavoriteDirectorMax = 120;
+
+export const updateProfileBodyFavoriteGenreMax = 120;
+
+export const updateProfileBodyFavoriteCountryMax = 120;
+
+export const updateProfileBodyFavoriteDecadeMax = 20;
+
+export const updateProfileBodyFavoriteLanguageMax = 120;
+
+
+
+export const UpdateProfileBody = zod.object({
+  "name": zod.string().min(1).max(updateProfileBodyNameMax).optional(),
+  "avatarKey": zod.enum(['orbit', 'nova', 'ember', 'cine', 'prism', 'lunar']).optional(),
+  "avatarObjectPath": zod.string().nullish(),
+  "kidsMode": zod.boolean().optional(),
+  "language": zod.enum(['en', 'hi', 'ta', 'te', 'ml', 'bn', 'ja', 'ko', 'es', 'fr']).optional(),
+  "maturity": zod.union([zod.literal('all'),zod.literal(7),zod.literal(13),zod.literal(16),zod.literal(18)]).optional(),
+  "autoplay": zod.boolean().optional(),
+  "favoriteActor": zod.string().max(updateProfileBodyFavoriteActorMax).nullish(),
+  "favoriteDirector": zod.string().max(updateProfileBodyFavoriteDirectorMax).nullish(),
+  "favoriteGenre": zod.string().max(updateProfileBodyFavoriteGenreMax).nullish(),
+  "favoriteCountry": zod.string().max(updateProfileBodyFavoriteCountryMax).nullish(),
+  "favoriteDecade": zod.string().max(updateProfileBodyFavoriteDecadeMax).nullish(),
+  "favoriteLanguage": zod.string().max(updateProfileBodyFavoriteLanguageMax).nullish()
+})
+
+export const updateProfileResponseFavoriteActorMax = 120;
+
+export const updateProfileResponseFavoriteDirectorMax = 120;
+
+export const updateProfileResponseFavoriteGenreMax = 120;
+
+export const updateProfileResponseFavoriteCountryMax = 120;
+
+export const updateProfileResponseFavoriteDecadeMax = 20;
+
+export const updateProfileResponseFavoriteLanguageMax = 120;
+
+
+
+export const UpdateProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "name": zod.string(),
+  "avatarKey": zod.enum(['orbit', 'nova', 'ember', 'cine', 'prism', 'lunar']),
+  "avatarUrl": zod.string().nullable(),
+  "kidsMode": zod.boolean(),
+  "language": zod.enum(['en', 'hi', 'ta', 'te', 'ml', 'bn', 'ja', 'ko', 'es', 'fr']),
+  "maturity": zod.union([zod.literal('all'),zod.literal(7),zod.literal(13),zod.literal(16),zod.literal(18)]),
+  "autoplay": zod.boolean(),
+  "favoriteActor": zod.string().max(updateProfileResponseFavoriteActorMax).nullish(),
+  "favoriteDirector": zod.string().max(updateProfileResponseFavoriteDirectorMax).nullish(),
+  "favoriteGenre": zod.string().max(updateProfileResponseFavoriteGenreMax).nullish(),
+  "favoriteCountry": zod.string().max(updateProfileResponseFavoriteCountryMax).nullish(),
+  "favoriteDecade": zod.string().max(updateProfileResponseFavoriteDecadeMax).nullish(),
+  "favoriteLanguage": zod.string().max(updateProfileResponseFavoriteLanguageMax).nullish(),
+  "isDefault": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a non-default viewing profile
+ */
+
+
+
+export const DeleteProfileParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1)
+})
+
+export const DeleteProfileResponse = zod.void()
+
+
+/**
+ * @summary Select a viewing profile
+ */
+
+
+
+export const SelectProfileParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1)
+})
+
+export const selectProfileResponseFavoriteActorMax = 120;
+
+export const selectProfileResponseFavoriteDirectorMax = 120;
+
+export const selectProfileResponseFavoriteGenreMax = 120;
+
+export const selectProfileResponseFavoriteCountryMax = 120;
+
+export const selectProfileResponseFavoriteDecadeMax = 20;
+
+export const selectProfileResponseFavoriteLanguageMax = 120;
+
+
+
+export const SelectProfileResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.string(),
+  "name": zod.string(),
+  "avatarKey": zod.enum(['orbit', 'nova', 'ember', 'cine', 'prism', 'lunar']),
+  "avatarUrl": zod.string().nullable(),
+  "kidsMode": zod.boolean(),
+  "language": zod.enum(['en', 'hi', 'ta', 'te', 'ml', 'bn', 'ja', 'ko', 'es', 'fr']),
+  "maturity": zod.union([zod.literal('all'),zod.literal(7),zod.literal(13),zod.literal(16),zod.literal(18)]),
+  "autoplay": zod.boolean(),
+  "favoriteActor": zod.string().max(selectProfileResponseFavoriteActorMax).nullish(),
+  "favoriteDirector": zod.string().max(selectProfileResponseFavoriteDirectorMax).nullish(),
+  "favoriteGenre": zod.string().max(selectProfileResponseFavoriteGenreMax).nullish(),
+  "favoriteCountry": zod.string().max(selectProfileResponseFavoriteCountryMax).nullish(),
+  "favoriteDecade": zod.string().max(selectProfileResponseFavoriteDecadeMax).nullish(),
+  "favoriteLanguage": zod.string().max(selectProfileResponseFavoriteLanguageMax).nullish(),
+  "isDefault": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Request a private profile avatar upload URL
+ */
+
+
+
+export const RequestProfileAvatarUploadParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1)
+})
+
+export const requestProfileAvatarUploadBodyNameMax = 240;
+
+export const requestProfileAvatarUploadBodySizeMax = 5242880;
+
+
+
+export const RequestProfileAvatarUploadBody = zod.object({
+  "name": zod.string().min(1).max(requestProfileAvatarUploadBodyNameMax),
+  "size": zod.number().int().min(1).max(requestProfileAvatarUploadBodySizeMax),
+  "contentType": zod.enum(['image/jpeg', 'image/png', 'image/webp'])
+})
+
+export const RequestProfileAvatarUploadResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string(),
+  "name": zod.string(),
+  "size": zod.number().int(),
+  "contentType": zod.string()
+})
+
+
+/**
+ * @summary Get a private profile avatar
+ */
+
+
+
+export const GetProfileAvatarParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1)
+})
+
+export const GetProfileAvatarResponse = zod.void()
 
 
 /**
@@ -1239,8 +1740,10 @@ export const GetFeedResponse = zod.array(GetFeedResponseItem)
  */
 export const getRecommendationsQueryLimitDefault = 20;
 
+
 export const GetRecommendationsQueryParams = zod.object({
-  "limit": zod.coerce.number().int().default(getRecommendationsQueryLimitDefault)
+  "limit": zod.coerce.number().int().default(getRecommendationsQueryLimitDefault),
+  "profileId": zod.coerce.number().int().min(1).optional()
 })
 
 export const GetRecommendationsResponseItem = zod.object({
@@ -1254,6 +1757,50 @@ export const GetRecommendationsResponseItem = zod.object({
   "genreIds": zod.array(zod.number().int())
 })
 export const GetRecommendationsResponse = zod.array(GetRecommendationsResponseItem)
+
+
+/**
+ * @summary Choose one explainable film for a discovery lens
+ */
+
+
+
+export const GetSurprisePickQueryParams = zod.object({
+  "lens": zod.enum(['tonight', '15-minutes', '90-minutes', '3-hours', 'obscure', 'emotional', 'visually-insane', 'everyone-missed', 'india', 'outside-taste']),
+  "profileId": zod.coerce.number().int().min(1).optional(),
+  "avoidMovieId": zod.coerce.number().int().optional(),
+  "seed": zod.coerce.string().optional()
+})
+
+export const GetSurprisePickResponse = zod.object({
+  "lens": zod.string(),
+  "lensLabel": zod.string(),
+  "movie": zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "posterPath": zod.string().nullable(),
+  "backdropPath": zod.string().nullable(),
+  "overview": zod.string(),
+  "releaseDate": zod.string(),
+  "runtime": zod.number().int().nullable(),
+  "genres": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "voteAverage": zod.number()
+}),
+  "explanation": zod.string(),
+  "signals": zod.array(zod.string()),
+  "personalized": zod.boolean(),
+  "runtimeMatch": zod.enum(['exact', 'nearest-available', 'not-applicable']),
+  "requestedRuntime": zod.number().int().nullable(),
+  "metadata": zod.object({
+  "source": zod.string(),
+  "fetchedAt": zod.string(),
+  "stale": zod.boolean(),
+  "partial": zod.boolean().optional()
+})
+})
 
 
 /**
