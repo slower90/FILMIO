@@ -4,23 +4,27 @@ const STORAGE_KEY = "mad-max-recently-viewed";
 const MAX_ITEMS = 12;
 const HISTORY_EVENT = "mad-max-history-change";
 
-export function readRecentlyViewed(): RowMovie[] {
+function storageKey(profileId?: number) {
+  return profileId ? `${STORAGE_KEY}:${profileId}` : STORAGE_KEY;
+}
+
+export function readRecentlyViewed(profileId?: number): RowMovie[] {
   if (typeof window === "undefined") return [];
   try {
-    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    const value = JSON.parse(localStorage.getItem(storageKey(profileId)) ?? "[]");
     return Array.isArray(value) ? value : [];
   } catch {
     return [];
   }
 }
 
-export function recordRecentlyViewed(movie: RowMovie) {
+export function recordRecentlyViewed(movie: RowMovie, profileId?: number) {
   if (typeof window === "undefined") return;
   const next = [
     movie,
-    ...readRecentlyViewed().filter((item) => item.id !== movie.id),
+    ...readRecentlyViewed(profileId).filter((item) => item.id !== movie.id),
   ].slice(0, MAX_ITEMS);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  localStorage.setItem(storageKey(profileId), JSON.stringify(next));
   window.dispatchEvent(new CustomEvent(HISTORY_EVENT));
 }
 
@@ -36,8 +40,10 @@ function normalizeMovie(movie: RowMovie): RowMovie {
 async function requestHistory(
   method: "GET" | "POST" | "DELETE",
   movies?: RowMovie[],
+  profileId?: number,
 ): Promise<RowMovie[] | null> {
-  const response = await fetch("/api/users/me/viewing-history", {
+  const params = profileId ? `?profileId=${profileId}` : "";
+  const response = await fetch(`/api/users/me/viewing-history${params}`, {
     method,
     credentials: "include",
     headers: movies ? { "Content-Type": "application/json" } : undefined,
@@ -48,35 +54,36 @@ async function requestHistory(
   return (await response.json()) as RowMovie[];
 }
 
-export async function loadRecentlyViewed(isSignedIn: boolean): Promise<RowMovie[]> {
-  if (!isSignedIn) return readRecentlyViewed();
+export async function loadRecentlyViewed(isSignedIn: boolean, profileId?: number): Promise<RowMovie[]> {
+  if (!isSignedIn) return readRecentlyViewed(profileId);
 
   const localMovies = readRecentlyViewed();
-  const synced = await requestHistory("POST", localMovies);
+  const synced = await requestHistory("POST", localMovies, profileId);
   if (synced === null) return [];
-  if (localMovies.length > 0) localStorage.removeItem(STORAGE_KEY);
+  if (localMovies.length > 0) localStorage.removeItem(storageKey(profileId));
   return synced;
 }
 
 export async function recordRecentlyViewedForUser(
   movie: RowMovie,
   isSignedIn: boolean,
+  profileId?: number,
 ): Promise<void> {
   if (!isSignedIn) {
-    recordRecentlyViewed(movie);
+    recordRecentlyViewed(movie, profileId);
     return;
   }
-  await requestHistory("POST", [movie]);
+  await requestHistory("POST", [movie], profileId);
   window.dispatchEvent(new CustomEvent(HISTORY_EVENT));
 }
 
-export async function clearRecentlyViewed(isSignedIn: boolean): Promise<boolean> {
+export async function clearRecentlyViewed(isSignedIn: boolean, profileId?: number): Promise<boolean> {
   if (!isSignedIn) {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(storageKey(profileId));
     window.dispatchEvent(new CustomEvent(HISTORY_EVENT));
     return true;
   }
-  const result = await requestHistory("DELETE");
+  const result = await requestHistory("DELETE", undefined, profileId);
   if (result === null) return false;
   window.dispatchEvent(new CustomEvent(HISTORY_EVENT));
   return true;
