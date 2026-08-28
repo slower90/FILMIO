@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const watchlistTable = pgTable("watchlist", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
+   profileId: integer("profile_id"),
   movieId: integer("movie_id").notNull(),
   status: text("status").notNull().default("want_to_watch"),
   movieTitle: text("movie_title"),
@@ -14,6 +15,7 @@ export const watchlistTable = pgTable("watchlist", {
 }, (table) => ({
   userStatusAddedIdx: index("watchlist_user_status_added_at_idx").on(
     table.userId,
+     table.profileId,
     table.status,
     table.addedAt,
   ),

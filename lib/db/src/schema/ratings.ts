@@ -5,6 +5,7 @@ import { z } from "zod/v4";
 export const ratingsTable = pgTable("ratings", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
+   profileId: integer("profile_id"),
   movieId: integer("movie_id").notNull(),
   score: integer("score").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

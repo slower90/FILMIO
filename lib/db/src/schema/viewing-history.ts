@@ -7,6 +7,7 @@ export const viewingHistoryTable = pgTable(
   {
     id: serial("id").primaryKey(),
     userId: text("user_id").notNull(),
+    profileId: integer("profile_id"),
     movieId: integer("movie_id").notNull(),
     movieTitle: text("movie_title").notNull(),
     moviePosterPath: text("movie_poster_path"),
@@ -17,10 +18,12 @@ export const viewingHistoryTable = pgTable(
   (table) => ({
     userMovieUnique: uniqueIndex("viewing_history_user_movie_idx").on(
       table.userId,
+      table.profileId,
       table.movieId,
     ),
     userViewedIdx: index("viewing_history_user_viewed_at_idx").on(
       table.userId,
+      table.profileId,
       table.viewedAt,
     ),
   }),
