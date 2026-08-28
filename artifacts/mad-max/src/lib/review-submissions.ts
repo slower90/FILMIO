@@ -41,6 +41,7 @@ export function submitRatingAndReview({
   movieId,
   rating,
   reviewContent,
+  profileId,
   upsertRating,
   createReview,
   effects,
@@ -48,15 +49,20 @@ export function submitRatingAndReview({
   movieId: number;
   rating: string;
   reviewContent: string;
+  profileId?: number;
   upsertRating: Mutation;
   createReview: Mutation;
   effects: ReviewSubmissionEffects;
 }) {
   const score = Number(rating);
   const content = reviewContent.trim();
+  const ratingPayload = {
+    data: { movieId, score },
+    ...(profileId ? { params: { profileId } } : {}),
+  };
 
   upsertRating.mutate(
-    { data: { movieId, score } },
+    ratingPayload,
     {
       onSuccess: () => {
         effects.invalidateRatingStats();

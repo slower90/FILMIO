@@ -7,6 +7,7 @@ import type {
 export type MovieWatchlistSource = Pick<
   WatchlistInput,
   "movieId" | "movieTitle" | "moviePosterPath" | "movieReleaseDate"
+  | "profileId"
 >;
 
 export function createWatchlistAddPayload(
