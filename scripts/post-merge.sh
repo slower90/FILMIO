@@ -7,5 +7,6 @@ if [ -n "${DATABASE_URL:-}" ] && command -v psql >/dev/null 2>&1; then
   psql "$DATABASE_URL" --set ON_ERROR_STOP=1 -f lib/db/migrations/0000_smart_search.sql
   psql "$DATABASE_URL" --set ON_ERROR_STOP=1 -f lib/db/migrations/0001_meilisearch.sql
   psql "$DATABASE_URL" --set ON_ERROR_STOP=1 -f lib/db/migrations/0002_performance_indexes.sql
+  psql "$DATABASE_URL" --set ON_ERROR_STOP=1 -f lib/db/migrations/0003_user_profiles.sql
 fi
 pnpm --filter db push
