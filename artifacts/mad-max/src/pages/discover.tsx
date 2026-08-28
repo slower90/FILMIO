@@ -6,6 +6,7 @@ import { HeroCarousel, type HeroMovie } from "@/components/hero-carousel";
 import { Link } from "wouter";
 import { useUser } from "@clerk/react";
 import { ArrowUpRight, Compass } from "lucide-react";
+import { SurpriseMe } from "@/components/surprise-me";
 
 // Genre row IDs and names for logged-in users
 const GENRE_ROWS = [
@@ -125,9 +126,12 @@ export default function Discover() {
               A sharper cinema feed for the midnight crowd. New releases, enduring favorites, and the good kind of strange.
             </p>
           </div>
-          <Link href="/genres" className="inline-flex min-h-11 items-center gap-2 self-start text-xs font-bold uppercase tracking-[0.16em] text-primary transition-colors hover:text-foreground sm:self-auto">
-            Browse genres <ArrowUpRight className="h-4 w-4" />
-          </Link>
+          <div className="flex flex-wrap items-center gap-4 self-start sm:self-auto">
+            <SurpriseMe />
+            <Link href="/genres" className="inline-flex min-h-11 items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary transition-colors hover:text-foreground">
+              Browse genres <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </div>
 
