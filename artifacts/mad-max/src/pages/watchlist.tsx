@@ -10,11 +10,14 @@ import { format } from "date-fns";
 import { useUser } from "@clerk/react";
 import { createWatchlistRemovePayload, createWatchlistUpdatePayload } from "@/lib/authenticated-flow-contracts";
 import { withMovieTitle } from "@/lib/movie-links";
+import { useActiveProfile } from "@/lib/profile-context";
 
 export default function Watchlist() {
   const { isSignedIn, isLoaded } = useUser();
-  const { data: watchlist, isLoading } = useGetWatchlist({
-    query: { queryKey: getGetWatchlistQueryKey(), enabled: isLoaded && !!isSignedIn },
+  const { activeProfile } = useActiveProfile();
+  const profileParams = activeProfile ? { profileId: activeProfile.id } : undefined;
+  const { data: watchlist, isLoading } = useGetWatchlist(profileParams, {
+    query: { queryKey: getGetWatchlistQueryKey(profileParams), enabled: isLoaded && !!isSignedIn },
   });
   const updateEntry = useUpdateWatchlistEntry();
   const removeEntry = useRemoveFromWatchlist();
@@ -98,11 +101,11 @@ export default function Watchlist() {
                     key={entry.id} 
                     entry={entry} 
                     onMarkWatched={() => updateEntry.mutate(
-                      { movieId: entry.movieId, data: createWatchlistUpdatePayload("watched") },
+                       { movieId: entry.movieId, data: createWatchlistUpdatePayload("watched"), params: profileParams },
                       { onSuccess: refreshWatchlist },
                     )}
                     onRemove={() => removeEntry.mutate(
-                      createWatchlistRemovePayload(entry.movieId),
+                       { ...createWatchlistRemovePayload(entry.movieId), params: profileParams },
                       { onSuccess: refreshWatchlist },
                     )}
                   />
@@ -122,7 +125,7 @@ export default function Watchlist() {
                     entry={entry} 
                     onMarkWatched={undefined} // Already watched
                     onRemove={() => removeEntry.mutate(
-                      createWatchlistRemovePayload(entry.movieId),
+                       { ...createWatchlistRemovePayload(entry.movieId), params: profileParams },
                       { onSuccess: refreshWatchlist },
                     )}
                   />
