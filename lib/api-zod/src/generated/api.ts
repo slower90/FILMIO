@@ -229,6 +229,55 @@ export const GetMovieStatsResponse = zod.object({
 
 
 /**
+ * @summary Source-backed FILMIO editorial story
+ */
+export const GetMovieStoryParams = zod.object({
+  "movieId": zod.coerce.number().int()
+})
+
+export const getMovieStoryQueryTypeDefault = `movie`;
+
+export const GetMovieStoryQueryParams = zod.object({
+  "type": zod.enum(['movie', 'tv']).default(getMovieStoryQueryTypeDefault)
+})
+
+export const GetMovieStoryResponse = zod.object({
+  "status": zod.enum(['ready', 'partial', 'unavailable']),
+  "movie": zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "mediaType": zod.enum(['movie', 'tv']),
+  "releaseDate": zod.string(),
+  "posterPath": zod.string().nullable(),
+  "backdropPath": zod.string().nullable(),
+  "overview": zod.string(),
+  "tagline": zod.string().nullable(),
+  "runtime": zod.number().int().nullable(),
+  "genres": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string()
+})),
+  "imdbId": zod.string().nullable()
+}),
+  "headline": zod.string(),
+  "dek": zod.string(),
+  "readTimeMinutes": zod.number().int(),
+  "updatedAt": zod.coerce.date(),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "heading": zod.string(),
+  "body": zod.array(zod.string())
+})),
+  "sources": zod.array(zod.object({
+  "name": zod.string(),
+  "url": zod.string().url(),
+  "kind": zod.enum(['catalog', 'reference', 'official']),
+  "note": zod.string()
+}))
+})
+
+
+/**
  * @summary List reviews (filter by movieId or userId)
  */
 export const listReviewsQueryTypeDefault = `all`;
@@ -708,6 +757,451 @@ export const GetUserStatsResponse = zod.object({
   "watchlistCount": zod.number().int(),
   "credibilityScore": zod.number()
 })
+
+
+/**
+ * @summary Get the FILMIO friend directory and request lists
+ */
+export const getFriendsOverviewQueryQMax = 80;
+
+export const getFriendsOverviewQueryLimitDefault = 40;
+export const getFriendsOverviewQueryLimitMax = 80;
+
+
+
+export const GetFriendsOverviewQueryParams = zod.object({
+  "q": zod.coerce.string().max(getFriendsOverviewQueryQMax).optional(),
+  "limit": zod.coerce.number().int().min(1).max(getFriendsOverviewQueryLimitMax).default(getFriendsOverviewQueryLimitDefault)
+})
+
+export const GetFriendsOverviewResponse = zod.object({
+  "users": zod.array(zod.object({
+  "id": zod.number().int(),
+  "username": zod.string().nullish(),
+  "displayName": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "isProfessional": zod.boolean(),
+  "relationship": zod.enum(['none', 'incoming', 'outgoing', 'friends']),
+  "requestId": zod.number().int().nullable()
+})),
+  "incomingRequests": zod.array(zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['pending', 'accepted']),
+  "createdAt": zod.string(),
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string().nullish(),
+  "displayName": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "isProfessional": zod.boolean(),
+  "relationship": zod.enum(['none', 'incoming', 'outgoing', 'friends']),
+  "requestId": zod.number().int().nullable()
+})
+})),
+  "outgoingRequests": zod.array(zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['pending', 'accepted']),
+  "createdAt": zod.string(),
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string().nullish(),
+  "displayName": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "isProfessional": zod.boolean(),
+  "relationship": zod.enum(['none', 'incoming', 'outgoing', 'friends']),
+  "requestId": zod.number().int().nullable()
+})
+})),
+  "friends": zod.array(zod.object({
+  "id": zod.number().int(),
+  "username": zod.string().nullish(),
+  "displayName": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "isProfessional": zod.boolean(),
+  "relationship": zod.enum(['none', 'incoming', 'outgoing', 'friends']),
+  "requestId": zod.number().int().nullable()
+})),
+  "counts": zod.object({
+  "incoming": zod.number().int(),
+  "outgoing": zod.number().int(),
+  "friends": zod.number().int()
+})
+})
+
+
+/**
+ * @summary Send a friend request
+ */
+export const SendFriendRequestParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const SendFriendRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['pending', 'accepted']),
+  "createdAt": zod.string(),
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string().nullish(),
+  "displayName": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "isProfessional": zod.boolean(),
+  "relationship": zod.enum(['none', 'incoming', 'outgoing', 'friends']),
+  "requestId": zod.number().int().nullable()
+})
+})
+
+
+/**
+ * @summary Accept an incoming friend request
+ */
+export const AcceptFriendRequestParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const AcceptFriendRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "status": zod.enum(['pending', 'accepted']),
+  "createdAt": zod.string(),
+  "user": zod.object({
+  "id": zod.number().int(),
+  "username": zod.string().nullish(),
+  "displayName": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "isProfessional": zod.boolean(),
+  "relationship": zod.enum(['none', 'incoming', 'outgoing', 'friends']),
+  "requestId": zod.number().int().nullable()
+})
+})
+
+
+/**
+ * @summary Cancel a sent friend request
+ */
+export const CancelFriendRequestParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const CancelFriendRequestResponse = zod.void()
+
+
+/**
+ * @summary Decline an incoming friend request
+ */
+export const DeclineFriendRequestParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeclineFriendRequestResponse = zod.void()
+
+
+/**
+ * @summary Remove an existing friendship
+ */
+export const UnfriendUserParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UnfriendUserResponse = zod.void()
+
+
+/**
+ * @summary Create a movie-community social post
+ */
+export const createPostBodyContentMax = 500;
+
+
+
+export const CreatePostBody = zod.object({
+  "content": zod.string().max(createPostBodyContentMax),
+  "imageUrl": zod.string().nullish(),
+  "imageType": zod.string().nullish(),
+  "imageName": zod.string().nullish(),
+  "imageSize": zod.number().int().nullish(),
+  "linkedMovieId": zod.number().int().nullish(),
+  "linkedMovieTitle": zod.string().nullish(),
+  "linkedMoviePosterPath": zod.string().nullish(),
+  "postType": zod.enum(['standard', 'announcement']).optional()
+})
+
+export const CreatePostResponse = zod.object({
+  "id": zod.number().int(),
+  "author": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable(),
+  "authorType": zod.enum(['user', 'actor']),
+  "verified": zod.boolean()
+}),
+  "content": zod.string(),
+  "imageUrl": zod.string().nullable(),
+  "imageType": zod.string().nullable(),
+  "linkedMovieId": zod.number().int().nullable(),
+  "linkedMovieTitle": zod.string().nullable(),
+  "linkedMoviePosterPath": zod.string().nullable(),
+  "postType": zod.enum(['standard', 'announcement']),
+  "likesCount": zod.number().int(),
+  "commentsCount": zod.number().int(),
+  "viewerLiked": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get the authenticated movie-community social feed
+ */
+export const getPostsFeedQueryLimitDefault = 12;
+export const getPostsFeedQueryLimitMin = 10;
+export const getPostsFeedQueryLimitMax = 15;
+
+
+
+export const GetPostsFeedQueryParams = zod.object({
+  "cursor": zod.coerce.string().nullish(),
+  "limit": zod.coerce.number().int().min(getPostsFeedQueryLimitMin).max(getPostsFeedQueryLimitMax).default(getPostsFeedQueryLimitDefault)
+})
+
+export const GetPostsFeedResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "author": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable(),
+  "authorType": zod.enum(['user', 'actor']),
+  "verified": zod.boolean()
+}),
+  "content": zod.string(),
+  "imageUrl": zod.string().nullable(),
+  "imageType": zod.string().nullable(),
+  "linkedMovieId": zod.number().int().nullable(),
+  "linkedMovieTitle": zod.string().nullable(),
+  "linkedMoviePosterPath": zod.string().nullable(),
+  "postType": zod.enum(['standard', 'announcement']),
+  "likesCount": zod.number().int(),
+  "commentsCount": zod.number().int(),
+  "viewerLiked": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})),
+  "nextCursor": zod.string().nullable(),
+  "hasMore": zod.boolean()
+})
+
+
+/**
+ * @summary Request a private social post image upload URL
+ */
+
+
+
+export const RequestPostUploadBody = zod.object({
+  "name": zod.string(),
+  "size": zod.number().int().min(1),
+  "contentType": zod.string()
+})
+
+export const RequestPostUploadResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "imageUrl": zod.string(),
+  "name": zod.string(),
+  "size": zod.number().int(),
+  "contentType": zod.string()
+})
+
+
+/**
+ * @summary Like a social post
+ */
+
+
+
+export const LikePostParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const LikePostResponse = zod.object({
+  "liked": zod.boolean(),
+  "likesCount": zod.number().int()
+})
+
+
+/**
+ * @summary Unlike a social post
+ */
+
+
+
+export const UnlikePostParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const UnlikePostResponse = zod.object({
+  "liked": zod.boolean(),
+  "likesCount": zod.number().int()
+})
+
+
+/**
+ * @summary List comments on a social post
+ */
+
+
+
+export const ListPostCommentsParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const ListPostCommentsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "postId": zod.number().int(),
+  "userId": zod.string(),
+  "author": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable(),
+  "authorType": zod.enum(['user', 'actor']),
+  "verified": zod.boolean()
+}),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPostCommentsResponse = zod.array(ListPostCommentsResponseItem)
+
+
+/**
+ * @summary Add a comment to a social post
+ */
+
+
+
+export const CreatePostCommentParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const createPostCommentBodyContentMax = 500;
+
+
+
+export const CreatePostCommentBody = zod.object({
+  "content": zod.string().min(1).max(createPostCommentBodyContentMax)
+})
+
+export const CreatePostCommentResponse = zod.object({
+  "id": zod.number().int(),
+  "postId": zod.number().int(),
+  "userId": zod.string(),
+  "author": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable(),
+  "authorType": zod.enum(['user', 'actor']),
+  "verified": zod.boolean()
+}),
+  "content": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get active temporary stories
+ */
+export const GetStoriesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "author": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable(),
+  "authorType": zod.enum(['user', 'actor']),
+  "verified": zod.boolean()
+}),
+  "content": zod.string(),
+  "mediaUrl": zod.string().nullable(),
+  "mediaType": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isOwner": zod.boolean()
+})
+export const GetStoriesResponse = zod.array(GetStoriesResponseItem)
+
+
+/**
+ * @summary Create a temporary story
+ */
+export const createStoryBodyContentMax = 280;
+
+
+
+export const CreateStoryBody = zod.object({
+  "content": zod.string().max(createStoryBodyContentMax).optional(),
+  "mediaUrl": zod.string().nullish(),
+  "mediaType": zod.string().nullish(),
+  "mediaName": zod.string().nullish(),
+  "mediaSize": zod.number().int().nullish()
+})
+
+export const CreateStoryResponse = zod.object({
+  "id": zod.number().int(),
+  "author": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable(),
+  "authorType": zod.enum(['user', 'actor']),
+  "verified": zod.boolean()
+}),
+  "content": zod.string(),
+  "mediaUrl": zod.string().nullable(),
+  "mediaType": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "isOwner": zod.boolean()
+})
+
+
+/**
+ * @summary Request a private story media upload URL
+ */
+
+
+
+export const RequestStoryUploadBody = zod.object({
+  "name": zod.string(),
+  "size": zod.number().int().min(1),
+  "contentType": zod.string()
+})
+
+export const RequestStoryUploadResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "mediaUrl": zod.string(),
+  "name": zod.string(),
+  "size": zod.number().int(),
+  "contentType": zod.string()
+})
+
+
+/**
+ * @summary Delete your temporary story
+ */
+
+
+
+export const DeleteStoryParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteStoryResponse = zod.void()
+
+
+/**
+ * @summary Get active story media
+ */
+
+
+
+export const GetStoryMediaParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const GetStoryMediaResponse = zod.void()
 
 
 /**

@@ -224,6 +224,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/MovieStats"
 
+  /movies/{movieId}/story:
+    get:
+      operationId: getMovieStory
+      tags: [movies]
+      summary: Source-backed FILMIO editorial story
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [movie, tv]
+            default: movie
+      responses:
+        "200":
+          description: Editorial story
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieStory"
+        "404":
+          description: Movie not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Story temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ─── REVIEWS ─────────────────────────────────────────────────────────────────
   /reviews:
     get:
@@ -730,7 +767,524 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserStats"
 
-  # ─── FEED ─────────────────────────────────────────────────────────────────────
+  /users/friends:
+    get:
+      operationId: getFriendsOverview
+      tags: [users]
+      summary: Get the FILMIO friend directory and request lists
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 80
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 80
+            default: 40
+      responses:
+        "200":
+          description: Friend directory and relationship lists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendsOverview"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}/friend-request:
+    post:
+      operationId: sendFriendRequest
+      tags: [users]
+      summary: Send a friend request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Friend request sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRequest"
+        "400":
+          description: Invalid friend request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Friend request conflicts with an existing relationship
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/friend-requests/{id}/accept:
+    post:
+      operationId: acceptFriendRequest
+      tags: [users]
+      summary: Accept an incoming friend request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Friendship accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRequest"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/friend-requests/{id}:
+    delete:
+      operationId: cancelFriendRequest
+      tags: [users]
+      summary: Cancel a sent friend request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Friend request cancelled
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/friend-requests/{id}/decline:
+    post:
+      operationId: declineFriendRequest
+      tags: [users]
+      summary: Decline an incoming friend request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Friend request declined
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}/friend:
+    delete:
+      operationId: unfriendUser
+      tags: [users]
+      summary: Remove an existing friendship
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Friendship removed
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Friendship not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── SOCIAL FEED ───────────────────────────────────────────────────────────────
+  /posts:
+    post:
+      operationId: createPost
+      tags: [feed]
+      summary: Create a movie-community social post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostInput"
+      responses:
+        "201":
+          description: Created post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "400":
+          description: Invalid post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /posts/feed:
+    get:
+      operationId: getPostsFeed
+      tags: [feed]
+      summary: Get the authenticated movie-community social feed
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 10
+            maximum: 15
+            default: 12
+      responses:
+        "200":
+          description: Cursor-paginated social posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostFeedResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /posts/upload-url:
+    post:
+      operationId: requestPostUpload
+      tags: [feed]
+      summary: Request a private social post image upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostUploadInput"
+      responses:
+        "200":
+          description: Signed upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostUploadResponse"
+        "400":
+          description: Invalid upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /posts/{id}/like:
+    post:
+      operationId: likePost
+      tags: [feed]
+      summary: Like a social post
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "200":
+          description: Updated like state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostLikeResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: unlikePost
+      tags: [feed]
+      summary: Unlike a social post
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "200":
+          description: Updated like state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostLikeResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /posts/{id}/comments:
+    get:
+      operationId: listPostComments
+      tags: [feed]
+      summary: List comments on a social post
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "200":
+          description: Post comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PostComment"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createPostComment
+      tags: [feed]
+      summary: Add a comment to a social post
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostCommentInput"
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostComment"
+        "400":
+          description: Invalid comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── STORIES ───────────────────────────────────────────────────────────────────
+  /stories:
+    get:
+      operationId: getStories
+      tags: [feed]
+      summary: Get active temporary stories
+      responses:
+        "200":
+          description: Active stories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Story"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createStory
+      tags: [feed]
+      summary: Create a temporary story
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryInput"
+      responses:
+        "201":
+          description: Created story
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+        "400":
+          description: Invalid story
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stories/upload-url:
+    post:
+      operationId: requestStoryUpload
+      tags: [feed]
+      summary: Request a private story media upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryUploadInput"
+      responses:
+        "200":
+          description: Signed upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoryUploadResponse"
+        "400":
+          description: Invalid upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stories/{id}:
+    delete:
+      operationId: deleteStory
+      tags: [feed]
+      summary: Delete your temporary story
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "204":
+          description: Story deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Story not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stories/{id}/media:
+    get:
+      operationId: getStoryMedia
+      tags: [feed]
+      summary: Get active story media
+      parameters:
+        - $ref: "#/components/parameters/PostId"
+      responses:
+        "302":
+          description: Redirect to the temporary story media
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Story media not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── FOLLOWING REVIEWS FEED ───────────────────────────────────────────────────
   /feed:
     get:
       operationId: getFeed
@@ -973,7 +1527,246 @@ paths:
                 $ref: "#/components/schemas/ChatMessage"
 
 components:
+  parameters:
+    PostId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
   schemas:
+    PostAuthor:
+      type: object
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        authorType:
+          type: string
+          enum: [user, actor]
+        verified:
+          type: boolean
+      required: [id, displayName, avatarUrl, authorType, verified]
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: integer
+        author:
+          $ref: "#/components/schemas/PostAuthor"
+        content:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        imageType:
+          type: ["string", "null"]
+        linkedMovieId:
+          type: ["integer", "null"]
+        linkedMovieTitle:
+          type: ["string", "null"]
+        linkedMoviePosterPath:
+          type: ["string", "null"]
+        postType:
+          type: string
+          enum: [standard, announcement]
+        likesCount:
+          type: integer
+        commentsCount:
+          type: integer
+        viewerLiked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - author
+        - content
+        - imageUrl
+        - imageType
+        - linkedMovieId
+        - linkedMovieTitle
+        - linkedMoviePosterPath
+        - postType
+        - likesCount
+        - commentsCount
+        - viewerLiked
+        - createdAt
+
+    PostFeedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Post"
+        nextCursor:
+          type: ["string", "null"]
+        hasMore:
+          type: boolean
+      required: [items, nextCursor, hasMore]
+
+    PostInput:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 500
+        imageUrl:
+          type: ["string", "null"]
+        imageType:
+          type: ["string", "null"]
+        imageName:
+          type: ["string", "null"]
+        imageSize:
+          type: ["integer", "null"]
+        linkedMovieId:
+          type: ["integer", "null"]
+        linkedMovieTitle:
+          type: ["string", "null"]
+        linkedMoviePosterPath:
+          type: ["string", "null"]
+        postType:
+          type: string
+          enum: [standard, announcement]
+      required: [content]
+
+    PostUploadInput:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+      required: [name, size, contentType]
+
+    PostUploadResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        imageUrl:
+          type: string
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required: [uploadURL, imageUrl, name, size, contentType]
+
+    PostLikeResponse:
+      type: object
+      properties:
+        liked:
+          type: boolean
+        likesCount:
+          type: integer
+      required: [liked, likesCount]
+
+    PostComment:
+      type: object
+      properties:
+        id:
+          type: integer
+        postId:
+          type: integer
+        userId:
+          type: string
+        author:
+          $ref: "#/components/schemas/PostAuthor"
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, postId, userId, author, content, createdAt]
+
+    PostCommentInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required: [content]
+
+    Story:
+      type: object
+      properties:
+        id:
+          type: integer
+        author:
+          $ref: "#/components/schemas/PostAuthor"
+        content:
+          type: string
+        mediaUrl:
+          type: ["string", "null"]
+        mediaType:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        isOwner:
+          type: boolean
+      required: [id, author, content, mediaUrl, mediaType, createdAt, expiresAt, isOwner]
+
+    StoryInput:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 280
+        mediaUrl:
+          type: ["string", "null"]
+        mediaType:
+          type: ["string", "null"]
+        mediaName:
+          type: ["string", "null"]
+        mediaSize:
+          type: ["integer", "null"]
+
+    StoryUploadInput:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+      required: [name, size, contentType]
+
+    StoryUploadResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        mediaUrl:
+          type: string
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required: [uploadURL, mediaUrl, name, size, contentType]
+
     HealthStatus:
       type: object
       properties:
@@ -1048,6 +1841,88 @@ components:
         imdbId:
           type: ["string", "null"]
       required: [id, title, overview, releaseDate, voteAverage, voteCount, genres, budget, revenue]
+
+    StorySource:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        kind:
+          type: string
+          enum: [catalog, reference, official]
+        note:
+          type: string
+      required: [name, url, kind, note]
+
+    MovieStorySection:
+      type: object
+      properties:
+        id:
+          type: string
+        heading:
+          type: string
+        body:
+          type: array
+          items:
+            type: string
+      required: [id, heading, body]
+
+    MovieStory:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, partial, unavailable]
+        movie:
+          type: object
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+            mediaType:
+              type: string
+              enum: [movie, tv]
+            releaseDate:
+              type: string
+            posterPath:
+              type: ["string", "null"]
+            backdropPath:
+              type: ["string", "null"]
+            overview:
+              type: string
+            tagline:
+              type: ["string", "null"]
+            runtime:
+              type: ["integer", "null"]
+            genres:
+              type: array
+              items:
+                $ref: "#/components/schemas/Genre"
+            imdbId:
+              type: ["string", "null"]
+          required: [id, title, mediaType, releaseDate, posterPath, backdropPath, overview, tagline, runtime, genres, imdbId]
+        headline:
+          type: string
+        dek:
+          type: string
+        readTimeMinutes:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/MovieStorySection"
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/StorySource"
+      required: [status, movie, headline, dek, readTimeMinutes, updatedAt, sections, sources]
 
     Genre:
       type: object
@@ -1490,6 +2365,71 @@ components:
         followersCount:
           type: integer
       required: [following, followersCount]
+
+    FriendUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: ["string", "null"]
+        displayName:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        isProfessional:
+          type: boolean
+        relationship:
+          type: string
+          enum: [none, incoming, outgoing, friends]
+        requestId:
+          type: ["integer", "null"]
+      required: [id, isProfessional, relationship, requestId]
+
+    FriendRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, accepted]
+        createdAt:
+          type: string
+        user:
+          $ref: "#/components/schemas/FriendUser"
+      required: [id, status, createdAt, user]
+
+    FriendsOverview:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendUser"
+        incomingRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendRequest"
+        outgoingRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendRequest"
+        friends:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendUser"
+        counts:
+          type: object
+          properties:
+            incoming:
+              type: integer
+            outgoing:
+              type: integer
+            friends:
+              type: integer
+          required: [incoming, outgoing, friends]
+      required: [users, incomingRequests, outgoingRequests, friends, counts]
 
     # ── Professional schemas ──
     ProfessionalProfile:
