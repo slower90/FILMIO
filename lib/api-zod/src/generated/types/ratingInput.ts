@@ -8,6 +8,8 @@
 
 export interface RatingInput {
   movieId: number;
+  /** @minimum 1 */
+  profileId?: number;
   /**
      * @minimum 1
      * @maximum 10
