@@ -202,10 +202,10 @@ export default function Anime() {
 
       {/* Category rows */}
       <div className="bg-card/10">
-        <AnimeRow title="🔥 Top Rated All Time" filter="bypopularity" type="tv" />
-        <AnimeRow title="📺 Currently Airing" filter="airing" type="tv" />
-        <AnimeRow title="🎬 Anime Movies" filter="bypopularity" type="movie" />
-        <AnimeRow title="⭐ Fan Favourites" filter="favorite" type="tv" />
+        <AnimeRow title="Top Rated All Time" filter="bypopularity" type="tv" />
+        <AnimeRow title="Currently Airing" filter="airing" type="tv" />
+        <AnimeRow title="Anime Movies" filter="bypopularity" type="movie" />
+        <AnimeRow title="Fan Favourites" filter="favorite" type="tv" />
       </div>
 
       {/* MAL attribution */}

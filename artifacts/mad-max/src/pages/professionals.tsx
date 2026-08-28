@@ -7,19 +7,115 @@ import {
   getGetMyProfessionalProfileQueryKey,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { ProfessionalMediaGallery, type ProfessionalMedia } from "@/components/professional-media-gallery";
 import { Link } from "wouter";
-import { Briefcase, Camera, BadgeCheck, Check, Loader2, Pencil, Plus, Trash2, Upload, Film, X } from "lucide-react";
+import { ArrowRight, Briefcase, UsersRound, BadgeCheck, Check, Loader2, Pencil, Plus, Trash2, Upload, Film, X } from "lucide-react";
 import { useUser } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 
 type WorkEntry = { id: number; projectName: string; role: string; year: number | null; collaborators: string[]; description?: string | null };
 type Audition = { id: number; title: string; description?: string | null; fileName: string; contentType: string; fileSize: number; isPublic: boolean; createdAt: string };
+type ProfileWorkspaceData = {
+  displayName?: string | null;
+  headshotUrl?: string | null;
+  demoReelUrl?: string | null;
+  bio?: string | null;
+  roles?: string[];
+  skills?: string[];
+  agencyContact?: string | null;
+  availabilityStatus: string;
+  verified?: boolean;
+  imdbLink?: string | null;
+};
+
+function ProfileWorkspace({
+  profile,
+  media,
+  onEdit,
+  onMediaChanged,
+}: {
+  profile: ProfileWorkspaceData;
+  media: ProfessionalMedia[];
+  onEdit: () => void;
+  onMediaChanged: () => void | Promise<void>;
+}) {
+  const [, navigate] = useLocation();
+  const availabilityLabel = profile.availabilityStatus.replace(/_/g, " ");
+  const availabilityClass = profile.availabilityStatus === "available"
+    ? "border-green-500/50 bg-green-500/10 text-green-500"
+    : profile.availabilityStatus === "open_to_projects"
+      ? "border-primary/50 bg-primary/10 text-primary"
+      : "border-muted bg-muted/20 text-muted-foreground";
+
+  return (
+    <>
+      <section className="border-b border-border bg-card px-4 pb-12 pt-28">
+        <div className="container mx-auto max-w-5xl">
+          <div className="flex flex-col gap-8 md:flex-row md:items-center">
+            <div className="relative shrink-0 self-center md:self-auto">
+              <img
+                src={profile.headshotUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.displayName || "FILMIO"}`}
+                alt={`${profile.displayName || "Professional"} profile`}
+                className="h-36 w-36 rounded-md border-4 border-background object-cover shadow-2xl sm:h-44 sm:w-44"
+              />
+              {profile.verified && (
+                <div className="absolute -bottom-3 -right-3 rounded-full border-4 border-card bg-primary p-2 text-primary-foreground shadow-lg" title="Verified Professional">
+                  <BadgeCheck className="h-5 w-5" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.24em] text-primary">Professional profile</p>
+                  <h1 className="text-3xl font-bold uppercase tracking-tight text-glow sm:text-5xl">{profile.displayName || "FILMIO Professional"}</h1>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {profile.roles?.map((role) => (
+                      <span key={role} className="rounded-sm border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary">{role}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={onEdit} className="gap-2">
+                    <Pencil className="h-4 w-4" /> Edit profile
+                  </Button>
+                  <Button type="button" size="sm" onClick={() => navigate("/feed")} className="gap-2">
+                    Social Feed <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap items-center gap-3 text-xs font-bold uppercase tracking-widest">
+                <span className={`rounded-sm border px-3 py-1.5 ${availabilityClass}`}>{availabilityLabel}</span>
+                {profile.agencyContact && <span className="text-muted-foreground">{profile.agencyContact}</span>}
+                {profile.imdbLink && (
+                  <a href={profile.imdbLink} target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors hover:text-primary">IMDb ↗</a>
+                )}
+              </div>
+              {profile.bio && <p className="mt-5 max-w-3xl whitespace-pre-wrap text-sm leading-relaxed text-foreground/75">{profile.bio}</p>}
+              {profile.skills && profile.skills.length > 0 && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {profile.skills.map((skill) => <span key={skill} className="rounded-sm bg-secondary px-2.5 py-1 text-xs uppercase tracking-wider text-muted-foreground">{skill}</span>)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+      <main className="container mx-auto max-w-5xl px-4 py-12">
+        <ProfessionalMediaGallery media={media} editable onChanged={onMediaChanged} />
+      </main>
+    </>
+  );
+}
 
 export default function Professionals() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const [showProfileForm, setShowProfileForm] = useState(false);
+  const [savedProfile, setSavedProfile] = useState<ProfileWorkspaceData | null>(null);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
@@ -31,7 +127,7 @@ export default function Professionals() {
   const [skills, setSkills] = useState("");
   const [agencyContact, setAgencyContact] = useState("");
   const [imdbLink, setImdbLink] = useState("");
-  const [portfolio, setPortfolio] = useState<{ work: WorkEntry[]; auditions: Audition[] }>({ work: [], auditions: [] });
+  const [portfolio, setPortfolio] = useState<{ work: WorkEntry[]; auditions: Audition[]; media: ProfessionalMedia[] }>({ work: [], auditions: [], media: [] });
   const [workDraft, setWorkDraft] = useState({ projectName: "", role: "", year: "", collaborators: "", description: "" });
   const [editingWorkId, setEditingWorkId] = useState<number | null>(null);
   const [editingWorkDraft, setEditingWorkDraft] = useState({ projectName: "", role: "", year: "", collaborators: "", description: "" });
@@ -51,6 +147,7 @@ export default function Professionals() {
   });
   const createProfile = useCreateProfessionalProfile();
   const updateProfile = useUpdateProfessionalProfile();
+  const profileForForm = myProfile ?? savedProfile;
 
   useEffect(() => {
     if (!myProfile) return;
@@ -68,12 +165,17 @@ export default function Professionals() {
   const loadPortfolio = async () => {
     if (!isSignedIn) return;
     const response = await fetch("/api/professionals/me/portfolio");
-    if (response.ok) setPortfolio(await response.json());
+    if (response.ok) {
+      const data = await response.json();
+      setPortfolio({ work: data.work ?? [], auditions: data.auditions ?? [], media: data.media ?? [] });
+    }
   };
   useEffect(() => { void loadPortfolio(); }, [isSignedIn, myProfile?.id]);
+  useEffect(() => {
+    if (!isSignedIn) setSavedProfile(null);
+  }, [isSignedIn]);
 
-  const handleProfileSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submitProfile = async () => {
     setFormError(null);
     setFormMessage(null);
     const parsedRoles = roles.split(",").map((role) => role.trim()).filter(Boolean);
@@ -92,23 +194,33 @@ export default function Professionals() {
       agencyContact: agencyContact.trim() || undefined,
       imdbLink: imdbLink.trim() || undefined,
     };
-    const mutation = myProfile ? updateProfile : createProfile;
-    mutation.mutate(
-      { data } as never,
-      {
-        onSuccess: () => {
-          setFormMessage(myProfile ? "Your professional profile was updated." : "Your professional profile is live.");
-          setShowProfileForm(false);
-          void queryClient.invalidateQueries({ queryKey: getGetMyProfessionalProfileQueryKey() });
-          void queryClient.invalidateQueries({ queryKey: ["/api/professionals/search"] });
-        },
-        onError: () => setFormError("We couldn't save your profile. Please check the details and try again."),
-      },
-    );
+    try {
+      const profileMethod = profileForForm ? "PATCH" : "POST";
+      console.info("[professionals] profile save started", { method: profileMethod });
+      const savedProfileResponse = profileForForm
+        ? await updateProfile.mutateAsync({ data } as never)
+        : await createProfile.mutateAsync({ data } as never);
+      console.info("[professionals] profile save succeeded", { method: profileMethod });
+      queryClient.setQueryData(getGetMyProfessionalProfileQueryKey(), savedProfileResponse);
+      setSavedProfile(savedProfileResponse as ProfileWorkspaceData);
+      setFormMessage(profileForForm ? "Your professional profile has been updated." : "Your professional profile has been created.");
+      setShowProfileForm(false);
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetMyProfessionalProfileQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: ["/api/professionals/search"] }),
+      ]);
+    } catch (error) {
+      console.error("[professionals] profile save failed", error);
+      setFormError(error instanceof Error ? error.message : "We couldn't save your profile. Please check the details and try again.");
+    }
   };
 
-  const addWork = async (event: React.FormEvent) => {
+  const handleProfileSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    void submitProfile();
+  };
+
+  const addWork = async () => {
     const response = await fetch("/api/professionals/me/work", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
       ...workDraft, year: workDraft.year || null, collaborators: workDraft.collaborators.split(",").map((item) => item.trim()).filter(Boolean),
     }) });
@@ -135,8 +247,7 @@ export default function Professionals() {
     setEditingWorkId(null);
     setEditingWorkDraft({ projectName: "", role: "", year: "", collaborators: "", description: "" });
   };
-  const saveWork = async (event: React.FormEvent, id: number) => {
-    event.preventDefault();
+  const saveWork = async (id: number) => {
     setSavingWorkId(id);
     setFormError(null);
     try {
@@ -188,41 +299,62 @@ export default function Professionals() {
     finally { setUploading(false); event.target.value = ""; }
   };
   const removeAudition = async (id: number) => { await fetch(`/api/professionals/me/auditions/${id}`, { method: "DELETE" }); void loadPortfolio(); };
+    const profileExists = Boolean(isSignedIn && profileForForm);
+    useEffect(() => {
+      if (window.location.hash !== "#auditions" || !profileExists) return;
+      const timer = window.setTimeout(() => {
+        document.getElementById("audition-room")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+      return () => window.clearTimeout(timer);
+    }, [profileExists]);
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <Navbar />
       
-      {/* Hero */}
-      <section className="bg-card border-b border-border pt-32 pb-16 text-center px-4">
-        <div className="container mx-auto max-w-4xl">
-          <Briefcase className="w-16 h-16 text-primary mx-auto mb-6" />
-          <h1 className="text-4xl md:text-6xl font-display font-bold uppercase tracking-tighter mb-4 text-glow">
-            Industry Network
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8">
-            Connect with verified directors, actors, cinematographers, and crew members. 
-            The professional side of FILMIO.
-          </p>
-          <Button
-            size="lg"
-            variant="outline"
-            className="gap-2"
-            onClick={() => {
-              if (!isSignedIn) {
-                window.location.href = "/sign-in?redirect=/professionals";
-                return;
-              }
-              setFormError(null);
-              setFormMessage(null);
-              setShowProfileForm((open) => !open);
-            }}
-          >
-            <Camera className="w-5 h-5" />
-            {myProfile ? "Edit Professional Profile" : "Set Up Professional Profile"}
-          </Button>
+      <section className="bg-card border-b border-border px-4 pb-16 pt-32">
+        <div className={`container mx-auto ${profileExists && profileForForm ? "max-w-5xl text-left" : "max-w-4xl text-center"}`}>
+          {profileExists && profileForForm ? (
+            <ProfileWorkspace
+              profile={profileForForm}
+              media={portfolio.media}
+              onEdit={() => {
+                setFormError(null);
+                setFormMessage(null);
+                setShowProfileForm(true);
+              }}
+              onMediaChanged={loadPortfolio}
+            />
+          ) : (
+            <>
+              <Briefcase className="mx-auto mb-6 h-16 w-16 text-primary" />
+              <h1 className="mb-4 text-4xl font-bold uppercase tracking-tighter text-glow md:text-6xl">
+                Industry Network
+              </h1>
+              <p className="mb-8 text-lg text-muted-foreground md:text-xl">
+                Connect with verified directors, actors, cinematographers, and crew members.
+                The professional side of FILMIO.
+              </p>
+              <Button
+                type="button"
+                size="lg"
+                className="group gap-3 border border-primary/60 bg-primary px-6 font-bold uppercase tracking-wider text-primary-foreground shadow-[0_0_24px_rgba(245,158,11,0.2)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_0_34px_rgba(245,158,11,0.35)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                onClick={() => {
+                  if (!isSignedIn) {
+                    window.location.href = "/sign-in?redirect=/feed";
+                    return;
+                  }
+                  navigate("/feed");
+                }}
+              >
+                <UsersRound className="h-5 w-5" />
+                Join FILMIO
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </>
+          )}
           {showProfileForm && isSignedIn && (
-            <form onSubmit={handleProfileSubmit} className="mx-auto mt-8 max-w-2xl space-y-4 rounded-md border border-border bg-background/70 p-6 text-left">
+            <form onSubmitCapture={(event) => event.preventDefault()} onSubmit={handleProfileSubmit} className="mx-auto mt-8 max-w-2xl space-y-4 rounded-md border border-border bg-background/70 p-6 text-left">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-2 text-xs font-bold uppercase tracking-wider">
                   Display name
@@ -263,7 +395,7 @@ export default function Professionals() {
                   <option value="not_available">Not available</option>
                 </select>
               </label>
-              {myProfile && (
+              {profileForForm && (
                 <div className="space-y-6 border-t border-border pt-6">
                   <div>
                     <h3 className="flex items-center gap-2 font-display text-xl uppercase tracking-wider"><Film className="h-5 w-5 text-primary" /> Work history</h3>
@@ -272,7 +404,7 @@ export default function Professionals() {
                   {portfolio.work.map((entry) => (
                     editingWorkId === entry.id ? (
                       <div key={entry.id} className="rounded-md border border-primary/50 bg-card p-4">
-                        <form onSubmit={(event) => void saveWork(event, entry.id)} className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-3 sm:grid-cols-2">
                           <label className="space-y-1 text-xs font-bold uppercase tracking-wider">
                             Project name
                             <input required value={editingWorkDraft.projectName} onChange={(event) => setEditingWorkDraft({ ...editingWorkDraft, projectName: event.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm font-normal normal-case tracking-normal" />
@@ -294,12 +426,12 @@ export default function Professionals() {
                             <textarea value={editingWorkDraft.description} onChange={(event) => setEditingWorkDraft({ ...editingWorkDraft, description: event.target.value })} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-normal normal-case tracking-normal" />
                           </label>
                           <div className="flex gap-2 sm:col-span-2">
-                            <Button type="submit" size="sm" disabled={savingWorkId === entry.id} className="gap-2">
+                            <Button type="button" size="sm" onClick={() => void saveWork(entry.id)} disabled={savingWorkId === entry.id} className="gap-2">
                               {savingWorkId === entry.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Save
                             </Button>
                             <Button type="button" size="sm" variant="ghost" onClick={cancelEditingWork} disabled={savingWorkId === entry.id} className="gap-2"><X className="h-4 w-4" /> Cancel</Button>
                           </div>
-                        </form>
+                        </div>
                       </div>
                     ) : (
                       <div key={entry.id} className="flex items-start justify-between rounded-md border border-border bg-card p-3">
@@ -315,18 +447,18 @@ export default function Professionals() {
                       </div>
                     )
                   ))}
-                  <form onSubmit={addWork} className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <input required value={workDraft.projectName} onChange={(e) => setWorkDraft({ ...workDraft, projectName: e.target.value })} placeholder="Movie / project name" className="h-10 rounded-md border border-input bg-card px-3 text-sm" />
                     <input required value={workDraft.role} onChange={(e) => setWorkDraft({ ...workDraft, role: e.target.value })} placeholder="Your role (Actor, Director...)" className="h-10 rounded-md border border-input bg-card px-3 text-sm" />
                     <input type="number" value={workDraft.year} onChange={(e) => setWorkDraft({ ...workDraft, year: e.target.value })} placeholder="Year" className="h-10 rounded-md border border-input bg-card px-3 text-sm" />
                     <input value={workDraft.collaborators} onChange={(e) => setWorkDraft({ ...workDraft, collaborators: e.target.value })} placeholder="Worked with (comma separated)" className="h-10 rounded-md border border-input bg-card px-3 text-sm" />
                     <input value={workDraft.description} onChange={(e) => setWorkDraft({ ...workDraft, description: e.target.value })} placeholder="Short description (optional)" className="h-10 rounded-md border border-input bg-card px-3 text-sm sm:col-span-2" />
-                    <Button type="submit" variant="outline" className="w-fit gap-2"><Plus className="h-4 w-4" /> Add project</Button>
-                  </form>
+                     <Button type="button" onClick={() => void addWork()} variant="outline" className="w-fit gap-2"><Plus className="h-4 w-4" /> Add project</Button>
+                   </div>
                 </div>
               )}
-              {myProfile && (
-                <div className="space-y-4 border-t border-border pt-6">
+              {profileForForm && (
+                 <div id="audition-room" className="scroll-mt-24 space-y-4 border-t border-border pt-6">
                   <div><h3 className="flex items-center gap-2 font-display text-xl uppercase tracking-wider"><Upload className="h-5 w-5 text-primary" /> Audition room</h3><p className="mt-1 text-xs text-muted-foreground">Upload video, audio, image, or PDF up to 500MB. Files are private unless you make them public.</p></div>
                   {portfolio.auditions.map((audition) => (
                     <div key={audition.id} className="flex items-center justify-between rounded-md border border-border bg-card p-3">
@@ -347,19 +479,29 @@ export default function Professionals() {
               )}
               {formError && <p className="text-sm text-destructive" role="alert">{formError}</p>}
               <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={createProfile.isPending || updateProfile.isPending} className="gap-2">
+                <Button type="button" onClick={() => void submitProfile()} disabled={createProfile.isPending || updateProfile.isPending} className="gap-2">
                   {createProfile.isPending || updateProfile.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  {myProfile ? "Save Changes" : "Create Profile"}
+                  {profileForForm ? "Save Changes" : "Create Profile"}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => setShowProfileForm(false)}>Cancel</Button>
               </div>
             </form>
           )}
-          {formMessage && <p className="mx-auto mt-4 max-w-xl text-sm text-primary" role="status">{formMessage}</p>}
+          {formMessage && (
+            <div className="mx-auto mt-6 flex max-w-2xl flex-col items-center gap-4 rounded-md border border-primary/40 bg-primary/10 p-5 text-center shadow-[0_0_30px_rgba(245,158,11,0.08)]" role="status">
+              <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-primary">
+                <Check className="h-5 w-5" />
+                {formMessage}
+              </div>
+              <Button type="button" size="lg" onClick={() => navigate("/feed")} className="gap-2">
+                Go to Social Feed <ArrowRight className="h-5 w-5" />
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
-      <main className="container mx-auto px-4 py-16 max-w-6xl">
+      {!profileExists && <main className="container mx-auto max-w-6xl px-4 py-16">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[1, 2, 3, 4, 5, 6].map(i => (
@@ -369,7 +511,10 @@ export default function Professionals() {
         ) : professionals && professionals.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {professionals.map(pro => (
-              <Link key={pro.id} href={`/professionals/${pro.id}`}>
+              <Link
+                key={pro.id}
+                 href={`/professionals/${pro.id}`}
+              >
                 <div className="group bg-card border border-border rounded-md overflow-hidden hover-elevate transition-all h-full flex flex-col cursor-pointer">
                   <div className="h-24 bg-gradient-to-br from-secondary to-background border-b border-border relative">
                     <img 
@@ -421,7 +566,7 @@ export default function Professionals() {
             <h2 className="text-2xl font-display uppercase tracking-widest text-muted-foreground">No professionals found</h2>
           </div>
         )}
-      </main>
+      </main>}
     </div>
   );
 }

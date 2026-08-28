@@ -29,25 +29,25 @@ interface GenrePageResult {
   totalResults: number;
 }
 
-const GENRE_ICONS: Record<string, string> = {
-  Action: "⚔️",
-  Adventure: "🗺️",
-  Animation: "🎨",
-  Comedy: "😂",
-  Crime: "🔫",
-  Documentary: "📹",
-  Drama: "🎭",
-  Family: "👨‍👩‍👧",
-  Fantasy: "🧙",
-  History: "📜",
-  Horror: "👻",
-  Music: "🎵",
-  Mystery: "🔍",
-  Romance: "❤️",
-  "Science Fiction": "🚀",
-  Thriller: "😱",
-  War: "🪖",
-  Western: "🤠",
+const GENRE_CODES: Record<string, string> = {
+  Action: "AC",
+  Adventure: "AD",
+  Animation: "AN",
+  Comedy: "CO",
+  Crime: "CR",
+  Documentary: "DO",
+  Drama: "DR",
+  Family: "FA",
+  Fantasy: "FN",
+  History: "HI",
+  Horror: "HO",
+  Music: "MU",
+  Mystery: "MY",
+  Romance: "RO",
+  "Science Fiction": "SF",
+  Thriller: "TH",
+  War: "WA",
+  Western: "WE",
 };
 
 export default function GenrePage() {
@@ -154,7 +154,7 @@ export default function GenrePage() {
 
       {/* Hero */}
       <section className="pt-32 pb-10 text-center px-4 border-b border-border/50">
-        <div className="text-5xl mb-3">{GENRE_ICONS[genreName] || <Film className="w-12 h-12 text-primary mx-auto" />}</div>
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-sm border border-primary/45 bg-primary/10 font-display text-sm font-bold tracking-[0.2em] text-primary">{GENRE_CODES[genreName] || <Film className="h-7 w-7" />}</div>
         <h1 className="text-5xl md:text-6xl font-display font-bold uppercase tracking-tighter mb-3 text-glow">
           {genreName || "Genre"} Movies
         </h1>

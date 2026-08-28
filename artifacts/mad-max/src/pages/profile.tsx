@@ -1,9 +1,9 @@
 import { Navbar } from "@/components/navbar";
-import { Link, useParams } from "wouter";
-import { getGetUserProfileQueryKey, getGetUserStatsQueryKey, getGetWatchlistQueryKey, getListReviewsQueryKey, useGetUserProfile, useGetUserStats, useListReviews, useFollowUser, useUnfollowUser, useGetWatchlist } from "@workspace/api-client-react";
+import { Link, useParams, useLocation } from "wouter";
+import { getGetUserProfileQueryKey, getGetUserStatsQueryKey, getGetWatchlistQueryKey, getListReviewsQueryKey, useGetUserProfile, useGetUserStats, useListReviews, useFollowUser, useUnfollowUser, useGetWatchlist, useCreateConversation } from "@workspace/api-client-react";
 import { ReviewCard } from "@/components/review-card";
 import { Button } from "@/components/ui/button";
-import { BadgeCheck, UserPlus, UserMinus, ShieldCheck, LogOut, Bookmark, Heart, Star, Eye, ArrowLeft } from "lucide-react";
+import { BadgeCheck, UserPlus, UserMinus, ShieldCheck, LogOut, Bookmark, Heart, Star, Eye, ArrowLeft, MessageSquare } from "lucide-react";
 import { useClerk, useUser } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFollowPayload } from "@/lib/authenticated-flow-contracts";
@@ -12,6 +12,7 @@ export default function Profile() {
   const { id } = useParams();
   const { user: currentUser } = useUser();
   const { signOut } = useClerk();
+  const [, setLocation] = useLocation();
   const isMe = currentUser?.id === id;
 
   const { data: profile, isLoading: loadingProfile } = useGetUserProfile(id || "", { query: { queryKey: getGetUserProfileQueryKey(id || ""), enabled: !!id } });
@@ -25,6 +26,7 @@ export default function Profile() {
   
   const followUser = useFollowUser();
   const unfollowUser = useUnfollowUser();
+  const createConversation = useCreateConversation();
   const queryClient = useQueryClient();
 
   const handleFollowToggle = () => {
@@ -44,6 +46,18 @@ export default function Profile() {
         },
       });
     }
+  };
+
+  const handleMessage = () => {
+    if (!profile) return;
+    if (!currentUser) {
+      setLocation(`/sign-in?redirect=${encodeURIComponent(`/profile/${id}`)}`);
+      return;
+    }
+    createConversation.mutate(
+      { data: { participantId: profile.clerkId } },
+      { onSuccess: (conversation) => setLocation(`/chat?conv=${conversation.id}`) },
+    );
   };
 
   if (loadingProfile) {
@@ -88,19 +102,30 @@ export default function Profile() {
                   </h1>
                   <p className="text-muted-foreground font-medium mt-1">@{profile.username}</p>
                 </div>
-                 {!isMe ? (
-                   <Button
-                     variant={profile.isFollowedByMe ? "outline" : "default"}
-                     className="gap-2 shrink-0"
-                     onClick={handleFollowToggle}
-                     disabled={followUser.isPending || unfollowUser.isPending}
-                   >
-                     {profile.isFollowedByMe ? (
-                       <><UserMinus className="w-4 h-4" /> Unfollow</>
-                     ) : (
-                       <><UserPlus className="w-4 h-4" /> Follow</>
-                     )}
-                   </Button>
+                  {!isMe ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant={profile.isFollowedByMe ? "outline" : "default"}
+                        className="gap-2 shrink-0"
+                        onClick={handleFollowToggle}
+                        disabled={followUser.isPending || unfollowUser.isPending}
+                      >
+                        {profile.isFollowedByMe ? (
+                          <><UserMinus className="w-4 h-4" /> Unfollow</>
+                        ) : (
+                          <><UserPlus className="w-4 h-4" /> Follow</>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="gap-2 shrink-0"
+                        onClick={handleMessage}
+                        disabled={createConversation.isPending}
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        {createConversation.isPending ? "Opening…" : "Message"}
+                      </Button>
+                    </div>
                  ) : (
                    <Button
                      variant="outline"

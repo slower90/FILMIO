@@ -46,7 +46,10 @@ function ArticleCard({ item }: { item: NewsItem }) {
             src={item.thumbnail}
             alt={item.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            width={640}
+            height={360}
             loading="lazy"
+            decoding="async"
             onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
           />
         ) : (

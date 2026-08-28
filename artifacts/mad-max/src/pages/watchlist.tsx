@@ -141,8 +141,10 @@ function WatchlistRow({ entry, onMarkWatched, onRemove }: any) {
     <div className="flex bg-card border border-border rounded-md overflow-hidden group hover-elevate transition-all">
       <Link href={withMovieTitle(`/movies/${entry.movieId}`, entry.movieTitle)} className="shrink-0">
         <img 
-          src={tmdbPosterUrl(entry.moviePosterPath)} 
+                       src={tmdbPosterUrl(entry.moviePosterPath, "w342")}
           alt={entry.movieTitle || "Poster"} 
+                       width={342}
+                       height={513}
           className="w-24 md:w-32 aspect-[2/3] object-cover border-r border-border transition-transform duration-500 group-hover:scale-105"
         />
       </Link>

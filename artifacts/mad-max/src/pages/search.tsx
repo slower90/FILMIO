@@ -116,9 +116,9 @@ export default function Search() {
   );
 
   const { data: rankedAnime, isLoading: loadingRankedAnime } = useQuery<{ results: RankedAnime[] }>({
-    queryKey: ["search-ranked-anime"],
+    queryKey: ["search-ranked-anime", debouncedQuery, resultLimit],
     queryFn: async () => {
-      const response = await fetch("/api/anime/top?filter=score&type=tv&page=1");
+      const response = await fetch(`/api/anime/top?filter=score&type=tv&page=1&limit=${resultLimit}`);
       if (!response.ok) throw new Error("Unable to load ranked anime");
       return response.json();
     },

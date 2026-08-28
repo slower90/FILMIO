@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/navbar";
+import { ProfessionalMediaGallery, type ProfessionalMedia } from "@/components/professional-media-gallery";
 import { useParams, Link } from "wouter";
 import { getGetProfessionalProfileQueryKey, useGetProfessionalProfile, useCreateConversation } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,11 @@ import { BadgeCheck, PlayCircle, Mail, MessageSquare, ExternalLink, Briefcase } 
 import { useUser } from "@clerk/react";
 import { useEffect, useState } from "react";
 
-type Portfolio = { workHistory?: Array<{ id: number; projectName: string; role: string; year: number | null; collaborators: string[]; description?: string | null }>; publicAuditions?: Array<{ id: number; title: string; description?: string | null; fileName: string; contentType: string }> };
+type Portfolio = {
+  workHistory?: Array<{ id: number; projectName: string; role: string; year: number | null; collaborators: string[]; description?: string | null }>;
+  publicAuditions?: Array<{ id: number; title: string; description?: string | null; fileName: string; contentType: string }>;
+  media?: ProfessionalMedia[];
+};
 
 export default function ProfessionalDetail() {
   const { id } = useParams();
@@ -116,6 +121,7 @@ export default function ProfessionalDetail() {
       <main className="container mx-auto px-4 py-16 max-w-5xl">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div className="md:col-span-2 space-y-12">
+            <ProfessionalMediaGallery media={portfolio.media ?? []} />
             <section>
               <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-6 pb-2 border-b border-border">Biography</h2>
               <p className="text-lg text-foreground/80 leading-relaxed whitespace-pre-wrap">

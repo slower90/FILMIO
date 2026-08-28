@@ -1,0 +1,34 @@
+FILMIO mein ek naya "Social Feed" feature add karo — movie reviews, updates, aur short posts ke liye. Ye Instagram/Facebook jaisa feed hoga lekin movie-community ke context mein.
+
+DATABASE (Drizzle schema mein naya add karo, lib/db/src/schema ke andar):
+Ek "posts" table banao jisme columns hon:
+- id, authorId (users table se link), authorType ("user" ya "actor"), content (text, max 500 chars), imageUrl (optional), linkedMovieId (optional — agar review ke saath movie tag ho), likesCount, commentsCount, createdAt
+
+Ek "post_likes" table (userId, postId, createdAt) — kisne kaunsa post like kiya track karne ke liye.
+
+Ek "post_comments" table (id, postId, userId, content, createdAt).
+
+BACKEND (artifacts/api-server mein naye routes add karo):
+- POST /api/posts — naya post create karo (authenticated users)
+- GET /api/posts/feed — feed load karo, paginated (cursor-based, 10-15 posts per load), newest first
+- POST /api/posts/:id/like aur DELETE /api/posts/:id/like — like/unlike
+- POST /api/posts/:id/comments — comment add karo
+- GET /api/posts/:id/comments — comments dikhao
+
+Zod se request/response validate karo, jaisa baaki API routes mein already ho raha hai.
+
+DIFFERENTIATION (Users vs Actors) — YE IMPORTANT HAI:
+- Normal USER posts: sirf text + optional image + optional "movie tag" (jis movie ke baare mein likh rahe hain). Feed card mein simple profile picture + naam dikhega.
+- ACTOR posts (verified professionals directory wale users): feed card mein ek "Verified" badge (checkmark icon) dikhega naam ke baraabar, aur unka post thoda visually highlight hoga (jaise subtle golden/amber border ya background tint) taaki alag pehchana jaye. Actor posts mein ek extra option ho sakta hai "Announcement" type (jaise "Now streaming my new film") jo normal user posts mein nahi hoga.
+
+FRONTEND (artifacts/mad-max mein naya page/component banao):
+- Ek naya route "/feed" banao (Wouter routing use karke)
+- Feed component: infinite scroll (TanStack Query ka useInfiniteQuery use karo) — jaisa jaisa scroll karo naye posts load hon
+- Har post card mein: author photo+naam (+verified badge agar actor hai), post content, agar image hai to dikhao, agar movie tagged hai to chhota movie poster+naam chip dikhao, like button (heart icon, Lucide React se), comment count+icon, timestamp ("2h ago" jaisa relative time)
+- "Create Post" button/box upar feed ke, jisme text likh sako, image upload kar sako (Replit Object Storage se, jaisa already audition files ke liye use ho raha hai), aur optionally movie search karke tag kar sako
+- Design: dark theme, amber/gold accent (FILMIO ka existing branding follow karo), GSAP/Framer Motion se like-button pe chhota animation (heart pop effect)
+
+NAVIGATION:
+- Navbar mein "Feed" ek naya tab/link add karo (Home ke paas)
+
+Feed sirf logged-in users ko dikhe, sign-in na hone pe "Sign in to see the feed" jaisa prompt dikhao (jaisa reviews ke liye already hai).

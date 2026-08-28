@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
+import { seoPrerenderPlugin } from './vite-seo-plugin';
 
 const isBuild = process.argv.includes("build");
 const rawPort = process.env.PORT ?? (isBuild ? "5173" : undefined);
@@ -33,6 +34,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    seoPrerenderPlugin(),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined

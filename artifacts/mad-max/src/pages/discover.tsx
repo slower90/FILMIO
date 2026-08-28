@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
@@ -18,7 +19,7 @@ const GENRE_ROWS = [
   { id: 10749, name: "Romance" },
 ] as const;
 
-async function fetchCategory(path: string, maxPages = 3): Promise<HeroMovie[]> {
+async function fetchCategory(path: string, maxPages = 1): Promise<HeroMovie[]> {
   const res = await fetch(`/api/movies/${path}?maxPages=${maxPages}`);
   if (!res.ok) return [];
   const d = await res.json();
@@ -26,25 +27,55 @@ async function fetchCategory(path: string, maxPages = 3): Promise<HeroMovie[]> {
 }
 
 async function fetchGenre(genreId: number): Promise<RowMovie[]> {
-  const res = await fetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=2`);
+  const res = await fetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=1`);
   if (!res.ok) return [];
   const d = await res.json();
   return d.results ?? [];
 }
 
+function useNearViewport(ref: React.RefObject<Element | null>) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || !("IntersectionObserver" in window)) {
+      setReady(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setReady(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "160px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return ready;
+}
+
 function GenreRow({ id, name }: { id: number; name: string }) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const nearViewport = useNearViewport(rowRef);
   const { data, isLoading } = useQuery<RowMovie[]>({
     queryKey: ["discover-genre", id],
     queryFn: () => fetchGenre(id),
+    enabled: nearViewport,
     staleTime: 10 * 60 * 1000,
   });
   return (
-    <MovieRow
-      title={name}
-      movies={data ?? []}
-      isLoading={isLoading}
-      className="border-b border-border/30"
-    />
+    <div ref={rowRef}>
+      <MovieRow
+        title={name}
+        movies={data ?? []}
+        isLoading={!nearViewport || isLoading}
+        className="border-b border-border/30"
+      />
+    </div>
   );
 }
 
@@ -53,25 +84,25 @@ export default function Discover() {
 
   const { data: trending, isLoading: loadingTrending } = useQuery<HeroMovie[]>({
     queryKey: ["discover-trending"],
-    queryFn: () => fetchCategory("trending", 3),
+    queryFn: () => fetchCategory("trending", 1),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: newReleases, isLoading: loadingNew } = useQuery<RowMovie[]>({
     queryKey: ["discover-new-releases"],
-    queryFn: () => fetchCategory("new-releases", 2),
+    queryFn: () => fetchCategory("new-releases", 1),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: popular, isLoading: loadingPopular } = useQuery<RowMovie[]>({
     queryKey: ["discover-popular"],
-    queryFn: () => fetchCategory("popular", 3),
+    queryFn: () => fetchCategory("popular", 1),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: topRated, isLoading: loadingTopRated } = useQuery<RowMovie[]>({
     queryKey: ["discover-top-rated"],
-    queryFn: () => fetchCategory("top-rated", 3),
+    queryFn: () => fetchCategory("top-rated", 1),
     staleTime: 5 * 60 * 1000,
   });
 

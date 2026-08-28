@@ -1,0 +1,29 @@
+1. Thinking, Fast and Slow (Kahneman) — System 1 (fast/intuitive) vs System 2 (slow/deliberate)
+→ FILMIO mein: casual user ke liye 1-tap star rating (System 1), power user/critic ke liye detailed review editor (System 2). Dono paths honi chahiye, forced nahi.
+
+2. Influence (Cialdini) — 6 triggers: reciprocity, social proof, authority, liking, scarcity, commitment
+→ Social proof sabse powerful hoga: "2.3K logo ne ye rate kiya", "tumhare jaise taste wale logo ne pasand kiya". Authority = verified critics/actors ka review highlight karo. Scarcity avoid karo (fake "only 3 left" jaisa kuch nahi — ye trust todta hai).
+
+3. The Social Animal (Aronson) — belonging & identity
+→ Fandom-based identity: user apne aap ko "MCU fan" ya "Anime purist" jaisa label kare, similar log dhundhe. Ye FILMIO ke actor-networking feature ko aur powerful banata hai.
+
+4. Predictably Irrational (Ariely) — anchoring, decoy effect
+→ Pricing page (Free/Pro) mein anchor sahi rakha hai already. Rating scale bhi anchor hai — 1-10 use karke tum "premium precision" ka anchor set karte ho (5-star wale apps se alag).
+
+5. Blink (Gladwell) — thin-slicing, first 2 seconds decide sab
+→ Homepage/first-open experience critical hai — colors, layout, ek nazar mein "ye premium hai" feel aana chahiye (isiliye color decision itna zaroori tha).
+
+6. The Power of Habit (Duhigg) — Cue → Routine → Reward loop
+→ Healthy loop: Cue = daily personalized pick notification, Routine = rate/review, Reward = apna rating ek public identity/reputation ban jaye (top reviewer badge). Important: infinite-scroll-jaisa manipulative variable-reward loop nahi banayenge — tumne pehle bhi clearly bola tha ki addictive/manipulative pattern nahi chahiye, aur ye sahi instinct hai.
+
+7. Drive (Pink) — Autonomy, Mastery, Purpose
+→ Sabse important framework yahan: log FILMIO pe isliye ruke rahenge kyunki (a) unhe freedom hai kya dekhna/review karna hai, (b) unki mastery dikhti hai (reviewer level/reputation grow hota hai), (c) unka purpose hai — auron ko sahi movie choose karne mein madad karna. Ye 3 mila ke genuine retention banate hain, dopamine-trap nahi.
+
+8. Games People Play (Berne) — hidden social dynamics
+→ Comment/review section design karte waqt troll patterns samajhna zaroori — moderation aur healthy discourse encourage karo, toxic "gotcha" games discourage karo.
+
+9. The Happiness Hypothesis (Haidt) — elephant (emotion) vs rider (reason)
+→ Product emotionally warm lage (community, belonging) lekin decisions ko rational bhi support kare (clear ratings, no clickbait). Genuine satisfaction target karo, sirf "time spent" metric nahi.
+
+10. The Psychopath Test (Ronson) — manipulation ki extreme understanding
+→ Ye actually ek warning list hai — jo tactics psychopaths/dark-pattern designers use karte hain (guilt, fake urgency, exploiting insecurity), unhe FILMIO mein avoid karna hai. Isse hum "kya nahi karna" clearly define kar sakte hain.

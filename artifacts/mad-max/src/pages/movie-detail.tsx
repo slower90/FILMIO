@@ -15,12 +15,12 @@ import {
 } from "@workspace/api-client-react";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
-import { tmdbBackdropUrl, tmdbPosterUrl, tmdbLogoUrl } from "@/lib/utils";
+import { tmdbBackdropSrcSet, tmdbBackdropUrl, tmdbPosterUrl, tmdbLogoUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RatingStars } from "@/components/rating-stars";
 import { ReviewCard } from "@/components/review-card";
-import { Clock, Calendar, Star, Play, Plus, Check, Clapperboard } from "lucide-react";
+import { Clock, Calendar, Star, Play, Plus, Check, Clapperboard, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,6 +36,8 @@ import {
 import { getMovieLoadingQuote } from "@/lib/movie-quotes";
 import { getPrismDisplayRating } from "@/lib/mad-max-ratings";
 import { CatalogStatusNotice, type CatalogMetadata } from "@/components/catalog-status-notice";
+import { SITE_URL } from "@/lib/seo";
+import { movieStoryPath, withMovieTitle } from "@/lib/movie-links";
 
 // ── Fetchers for non-spec endpoints ──────────────────────────────────────────
 
@@ -341,9 +343,13 @@ export default function MovieDetail() {
     [...(providers?.rent ?? []), ...(providers?.buy ?? [])],
     shownProviderIds,
   );
-  const canonicalUrl = new URL(window.location.pathname, window.location.origin).toString();
+  const canonicalPath = withMovieTitle(`/movies/${movieId}`, movie.title);
+  const canonicalUrl = new URL(
+    mediaType === "tv" ? `${canonicalPath}?type=tv` : canonicalPath,
+    SITE_URL,
+  ).toString();
   const posterUrl = movie.posterPath
-    ? new URL(movie.posterPath, window.location.origin).toString()
+    ? new URL(movie.posterPath, SITE_URL).toString()
     : undefined;
   const releaseYear = movie.releaseDate
     ? new Date(movie.releaseDate).getFullYear()
@@ -370,8 +376,18 @@ export default function MovieDetail() {
         description: movie.overview || movieDescription,
         url: canonicalUrl,
         mainEntityOfPage: canonicalUrl,
+         inLanguage: "en-IN",
         ...(movie.releaseDate ? { datePublished: movie.releaseDate } : {}),
         ...(posterUrl ? { image: posterUrl } : {}),
+         ...(cast.length
+           ? {
+               actor: cast.map((person: { id: number; name: string }) => ({
+                 "@type": "Person",
+                 name: person.name,
+                 url: `${SITE_URL}/actors/${person.id}`,
+               })),
+             }
+           : {}),
         ...(movie.genres?.length
           ? { genre: movie.genres.map((genre: { name: string }) => genre.name) }
           : {}),
@@ -396,16 +412,13 @@ export default function MovieDetail() {
             "@type": "ListItem",
             position: 1,
             name: "FILMIO",
-            item: new URL("/", window.location.origin).toString(),
+            item: `${SITE_URL}/`,
           },
           {
             "@type": "ListItem",
             position: 2,
             name: mediaType === "tv" ? "TV Shows" : "Movies",
-            item: new URL(
-              mediaType === "tv" ? "/discover?type=tv" : "/discover",
-              window.location.origin,
-            ).toString(),
+            item: `${SITE_URL}${mediaType === "tv" ? "/discover?type=tv" : "/discover"}`,
           },
           {
             "@type": "ListItem",
@@ -505,8 +518,14 @@ export default function MovieDetail() {
             <div className="absolute inset-0">
               <img
                 src={tmdbBackdropUrl(movie.backdropPath || movie.posterPath)}
+                srcSet={tmdbBackdropSrcSet(movie.backdropPath || movie.posterPath)}
+                sizes="100vw"
                 alt={movie.title}
+                width={1280}
+                height={720}
                 className="h-full w-full object-cover object-top"
+                fetchPriority="high"
+                decoding="async"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-background/60" />
@@ -536,9 +555,11 @@ export default function MovieDetail() {
       <div className="container mx-auto px-4 relative z-10 -mt-24 md:-mt-32">
         <div className="flex flex-col md:flex-row gap-8 items-end">
           <img
-            src={tmdbPosterUrl(movie.posterPath)}
+            src={tmdbPosterUrl(movie.posterPath, "w500")}
             alt={movie.title}
-            className="w-32 md:w-44 lg:w-56 rounded-md shadow-2xl border border-border/50 hidden md:block box-glow shrink-0"
+            width={500}
+            height={750}
+            className="w-28 sm:w-32 md:w-44 lg:w-56 rounded-md shadow-2xl border border-border/50 box-glow shrink-0"
           />
 
           <div className="flex-1 space-y-4 pb-1">
@@ -571,17 +592,24 @@ export default function MovieDetail() {
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {movie.genres?.map((g: { id: number; name: string }) => (
-                <Link
-                  key={g.id}
-                  href={`/genre/${g.id}`}
-                  className="px-3 py-1 rounded-full border border-border bg-background/50 text-xs font-display uppercase tracking-widest hover:border-primary hover:text-primary transition-colors"
-                >
-                  {g.name}
-                </Link>
-              ))}
-            </div>
+            {movie.genres?.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                  Genres
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {movie.genres.map((g: { id: number; name: string }) => (
+                    <Link
+                      key={g.id}
+                      href={`/genre/${g.id}`}
+                      className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-display uppercase tracking-widest text-foreground transition-colors hover:border-primary hover:bg-primary/20 hover:text-primary"
+                    >
+                      {g.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {movie.overview && (
               <p className="text-base text-foreground/80 leading-relaxed max-w-3xl line-clamp-3">
@@ -627,6 +655,12 @@ export default function MovieDetail() {
                 }}
               >
                 Rate & Review
+              </Button>
+              <Button asChild size="lg" variant="outline" className="gap-2 border-primary/40 text-primary hover:bg-primary/10">
+                <Link href={movieStoryPath(movieId, movie.title, mediaType)} data-testid="link-movie-story-detail">
+                  <BookOpen className="h-5 w-5" aria-hidden="true" />
+                  Read the FILMIO story
+                </Link>
               </Button>
             </div>
             {showReviewForm && (
@@ -706,15 +740,17 @@ export default function MovieDetail() {
       <div className="container mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* Left: Synopsis + Cast + Reviews */}
         <div className="lg:col-span-2 space-y-12">
-          {/* Synopsis */}
-          <section>
+          {/* Synopsis / story — omit when the catalog has no description */}
+          {movie.overview && (
+           <section>
             <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-4 border-b border-border pb-2">
               Synopsis
             </h2>
             <p className="text-lg text-foreground/80 leading-relaxed">
               {movie.overview}
             </p>
-          </section>
+           </section>
+          )}
 
           {/* Cast — compact horizontal carousel */}
           {cast.length > 0 && (
@@ -990,7 +1026,7 @@ export default function MovieDetail() {
       {(filteredRecs.length > 0 || loadingRecs) && (
         <div className="mt-12 border-t border-border/50">
           <MovieRow
-            title="🎯 Recommended Movies — You Might Also Like"
+            title="Recommended Movies — You Might Also Like"
             movies={filteredRecs}
             isLoading={loadingRecs}
           />

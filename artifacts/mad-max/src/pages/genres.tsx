@@ -10,26 +10,26 @@ interface Genre {
   name: string;
 }
 
-// Genre emojis for a bit of life
-const GENRE_ICONS: Record<string, string> = {
-  Action: "⚔️",
-  Adventure: "🗺️",
-  Animation: "🎨",
-  Comedy: "😂",
-  Crime: "🔫",
-  Documentary: "📹",
-  Drama: "🎭",
-  Family: "👨‍👩‍👧",
-  Fantasy: "🧙",
-  History: "📜",
-  Horror: "👻",
-  Music: "🎵",
-  Mystery: "🔍",
-  Romance: "❤️",
-  "Science Fiction": "🚀",
-  Thriller: "😱",
-  War: "🪖",
-  Western: "🤠",
+// Compact genre codes keep the browse view visual without relying on emoji glyphs.
+const GENRE_CODES: Record<string, string> = {
+  Action: "AC",
+  Adventure: "AD",
+  Animation: "AN",
+  Comedy: "CO",
+  Crime: "CR",
+  Documentary: "DO",
+  Drama: "DR",
+  Family: "FA",
+  Fantasy: "FN",
+  History: "HI",
+  Horror: "HO",
+  Music: "MU",
+  Mystery: "MY",
+  Romance: "RO",
+  "Science Fiction": "SF",
+  Thriller: "TH",
+  War: "WA",
+  Western: "WE",
 };
 
 function GenreMoviesRow({ genre }: { genre: Genre }) {
@@ -54,7 +54,7 @@ function GenreMoviesRow({ genre }: { genre: Genre }) {
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-card/60 transition-colors group"
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{GENRE_ICONS[genre.name] || "🎬"}</span>
+           <span className="flex h-9 w-9 items-center justify-center rounded-sm border border-primary/45 bg-primary/10 font-display text-[10px] font-bold tracking-[0.15em] text-primary">{GENRE_CODES[genre.name] || "GN"}</span>
           <span className="font-display font-bold uppercase tracking-wider text-lg group-hover:text-primary transition-colors">
             {genre.name}
           </span>
@@ -153,7 +153,7 @@ export default function Genres() {
         {FEATURED.map((g) => (
           <MovieRow
             key={g.id}
-            title={`${GENRE_ICONS[g.name] || ""} ${g.name}`}
+               title={g.name}
             movies={featuredMovies?.[g.id] ?? []}
             isLoading={!featuredMovies}
             className="border-b border-border/30 last:border-b-0"
