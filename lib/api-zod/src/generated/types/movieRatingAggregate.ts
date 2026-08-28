@@ -8,6 +8,8 @@
 
 export interface MovieRatingAggregate {
   movieId: number;
+  /** @nullable */
+  profileId?: number | null;
   averageScore: number;
   totalRatings: number;
   weightedScore: number;
