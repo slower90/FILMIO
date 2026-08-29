@@ -7,6 +7,7 @@ import { tmdbPosterUrl } from "@/lib/utils";
 import { withMovieTitle } from "@/lib/movie-links";
 import { Button } from "@/components/ui/button";
 import type { CinemaPreferences } from "@/lib/cinema-preferences";
+import { apiFetch } from "@/lib/api-url";
 
 type GraphFilter = "all" | "watched" | "rated" | "loved" | "disliked";
 type SignalKind = "actor" | "director" | "genre" | "country" | "decade" | "language";
@@ -247,7 +248,7 @@ export function PersonalCinemaGraph({
     queries: movies.map((movie) => ({
       queryKey: ["personal-cinema-graph-movie", movie.id],
       queryFn: async () => {
-        const response = await fetch(`/api/movies/${movie.id}/overview`);
+        const response = await apiFetch(`/api/movies/${movie.id}/overview`);
         if (!response.ok) throw new Error(`Could not enrich ${movie.title}`);
         return response.json() as Promise<MovieOverview>;
       },

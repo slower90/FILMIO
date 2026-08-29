@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { Search, UserRound } from "lucide-react";
+import { apiFetch } from "@/lib/api-url";
 
 interface Actor {
   id: number;
@@ -14,7 +15,7 @@ interface Actor {
 async function fetchActors(query: string): Promise<Actor[]> {
   const params = new URLSearchParams({ maxPages: "5" });
   if (query.trim()) params.set("q", query.trim());
-  const response = await fetch(`/api/movies/actors?${params}`);
+  const response = await apiFetch(`/api/movies/actors?${params}`);
   if (!response.ok) throw new Error("Failed to load actors");
   const data = await response.json();
   return data.results ?? [];

@@ -17,6 +17,7 @@ import { tmdbPosterUrl } from "@/lib/utils";
 import { withMovieTitle } from "@/lib/movie-links";
 import { fetchPrismRatings, type PrismRatings } from "@/lib/mad-max-ratings";
 import type { RowMovie } from "@/components/movie-row";
+import { apiFetch } from "@/lib/api-url";
 
 type CinemaNowNewsItem = {
   id: string;
@@ -47,14 +48,14 @@ type CinemaNowProps = {
 };
 
 async function fetchIndianPulse(): Promise<RowMovie[]> {
-  const response = await fetch("/api/movies/indian?maxPages=1");
+  const response = await apiFetch("/api/movies/indian?maxPages=1");
   if (!response.ok) throw new Error("Unable to load regional cinema signals");
   const data = await response.json() as { results?: RowMovie[] };
   return data.results ?? [];
 }
 
 async function fetchCinemaNews(): Promise<CinemaNowNewsItem[]> {
-  const response = await fetch("/api/news");
+  const response = await apiFetch("/api/news");
   if (!response.ok) throw new Error("Unable to load journal signals");
   const data = await response.json() as { items?: CinemaNowNewsItem[] };
   return data.items ?? [];

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Image as ImageIcon, Loader2, Trash2, Upload, Video, type LucideIcon } from "lucide-react";
 import { useRef, useState } from "react";
+import { apiFetch } from "@/lib/api-url";
 
 export type ProfessionalMedia = {
   id: number;
@@ -176,7 +177,7 @@ export function ProfessionalMediaGallery({ media, editable = false, onChanged }:
     setUploadProgress(0);
     let objectPath: string | null = null;
     try {
-      const urlResponse = await fetch("/api/professionals/me/media/request-upload", {
+      const urlResponse = await apiFetch("/api/professionals/me/media/request-upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
@@ -186,7 +187,7 @@ export function ProfessionalMediaGallery({ media, editable = false, onChanged }:
       objectPath = signed.objectPath;
       await uploadToSignedUrl(signed.uploadURL, file, setUploadProgress);
 
-      const saveResponse = await fetch("/api/professionals/me/media", {
+      const saveResponse = await apiFetch("/api/professionals/me/media", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -201,7 +202,7 @@ export function ProfessionalMediaGallery({ media, editable = false, onChanged }:
       await onChanged?.();
     } catch (uploadError) {
       if (objectPath) {
-        await fetch("/api/professionals/me/media/upload", {
+        await apiFetch("/api/professionals/me/media/upload", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ objectPath }),
@@ -219,7 +220,7 @@ export function ProfessionalMediaGallery({ media, editable = false, onChanged }:
     setDeletingId(id);
     setError(null);
     try {
-      const response = await fetch(`/api/professionals/me/media/${id}`, { method: "DELETE" });
+      const response = await apiFetch(`/api/professionals/me/media/${id}`, { method: "DELETE" });
       const body = await response.json().catch(() => null);
       if (!response.ok) throw new Error(body?.error || "Could not delete this media.");
       await onChanged?.();

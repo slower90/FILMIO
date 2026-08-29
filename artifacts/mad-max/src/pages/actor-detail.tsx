@@ -3,6 +3,7 @@ import { Link, useParams } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { ArrowLeft, UserRound } from "lucide-react";
+import { apiFetch } from "@/lib/api-url";
 
 interface ActorDetails {
   id: number;
@@ -12,7 +13,7 @@ interface ActorDetails {
 }
 
 async function fetchActor(id: string) {
-  const response = await fetch(`/api/movies/actors/${id}/credits`);
+  const response = await apiFetch(`/api/movies/actors/${id}/credits`);
   if (!response.ok) throw new Error("Failed to load actor");
   return response.json() as Promise<{ actor: ActorDetails; results: RowMovie[] }>;
 }

@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import { useUser } from "@clerk/react";
 import { ArrowUpRight, Compass } from "lucide-react";
 import { SurpriseMe } from "@/components/surprise-me";
+import { apiFetch } from "@/lib/api-url";
 
 // Genre row IDs and names for logged-in users
 const GENRE_ROWS = [
@@ -21,14 +22,14 @@ const GENRE_ROWS = [
 ] as const;
 
 async function fetchCategory(path: string, maxPages = 1): Promise<HeroMovie[]> {
-  const res = await fetch(`/api/movies/${path}?maxPages=${maxPages}`);
+  const res = await apiFetch(`/api/movies/${path}?maxPages=${maxPages}`);
   if (!res.ok) return [];
   const d = await res.json();
   return d.results ?? [];
 }
 
 async function fetchGenre(genreId: number): Promise<RowMovie[]> {
-  const res = await fetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=1`);
+  const res = await apiFetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=1`);
   if (!res.ok) return [];
   const d = await res.json();
   return d.results ?? [];

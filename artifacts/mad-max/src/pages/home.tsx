@@ -17,6 +17,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { CatalogStatusNotice, type CatalogMetadata } from "@/components/catalog-status-notice";
 import { useActiveProfile } from "@/lib/profile-context";
 import { SurpriseMe } from "@/components/surprise-me";
+import { apiFetch } from "@/lib/api-url";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -27,7 +28,7 @@ async function fetchCategory(path: string, maxPages: number): Promise<CatalogMov
   const url = path.startsWith("/api/")
     ? `${path}?maxPages=${maxPages}`
     : `/api/movies/${path}?maxPages=${maxPages}`;
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${path}`);
   const data = await res.json();
   return Object.assign((data.results ?? []).map((movie: RowMovie) =>
@@ -38,14 +39,14 @@ async function fetchCategory(path: string, maxPages: number): Promise<CatalogMov
 }
 
 async function fetchGenre(genreId: number, maxPages = 1): Promise<RowMovie[]> {
-  const res = await fetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=${maxPages}`);
+  const res = await apiFetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=${maxPages}`);
   if (!res.ok) return [];
   const d = await res.json();
   return d.results ?? [];
 }
 
 async function fetchAnimeRow(): Promise<RowMovie[]> {
-  const res = await fetch("/api/anime/top?filter=bypopularity&type=tv");
+  const res = await apiFetch("/api/anime/top?filter=bypopularity&type=tv");
   if (!res.ok) return [];
   const d = await res.json();
   return (d.results ?? []).map((a: any) => ({
@@ -59,7 +60,7 @@ async function fetchAnimeRow(): Promise<RowMovie[]> {
 }
 
 async function fetchClips(): Promise<ClipItem[]> {
-  const res = await fetch("/api/movies/clips");
+  const res = await apiFetch("/api/movies/clips");
   if (!res.ok) return [];
   const data = await res.json();
   return data.results ?? [];
@@ -68,7 +69,7 @@ async function fetchClips(): Promise<ClipItem[]> {
 async function fetchPersonalizedMovies(profileId?: number): Promise<RowMovie[]> {
   const params = new URLSearchParams({ limit: "20" });
   if (profileId) params.set("profileId", String(profileId));
-  const res = await fetch(`/api/recommendations?${params.toString()}`);
+  const res = await apiFetch(`/api/recommendations?${params.toString()}`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.results ?? data;
@@ -131,7 +132,7 @@ const INDIAN_ROWS = [
 ] as const;
 
 async function fetchIndian(language: string): Promise<RowMovie[]> {
-  const res = await fetch(
+  const res = await apiFetch(
     `/api/movies/indian?maxPages=1${language ? `&language=${language}` : ""}`,
   );
   if (!res.ok) return [];
@@ -320,7 +321,7 @@ function TrendingNewsSection() {
   const { data, isLoading } = useQuery<{ items: TrendingNewsItem[] }>({
     queryKey: ["home-trending-news"],
     queryFn: async () => {
-      const response = await fetch("/api/news");
+      const response = await apiFetch("/api/news");
       if (!response.ok) throw new Error("Failed to fetch trending news");
       return response.json();
     },

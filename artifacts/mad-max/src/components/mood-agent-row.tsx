@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { getLearnedMood, MOODS, type MoodProfile } from "@/lib/mood-agent";
+import { apiFetch } from "@/lib/api-url";
 
 async function fetchMoodMovies(mood: MoodProfile): Promise<RowMovie[]> {
   const responses = await Promise.all(
     mood.genreIds.map(async (genreId) => {
-      const res = await fetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=1`);
+      const res = await apiFetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=1`);
       if (!res.ok) return [];
       const data = await res.json();
       return data.results ?? [];

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
 import gsap from "gsap";
+import { apiFetch } from "@/lib/api-url";
 
 interface Actor {
   id: number;
@@ -14,7 +15,7 @@ interface Actor {
 async function fetchActors(maxPages = 1, region?: string): Promise<Actor[]> {
   const params = new URLSearchParams({ maxPages: String(maxPages) });
   if (region) params.set("region", region);
-  const response = await fetch(`/api/movies/actors?${params}`);
+  const response = await apiFetch(`/api/movies/actors?${params}`);
   if (!response.ok) throw new Error("Failed to load actors");
   const data = await response.json();
   return data.results ?? [];

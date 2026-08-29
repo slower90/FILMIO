@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useSearch } from "wouter";
 import { recordMoodSignal } from "@/lib/mood-agent";
 import { CatalogStatusNotice, type CatalogMetadata } from "@/components/catalog-status-notice";
+import { apiFetch } from "@/lib/api-url";
 
 interface RankedAnime {
   id: number;
@@ -102,7 +103,7 @@ export default function Search() {
   const { data: smartSearch, isLoading: loadingMovies } = useQuery<SmartSearchResponse>({
     queryKey: ["smart-movie-search", debouncedQuery, resultLimit],
     queryFn: async () => {
-      const response = await fetch(`/api/movies/search-smart?q=${encodeURIComponent(debouncedQuery)}&limit=${resultLimit}`);
+      const response = await apiFetch(`/api/movies/search-smart?q=${encodeURIComponent(debouncedQuery)}&limit=${resultLimit}`);
       if (!response.ok) throw new Error("Unable to search movies");
       return response.json();
     },
@@ -118,7 +119,7 @@ export default function Search() {
   const { data: rankedAnime, isLoading: loadingRankedAnime } = useQuery<{ results: RankedAnime[] }>({
     queryKey: ["search-ranked-anime", debouncedQuery, resultLimit],
     queryFn: async () => {
-      const response = await fetch(`/api/anime/top?filter=score&type=tv&page=1&limit=${resultLimit}`);
+      const response = await apiFetch(`/api/anime/top?filter=score&type=tv&page=1&limit=${resultLimit}`);
       if (!response.ok) throw new Error("Unable to load ranked anime");
       return response.json();
     },

@@ -4,6 +4,7 @@ import { Link, useLocation, useSearch } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { Film, ChevronRight } from "lucide-react";
+import { apiFetch } from "@/lib/api-url";
 
 interface Genre {
   id: number;
@@ -38,7 +39,7 @@ function GenreMoviesRow({ genre }: { genre: Genre }) {
   const { data: movies, isLoading } = useQuery<RowMovie[]>({
     queryKey: ["genre-browse", genre.id],
     queryFn: async () => {
-      const res = await fetch(`/api/movies/by-genre?genreId=${genre.id}&maxPages=3`);
+      const res = await apiFetch(`/api/movies/by-genre?genreId=${genre.id}&maxPages=3`);
       if (!res.ok) return [];
       const d = await res.json();
       return d.results ?? [];
@@ -100,7 +101,7 @@ export default function Genres() {
   const { data: genresData, isLoading } = useQuery<{ genres: Genre[] }>({
     queryKey: ["all-genres"],
     queryFn: async () => {
-      const res = await fetch("/api/movies/genres");
+      const res = await apiFetch("/api/movies/genres");
       if (!res.ok) throw new Error("Failed to fetch genres");
       return res.json();
     },
@@ -122,7 +123,7 @@ export default function Genres() {
     queryFn: async () => {
       const results = await Promise.all(
         FEATURED.map(async (g) => {
-          const res = await fetch(`/api/movies/by-genre?genreId=${g.id}&maxPages=2`);
+          const res = await apiFetch(`/api/movies/by-genre?genreId=${g.id}&maxPages=2`);
           if (!res.ok) return [g.id, []];
           const d = await res.json();
           return [g.id, d.results ?? []];

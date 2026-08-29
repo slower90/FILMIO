@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useUser } from "@clerk/react";
+import { apiFetch } from "@/lib/api-url";
 import {
   ArrowLeft,
   Check,
@@ -149,7 +150,7 @@ export default function Profiles() {
     queries: preferenceMovieIds.map((movieId) => ({
       queryKey: ["profile-preference-movie", movieId],
       queryFn: async () => {
-        const response = await fetch(`/api/movies/${movieId}/overview`);
+        const response = await apiFetch(`/api/movies/${movieId}/overview`);
         if (!response.ok) throw new Error("Movie metadata unavailable");
         return response.json() as Promise<CinemaPreferenceMovieOverview>;
       },

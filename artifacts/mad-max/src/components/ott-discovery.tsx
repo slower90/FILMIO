@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
+import { apiFetch } from "@/lib/api-url";
 
 const PROVIDERS = [
   { id: 8, name: "Netflix", mark: "N" },
@@ -15,7 +16,7 @@ const PROVIDERS = [
 type Provider = (typeof PROVIDERS)[number];
 
 async function fetchProvider(providerId: number, mediaType: "movie" | "tv") {
-  const res = await fetch(`/api/movies/provider?providerId=${providerId}&mediaType=${mediaType}&maxPages=2`);
+  const res = await apiFetch(`/api/movies/provider?providerId=${providerId}&mediaType=${mediaType}&maxPages=2`);
   if (!res.ok) return [];
   const data = await res.json();
   return (data.results ?? []).map((movie: RowMovie) =>

@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { Clapperboard, ExternalLink } from "lucide-react";
+import { apiFetch } from "@/lib/api-url";
 
 async function fetchFreeMovies(): Promise<RowMovie[]> {
-  const res = await fetch("/api/movies/free?maxPages=3");
+  const res = await apiFetch("/api/movies/free?maxPages=3");
   if (!res.ok) throw new Error("Unable to load free movies");
   const data = await res.json();
   return data.results ?? [];

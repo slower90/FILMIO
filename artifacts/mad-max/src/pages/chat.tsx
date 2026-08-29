@@ -26,6 +26,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/react";
+import { apiFetch } from "@/lib/api-url";
 import {
   AlertCircle,
   ArrowLeft,
@@ -170,7 +171,7 @@ function DeviceRecovery({
       const backup = await createEncryptedKeyBackup(recoveryPassphrase);
       const challengeBytes = crypto.getRandomValues(new Uint8Array(24));
       const challenge = btoa(String.fromCharCode(...challengeBytes));
-      const response = await fetch("/api/chat/device-links", {
+      const response = await apiFetch("/api/chat/device-links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challenge }),
@@ -188,7 +189,7 @@ function DeviceRecovery({
     try {
       const link = parseDeviceLinkCode(restoreCode);
       const current = await restoreEncryptedKeyBackup(link.backup, restorePassphrase);
-      const response = await fetch(`/api/chat/device-links/${encodeURIComponent(link.challenge)}/complete`, {
+      const response = await apiFetch(`/api/chat/device-links/${encodeURIComponent(link.challenge)}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -204,7 +205,7 @@ function DeviceRecovery({
       onStatus("Device restored and linked securely.");
       setRestoreCode("");
       setRestorePassphrase("");
-      const refreshed = await fetch("/api/chat/devices");
+      const refreshed = await apiFetch("/api/chat/devices");
       if (refreshed.ok) {
         const nextDevices = await refreshed.json();
         onDevicesChange(Array.isArray(nextDevices) ? nextDevices : []);
@@ -382,7 +383,7 @@ export default function Chat() {
       .then(() => {
         setDeviceReady(true);
         setRecoveryAvailable(true);
-        return fetch("/api/chat/devices").then((response) => (response.ok ? response.json() : []));
+        return apiFetch("/api/chat/devices").then((response) => (response.ok ? response.json() : []));
       })
       .then((result) => setDevices(Array.isArray(result) ? result : []))
       .catch(() => undefined);
@@ -454,7 +455,7 @@ export default function Chat() {
     if (!message.trim() || !activeConvId || !deviceReady || sendMessage.isPending) return;
     setAttachmentError("");
     try {
-      const devicesResponse = await fetch(`/api/chat/conversations/${activeConvId}/devices`);
+      const devicesResponse = await apiFetch(`/api/chat/conversations/${activeConvId}/devices`);
       if (!devicesResponse.ok) throw new Error("Recipient devices are unavailable right now.");
       const recipientDevices = await devicesResponse.json();
       const encryptedContent = await encryptMessage(message.trim(), recipientDevices, attachment);

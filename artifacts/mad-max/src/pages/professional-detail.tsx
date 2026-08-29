@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { BadgeCheck, PlayCircle, Mail, MessageSquare, ExternalLink, Briefcase } from "lucide-react";
 import { useUser } from "@clerk/react";
 import { useEffect, useState } from "react";
+import { apiFetch, apiUrl } from "@/lib/api-url";
 
 type Portfolio = {
   workHistory?: Array<{ id: number; projectName: string; role: string; year: number | null; collaborators: string[]; description?: string | null }>;
@@ -23,7 +24,7 @@ export default function ProfessionalDetail() {
   const { data: pro, isLoading } = useGetProfessionalProfile(proId, { query: { queryKey: getGetProfessionalProfileQueryKey(proId), enabled: !!proId } });
   useEffect(() => {
     if (!proId) return;
-    fetch(`/api/professionals/${proId}`).then((response) => response.ok ? response.json() : null).then((data) => data && setPortfolio(data)).catch(() => undefined);
+    apiFetch(`/api/professionals/${proId}`).then((response) => response.ok ? response.json() : null).then((data) => data && setPortfolio(data)).catch(() => undefined);
   }, [proId]);
 
   const handleMessage = () => {
@@ -164,7 +165,7 @@ export default function ProfessionalDetail() {
                 <h2 className="text-2xl font-display font-bold uppercase tracking-wider mb-6 pb-2 border-b border-border">Audition Reels</h2>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {portfolio.publicAuditions.map((audition) => (
-                    <a key={audition.id} href={`/api/professionals/auditions/${audition.id}/file`} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-md border border-border bg-card p-4 transition-colors hover:border-primary">
+                    <a key={audition.id} href={apiUrl(`/api/professionals/auditions/${audition.id}/file`)} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-md border border-border bg-card p-4 transition-colors hover:border-primary">
                       <PlayCircle className="h-8 w-8 shrink-0 text-primary" />
                       <span><strong className="block">{audition.title}</strong><small className="text-muted-foreground">{audition.fileName}</small></span>
                     </a>

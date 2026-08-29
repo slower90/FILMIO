@@ -14,6 +14,7 @@ import {
    getListReviewsQueryKey,
 } from "@workspace/api-client-react";
 import { Navbar } from "@/components/navbar";
+import { apiFetch } from "@/lib/api-url";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { tmdbBackdropSrcSet, tmdbBackdropUrl, tmdbPosterUrl, tmdbLogoUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,25 +39,27 @@ import { getPrismDisplayRating } from "@/lib/mad-max-ratings";
 import { CatalogStatusNotice, type CatalogMetadata } from "@/components/catalog-status-notice";
 import { SITE_URL } from "@/lib/seo";
 import { movieStoryPath, withMovieTitle } from "@/lib/movie-links";
+import { useActiveProfile } from "@/lib/profile-context";
+import { MovieScoreFingerprint } from "@/components/movie-score-fingerprint";
 
 // ── Fetchers for non-spec endpoints ──────────────────────────────────────────
 
 async function fetchMovieRecommendations(movieId: number): Promise<RowMovie[]> {
-  const res = await fetch(`/api/movies/${movieId}/recommendations?maxPages=2`);
+  const res = await apiFetch(`/api/movies/${movieId}/recommendations?maxPages=2`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.results ?? [];
 }
 
 async function fetchMoviesByGenre(genreId: number): Promise<RowMovie[]> {
-  const res = await fetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=2`);
+  const res = await apiFetch(`/api/movies/by-genre?genreId=${genreId}&maxPages=2`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.results ?? [];
 }
 
 async function fetchMovieOverview(movieId: number, mediaType: "movie" | "tv"): Promise<any> {
-  const res = await fetch(`/api/movies/${movieId}/overview?type=${mediaType}`);
+  const res = await apiFetch(`/api/movies/${movieId}/overview?type=${mediaType}`);
   if (!res.ok) throw new Error("Unable to load movie");
   return res.json();
 }
@@ -114,9 +117,11 @@ export default function MovieDetail() {
   const mediaType = searchParams.get("type") === "tv" ? "tv" : "movie";
   const loadingQuote = getMovieLoadingQuote(titleHint);
   const { isSignedIn } = useUser();
+  const { activeProfile } = useActiveProfile();
   const queryClient = useQueryClient();
-  const { data: watchlist } = useGetWatchlist({
-    query: { queryKey: getGetWatchlistQueryKey(), enabled: !!isSignedIn },
+  const profileParams = activeProfile ? { profileId: activeProfile.id } : undefined;
+  const { data: watchlist } = useGetWatchlist(profileParams, {
+    query: { queryKey: getGetWatchlistQueryKey(profileParams), enabled: !!isSignedIn },
   });
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
@@ -157,7 +162,7 @@ export default function MovieDetail() {
 
     if (isInWatchlist) {
       removeFromWatchlist.mutate(
-        { movieId },
+        { movieId, params: profileParams },
         {
           onSuccess: () =>
             queryClient.invalidateQueries({
@@ -175,7 +180,9 @@ export default function MovieDetail() {
           movieTitle: movie.title,
           moviePosterPath: movie.posterPath,
           movieReleaseDate: movie.releaseDate,
+          profileId: activeProfile?.id,
         }),
+        params: profileParams,
       },
       {
         onSuccess: () =>
@@ -206,6 +213,7 @@ export default function MovieDetail() {
       movieId,
       rating,
       reviewContent: content,
+      profileId: activeProfile?.id,
       upsertRating,
       createReview,
       effects: {
@@ -237,8 +245,9 @@ export default function MovieDetail() {
         releaseDate: movie.releaseDate,
       },
       !!isSignedIn,
+      activeProfile?.id,
     );
-  }, [movie, isSignedIn]);
+  }, [activeProfile?.id, movie, isSignedIn]);
 
   // "You Might Also Like" — TMDB recommendations for this movie
   const { data: recommendations, isLoading: loadingRecs } = useQuery<
@@ -850,52 +859,11 @@ export default function MovieDetail() {
         {/* Right: Sidebar — Rating + Providers + Details */}
         <div className="space-y-8">
           {stats && (
-            <div className="bg-card border border-border rounded-md p-6">
-              <h3 className="font-display uppercase tracking-wider font-bold text-lg mb-4">
-                FILMIO Rating
-              </h3>
-              <div className="flex items-end gap-3 mb-6">
-                <span className="text-5xl font-display font-bold text-primary">
-                  {displayRating.toFixed(1)}
-                </span>
-                <span className="text-xl text-muted-foreground font-display mb-1">
-                  / 10
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                {stats.totalRatings > 0
-                  ? `${stats.totalRatings} user ratings`
-                  : "FILMIO score"}
-              </p>
-
-              {stats.totalRatings > 0 && <div className="space-y-2">
-                {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((score) => {
-                  const dist = stats.ratingDistribution?.find(
-                    (d) => d.score === score,
-                  );
-                  const count = dist?.count || 0;
-                  const percent =
-                    stats.totalRatings > 0
-                      ? (count / stats.totalRatings) * 100
-                      : 0;
-                  return (
-                    <div
-                      key={score}
-                      className="flex items-center gap-2 text-xs"
-                    >
-                      <span className="w-4 text-right">{score}</span>
-                      <Star className="w-3 h-3 text-muted-foreground" />
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary"
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>}
-            </div>
+            <MovieScoreFingerprint
+              movie={movie}
+              score={displayRating}
+              stats={stats}
+            />
           )}
 
           {providers &&

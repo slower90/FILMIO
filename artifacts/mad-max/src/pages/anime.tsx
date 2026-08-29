@@ -4,6 +4,7 @@ import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { Link } from "wouter";
 import { Search, ExternalLink, Star, Tv } from "lucide-react";
+import { apiFetch } from "@/lib/api-url";
 
 interface AnimeItem {
   id: number;
@@ -77,7 +78,7 @@ function AnimeRow({
   const { data, isLoading, isError } = useQuery<{ results: AnimeItem[] }>({
     queryKey: ["anime-row", filter, type],
     queryFn: async () => {
-      const res = await fetch(`/api/anime/top?filter=${filter}&type=${type}&limit=25`);
+      const res = await apiFetch(`/api/anime/top?filter=${filter}&type=${type}&limit=25`);
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Failed to fetch anime");
@@ -131,7 +132,7 @@ export default function Anime() {
     queryKey: ["anime-search", debouncedQ],
     queryFn: async () => {
       if (!debouncedQ.trim()) return { results: [] };
-      const res = await fetch(`/api/anime/search?q=${encodeURIComponent(debouncedQ)}`);
+      const res = await apiFetch(`/api/anime/search?q=${encodeURIComponent(debouncedQ)}`);
       if (!res.ok) throw new Error("Search failed");
       return res.json();
     },

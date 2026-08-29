@@ -1,4 +1,5 @@
 import type { RowMovie } from "@/components/movie-row";
+import { apiFetch } from "@/lib/api-url";
 
 const STORAGE_KEY = "mad-max-recently-viewed";
 const MAX_ITEMS = 12;
@@ -43,7 +44,7 @@ async function requestHistory(
   profileId?: number,
 ): Promise<RowMovie[] | null> {
   const params = profileId ? `?profileId=${profileId}` : "";
-  const response = await fetch(`/api/users/me/viewing-history${params}`, {
+  const response = await apiFetch(`/api/users/me/viewing-history${params}`, {
     method,
     credentials: "include",
     headers: movies ? { "Content-Type": "application/json" } : undefined,

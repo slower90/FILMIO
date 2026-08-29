@@ -14,6 +14,7 @@ import { useUser } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { apiFetch } from "@/lib/api-url";
 
 type WorkEntry = { id: number; projectName: string; role: string; year: number | null; collaborators: string[]; description?: string | null };
 type Audition = { id: number; title: string; description?: string | null; fileName: string; contentType: string; fileSize: number; isPublic: boolean; createdAt: string };
@@ -164,7 +165,7 @@ export default function Professionals() {
 
   const loadPortfolio = async () => {
     if (!isSignedIn) return;
-    const response = await fetch("/api/professionals/me/portfolio");
+    const response = await apiFetch("/api/professionals/me/portfolio");
     if (response.ok) {
       const data = await response.json();
       setPortfolio({ work: data.work ?? [], auditions: data.auditions ?? [], media: data.media ?? [] });
@@ -221,7 +222,7 @@ export default function Professionals() {
   };
 
   const addWork = async () => {
-    const response = await fetch("/api/professionals/me/work", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    const response = await apiFetch("/api/professionals/me/work", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
       ...workDraft, year: workDraft.year || null, collaborators: workDraft.collaborators.split(",").map((item) => item.trim()).filter(Boolean),
     }) });
     if (response.ok) {
@@ -251,7 +252,7 @@ export default function Professionals() {
     setSavingWorkId(id);
     setFormError(null);
     try {
-      const response = await fetch(`/api/professionals/me/work/${id}`, {
+      const response = await apiFetch(`/api/professionals/me/work/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -274,7 +275,7 @@ export default function Professionals() {
     }
   };
   const removeWork = async (id: number) => {
-    const response = await fetch(`/api/professionals/me/work/${id}`, { method: "DELETE" });
+    const response = await apiFetch(`/api/professionals/me/work/${id}`, { method: "DELETE" });
     if (response.ok) {
       if (editingWorkId === id) cancelEditingWork();
       void loadPortfolio();
@@ -287,18 +288,18 @@ export default function Professionals() {
     if (!file || !auditionTitle.trim()) { setFormError("Add an audition title and choose a file."); return; }
     setUploading(true); setFormError(null);
     try {
-      const urlResponse = await fetch("/api/professionals/me/auditions/request-upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }) });
+      const urlResponse = await apiFetch("/api/professionals/me/auditions/request-upload", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }) });
       const signed = await urlResponse.json();
       if (!urlResponse.ok) throw new Error(signed.error);
       const uploadResponse = await fetch(signed.uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
       if (!uploadResponse.ok) throw new Error("File upload failed");
-      const saveResponse = await fetch("/api/professionals/me/auditions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: auditionTitle.trim(), description: auditionDescription.trim() || null, objectPath: signed.objectPath, fileName: file.name, contentType: file.type, fileSize: file.size, isPublic: auditionPublic }) });
+      const saveResponse = await apiFetch("/api/professionals/me/auditions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: auditionTitle.trim(), description: auditionDescription.trim() || null, objectPath: signed.objectPath, fileName: file.name, contentType: file.type, fileSize: file.size, isPublic: auditionPublic }) });
       if (!saveResponse.ok) throw new Error((await saveResponse.json()).error);
       setAuditionTitle(""); setAuditionDescription(""); setAuditionPublic(false); void loadPortfolio();
     } catch (error) { setFormError(error instanceof Error ? error.message : "Could not upload audition."); }
     finally { setUploading(false); event.target.value = ""; }
   };
-  const removeAudition = async (id: number) => { await fetch(`/api/professionals/me/auditions/${id}`, { method: "DELETE" }); void loadPortfolio(); };
+  const removeAudition = async (id: number) => { await apiFetch(`/api/professionals/me/auditions/${id}`, { method: "DELETE" }); void loadPortfolio(); };
     const profileExists = Boolean(isSignedIn && profileForForm);
     useEffect(() => {
       if (window.location.hash !== "#auditions" || !profileExists) return;

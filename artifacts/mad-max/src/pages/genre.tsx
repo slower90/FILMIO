@@ -7,6 +7,7 @@ import { MovieCard } from "@/components/movie-card";
 import { Button } from "@/components/ui/button";
 import { Film, Loader2 } from "lucide-react";
 import { recordMoodSignal } from "@/lib/mood-agent";
+import { apiFetch } from "@/lib/api-url";
 
 interface Genre {
   id: number;
@@ -57,7 +58,7 @@ export default function GenrePage() {
   const { data: genresData } = useQuery<{ genres: Genre[] }>({
     queryKey: ["all-genres"],
     queryFn: async () => {
-      const res = await fetch("/api/movies/genres");
+      const res = await apiFetch("/api/movies/genres");
       if (!res.ok) throw new Error("Failed to fetch genres");
       return res.json();
     },
@@ -81,7 +82,7 @@ export default function GenrePage() {
   } = useInfiniteQuery<GenrePageResult>({
     queryKey: ["genre-page", genreId],
     queryFn: async ({ pageParam }) => {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/movies/by-genre?genreId=${genreId}&page=${pageParam}`,
       );
       if (!res.ok) throw new Error("Failed to fetch genre movies");

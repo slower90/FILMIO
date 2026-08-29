@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/navbar";
+import { apiFetch } from "@/lib/api-url";
 import {
   BadgeCheck,
   CalendarDays,
@@ -426,7 +427,7 @@ export default function IndustryCommunity() {
     if (!silent) setLoadingFeed(true);
     setFeedError(null);
     try {
-      const response = await fetch("/api/professionals/community/feed?page=1&limit=20", { credentials: "include" });
+      const response = await apiFetch("/api/professionals/community/feed?page=1&limit=20", { credentials: "include" });
       if (!response.ok) throw new Error(await readError(response, "The industry room is unavailable right now."));
       const result = await response.json() as FeedResponse;
       setPosts(Array.isArray(result.posts) ? result.posts : []);
@@ -496,7 +497,7 @@ export default function IndustryCommunity() {
     try {
       let objectPath: string | undefined;
       if (selectedFile) {
-        const ticketResponse = await fetch("/api/professionals/community/posts/request-upload", {
+        const ticketResponse = await apiFetch("/api/professionals/community/posts/request-upload", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -508,7 +509,7 @@ export default function IndustryCommunity() {
         objectPath = ticket.objectPath;
         uploadedObjectPath = objectPath;
       }
-      const saveResponse = await fetch("/api/professionals/community/posts", {
+        const saveResponse = await apiFetch("/api/professionals/community/posts", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -527,7 +528,7 @@ export default function IndustryCommunity() {
       await loadFeed(true);
     } catch (error) {
       if (uploadedObjectPath) {
-        await fetch("/api/professionals/community/uploads", {
+        await apiFetch("/api/professionals/community/uploads", {
           method: "DELETE",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
@@ -544,7 +545,7 @@ export default function IndustryCommunity() {
     if (likingId === post.id) return;
     setLikingId(post.id);
     try {
-      const response = await fetch(`/api/professionals/community/posts/${post.id}/like`, { method: "POST", credentials: "include" });
+      const response = await apiFetch(`/api/professionals/community/posts/${post.id}/like`, { method: "POST", credentials: "include" });
       if (!response.ok) throw new Error(await readError(response, "Could not update your like."));
       const result = await response.json() as { liked: boolean; likeCount: number };
       setPosts((current) => current.map((item) => item.id === post.id ? { ...item, viewerLiked: result.liked, likeCount: result.likeCount } : item));
@@ -559,7 +560,7 @@ export default function IndustryCommunity() {
     if (!window.confirm("Delete this post from the industry room?")) return;
     setDeletingId(post.id);
     try {
-      const response = await fetch(`/api/professionals/community/posts/${post.id}`, { method: "DELETE", credentials: "include" });
+      const response = await apiFetch(`/api/professionals/community/posts/${post.id}`, { method: "DELETE", credentials: "include" });
       if (!response.ok) throw new Error(await readError(response, "Could not delete this post."));
       setPosts((current) => current.filter((item) => item.id !== post.id));
     } catch (error) {
@@ -577,7 +578,7 @@ export default function IndustryCommunity() {
     }
     setCommentPanels((panels) => ({ ...panels, [post.id]: { open: true, loading: true, error: null, comments: current?.comments || [] } }));
     try {
-      const response = await fetch(`/api/professionals/community/posts/${post.id}/comments`, { credentials: "include" });
+      const response = await apiFetch(`/api/professionals/community/posts/${post.id}/comments`, { credentials: "include" });
       if (!response.ok) throw new Error(await readError(response, "Could not load notes."));
       const result = await response.json() as { comments: CommunityComment[] };
       setCommentPanels((panels) => ({ ...panels, [post.id]: { open: true, loading: false, error: null, comments: result.comments || [] } }));
@@ -587,7 +588,7 @@ export default function IndustryCommunity() {
   };
 
   const addComment = async (post: CommunityPost, content: string) => {
-    const response = await fetch(`/api/professionals/community/posts/${post.id}/comments`, {
+    const response = await apiFetch(`/api/professionals/community/posts/${post.id}/comments`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { ExternalLink, RefreshCw, Film, Tv, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-url";
 
 interface NewsItem {
   id: string;
@@ -100,7 +101,7 @@ export default function News() {
   }>({
     queryKey: ["news"],
     queryFn: async () => {
-      const res = await fetch("/api/news");
+      const res = await apiFetch("/api/news");
       if (!res.ok) throw new Error("Failed to fetch news");
       return res.json();
     },

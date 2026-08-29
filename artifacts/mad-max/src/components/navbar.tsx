@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { recordMoodSignal } from "@/lib/mood-agent";
+import { apiFetch } from "@/lib/api-url";
 import { withMovieTitle } from "@/lib/movie-links";
 import { useActiveProfile } from "@/lib/profile-context";
 import { ProfileAvatar } from "@/components/profile-avatar";
@@ -52,7 +53,7 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
     setOpen(true);
     setLoading(true);
     try {
-      const res = await fetch(`/api/movies/search-multi?q=${encodeURIComponent(trimmed)}`);
+      const res = await apiFetch(`/api/movies/search-multi?q=${encodeURIComponent(trimmed)}`);
       if (!res.ok) return;
       const data = await res.json();
       setResults((data.results ?? []).slice(0, 8));

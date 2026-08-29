@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, X, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { apiFetch } from "@/lib/api-url";
 
 export interface ClipItem {
   id: string;
@@ -94,7 +95,7 @@ export function ClipSection({ clips, isLoading }: { clips: ClipItem[]; isLoading
     setAd(null);
     setAdState("loading");
     tracked.current = new Set();
-    fetch("/api/movies/clip-ad")
+    apiFetch("/api/movies/clip-ad")
       .then(async (response) => {
         if (!response.ok) throw new Error("ad request failed");
         return response.json().catch(() => null);

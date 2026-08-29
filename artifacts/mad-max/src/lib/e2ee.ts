@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/api-url";
+
 const DEVICE_KEY = "madmax.e2ee.device";
 type DeviceIdentity = { deviceId: string; privateKey: JsonWebKey; publicKey: JsonWebKey };
 type RecipientDevice = { deviceId: string; userId: string; publicKey: string; revoked?: boolean };
@@ -83,7 +85,7 @@ async function deriveMessageKey(publicKey: string | JsonWebKey, privateKey: Json
 
 export async function registerDevice() {
   const current = await identity();
-  await fetch("/api/chat/devices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deviceId: current.deviceId, publicKey: JSON.stringify(current.publicKey), deviceName: `${navigator.platform} · ${navigator.userAgent.includes("Mobile") ? "Mobile" : "Browser"}` }) });
+  await apiFetch("/api/chat/devices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deviceId: current.deviceId, publicKey: JSON.stringify(current.publicKey), deviceName: `${navigator.platform} · ${navigator.userAgent.includes("Mobile") ? "Mobile" : "Browser"}` }) });
   return current;
 }
 
