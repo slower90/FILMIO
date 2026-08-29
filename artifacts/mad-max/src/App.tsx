@@ -60,12 +60,21 @@ const queryClient = new QueryClient({
 });
 
 // Clerk Auth Setup
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function resolveClerkPublishableKey() {
+  try {
+    return publishableKeyFromHost(
+      window.location.hostname,
+      import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    );
+  } catch {
+    return "";
+  }
+}
+
+const clerkPubKey = resolveClerkPublishableKey();
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -73,8 +82,18 @@ function stripBase(path: string): string {
     : path;
 }
 
-if (!clerkPubKey) {
-  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
+function ClerkConfigurationError() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+      <section className="w-full max-w-xl rounded-md border border-border bg-card p-8 shadow-2xl">
+        <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">FILMIO configuration error</p>
+        <h1 className="mt-3 text-2xl font-semibold">Authentication is not configured.</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          The production Clerk publishable key is missing or invalid for this domain.
+        </p>
+      </section>
+    </main>
+  );
 }
 
 const clerkAppearance = {
@@ -386,6 +405,10 @@ function ProtectedProfiles() {
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+
+  if (!clerkPubKey) {
+    return <ClerkConfigurationError />;
+  }
 
   return (
     <ClerkProvider
