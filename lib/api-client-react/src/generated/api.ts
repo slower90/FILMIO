@@ -30,6 +30,7 @@ import type {
   ConversationInput,
   ErrorResponse,
   FollowResult,
+  FreeClassicsResponse,
   FriendRequest,
   FriendsOverview,
   GenreListResult,
@@ -196,6 +197,83 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFreeClassicsUrl = () => {
+
+
+
+
+  return `/api/free-classics`
+}
+
+/**
+ * @summary List curated public-domain films
+ */
+export const getFreeClassics = async ( options?: Parameters<typeof customFetch>[1]): Promise<FreeClassicsResponse> => {
+
+  return customFetch<FreeClassicsResponse>(getGetFreeClassicsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFreeClassicsQueryKey = () => {
+    return [
+    `/api/free-classics`
+    ] as const;
+    }
+
+
+export const getGetFreeClassicsQueryOptions = <TData = Awaited<ReturnType<typeof getFreeClassics>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFreeClassics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFreeClassicsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFreeClassics>>> = ({ signal }) => getFreeClassics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFreeClassics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFreeClassicsQueryResult = NonNullable<Awaited<ReturnType<typeof getFreeClassics>>>
+export type GetFreeClassicsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List curated public-domain films
+ */
+
+export function useGetFreeClassics<TData = Awaited<ReturnType<typeof getFreeClassics>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFreeClassics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFreeClassicsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
