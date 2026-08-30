@@ -14,3 +14,18 @@
 - [Personalized discovery](personalized-discovery.md) — rank for movie-fit with transparent signals, diversity, and bounded feeds rather than compulsive engagement
 - [Brand migration compatibility](brand-migration.md) — visible rebrands should preserve artifact paths, package names, and persisted storage keys unless migration is explicit
 - [FILMIO typography](filmio-typography.md) — Space Grotesk for premium geometric headings; Michroma stays reserved for the wordmark
+- [Orval Zod compatibility](orval-zod-compat.md) — Orval 8.23 can emit Zod 4 shorthand while this workspace uses Zod 3; keep codegen compatibility explicit
+- [Static route SEO](static-route-seo.md) — client Helmet and Vite dev prerender do not make per-route metadata available from a static production rewrite
+- [Deleted artifact dependency overrides](deleted-artifact-overrides.md) — restoring a package also requires restoring any local override targets referenced by the root lockfile
+- [Drizzle noninteractive pushes](drizzle-noninteractive-push.md) — named-schema conflicts can make both regular and force pushes require a TTY
+- [Expo build port isolation](expo-build-port.md) — static Expo builds must reserve a local Metro port because preview services may occupy 8081
+- [Generated query nulls](generated-query-nulls.md) — omit nullable initial pagination params; generated clients may serialize null as the literal string "null"
+- [Supabase connector target](supabase-connector-target.md) — an attached Supabase connector must resolve to the project PostgREST API, not the Supabase dashboard HTML
+- [Drizzle array predicates](drizzle-array-predicates.md) — use inArray for runtime PostgreSQL membership filters, not interpolated ANY arrays
+- [Workspace package installs](workspace-package-installs.md) — target pnpm monorepo dependencies with the workspace filter when the generic installer resolves the root
+- [GitHub sync fallback](github-sync-fallback.md) — guarded connector GraphQL commits can safely replace broken Git HTTPS transport without force-pushing
+- [Profile query isolation](profile-query-isolation.md) — clear or user-scope cached profile queries when Clerk accounts change to prevent stale profiles crossing accounts
+- [Future cinema rollout](future-cinema-rollout.md) — apply the Vishnuva-style cinema OS direction in phased surfaces while preserving FILMIO APIs and persisted product identity
+- [Optional-auth route tests](auth-route-tests.md) — register Clerk middleware before mounting routes that call getAuth, even when testing anonymous requests
+- [External Clerk deployments](clerk-railway-deploy.md) — Replit-managed Clerk production-key swapping does not automatically apply to external Railway builds
+- [Browse query routing](browse-query-routing.md) — Wouter location can be pathname-only; parse browser search for query-driven listing state
