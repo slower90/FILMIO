@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Film, Play, RotateCcw, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
+import type { FreeClassic, FreeClassicsResponse } from "@workspace/api-client-react";
 import { apiFetch } from "@/lib/api-url";
 import {
   Dialog,
@@ -11,21 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-export interface FreeClassic {
-  identifier: string;
-  title: string;
-  description?: string | null;
-  year?: number | string | null;
-  creator?: string | null;
-  posterUrl?: string | null;
-  embedUrl: string;
-}
-
-interface FreeClassicsResponse {
-  items: FreeClassic[];
-  fetchedAt: string;
-}
 
 async function fetchFreeClassics(): Promise<FreeClassicsResponse> {
   const response = await apiFetch("/api/free-classics");
