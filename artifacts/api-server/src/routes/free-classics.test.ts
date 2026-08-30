@@ -74,7 +74,7 @@ test("uses the curated feature-films search instead of an unrestricted archive q
 
 test("builds restricted Wikimedia and YouTube source queries", () => {
   const commons = new URL(buildWikimediaSearchUrl());
-  assert.match(commons.searchParams.get("gsrsearch") ?? "", /Public domain films/);
+  assert.match(commons.searchParams.get("gsrsearch") ?? "", /filetype:video public domain film/);
   assert.equal(commons.searchParams.get("gsrnamespace"), "6");
   assert.equal(commons.searchParams.get("iiprop"), "url|mime|extmetadata");
 

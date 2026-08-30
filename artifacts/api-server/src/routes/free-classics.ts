@@ -4,10 +4,12 @@ import { GetFreeClassicsResponse } from "@workspace/api-zod";
 const INTERNET_ARCHIVE_SEARCH_URL = "https://archive.org/advancedsearch.php";
 const INTERNET_ARCHIVE_QUERY = "mediatype:movies AND collection:feature_films";
 const WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php";
+const WIKIMEDIA_USER_AGENT = "FILMIO-Free-Classics/1.0 (https://vishnuva.in)";
 const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 export const FREE_CLASSICS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_ITEMS = 50;
-const VIDEO_EXTENSIONS = /\.(mp4|webm)$/i;
+const MAX_ITEMS_PER_SOURCE = 20;
+const VIDEO_EXTENSIONS = /\.(mp4|webm)(?:[?#]|$)/i;
 
 export type FreeClassicSource = "archive" | "youtube" | "wikimedia";
 export type FreeClassicPlayback = "iframe" | "video";
@@ -96,11 +98,15 @@ function stripHtml(value: string | null): string | null {
 
 function uniqueItems(items: FreeClassic[]): FreeClassic[] {
   const seen = new Set<string>();
+  const sourceCounts = new Map<FreeClassicSource, number>();
   return items
     .filter((item) => {
       const key = `${item.source}:${item.identifier}`;
       if (seen.has(key)) return false;
+      const count = sourceCounts.get(item.source) ?? 0;
+      if (count >= MAX_ITEMS_PER_SOURCE) return false;
       seen.add(key);
+      sourceCounts.set(item.source, count + 1);
       return true;
     })
     .sort((a, b) => {
@@ -152,7 +158,7 @@ export function buildWikimediaSearchUrl(): string {
   url.searchParams.set("format", "json");
   url.searchParams.set("formatversion", "2");
   url.searchParams.set("generator", "search");
-  url.searchParams.set("gsrsearch", 'incategory:"Public domain films" filetype:video');
+  url.searchParams.set("gsrsearch", "filetype:video public domain film");
   url.searchParams.set("gsrnamespace", "6");
   url.searchParams.set("gsrlimit", String(MAX_ITEMS));
   url.searchParams.set("prop", "info|imageinfo");
@@ -286,7 +292,10 @@ async function fetchArchiveClassics(fetchFn: typeof fetch, now: () => number): P
 
 async function fetchWikimediaClassics(fetchFn: typeof fetch): Promise<SourceResult> {
   const response = await fetchFn(buildWikimediaSearchUrl(), {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "User-Agent": WIKIMEDIA_USER_AGENT,
+    },
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`Wikimedia Commons returned ${response.status}`);
