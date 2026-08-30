@@ -23,13 +23,28 @@ const WIKIMEDIA_SEARCHES = [
 const WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php";
 const WIKIMEDIA_USER_AGENT = "FILMIO-Free-Classics/1.0 (https://vishnuva.in)";
 const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
+const NFB_OEMBED_URL = "https://www.nfb.ca/remote/services/oembed/";
+const DEFAULT_NFB_FILMS = [
+  "https://www.nfb.ca/film/flamenco_at_515/",
+  "https://www.nfb.ca/film/sleeping_betty/",
+  "https://www.nfb.ca/film/log_drivers_waltz/",
+  "https://www.nfb.ca/film/memories_of_angels/",
+  "https://www.nfb.ca/film/carts_of_darkness/",
+  "https://www.nfb.ca/film/standing_alone/",
+  "https://www.nfb.ca/film/blackfly/",
+  "https://www.nfb.ca/film/the-cat-came-back/",
+  "https://www.nfb.ca/film/runaway/",
+  "https://www.nfb.ca/film/cesars_bark_canoe/",
+  "https://www.nfb.ca/film/nahanni/",
+  "https://www.nfb.ca/film/the_sand_castle/",
+] as const;
 export const FREE_CLASSICS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_ITEMS = 200;
 const MAX_ITEMS_PER_SOURCE = 150;
 const VIDEO_EXTENSIONS = /\.(mp4|webm|ogv)(?:[?#]|$)/i;
 const DEFAULT_PAGE_SIZE = 20;
 
-export type FreeClassicSource = "archive" | "youtube" | "wikimedia";
+export type FreeClassicSource = "archive" | "youtube" | "wikimedia" | "nfb";
 export type FreeClassicPlayback = "iframe" | "video";
 
 type ArchiveDoc = Record<string, unknown>;
@@ -64,9 +79,11 @@ type FreeClassicsRouteOptions = {
   enableArchive?: boolean;
   enableWikimedia?: boolean;
   enableYoutube?: boolean;
+  enableNfb?: boolean;
   youtubeApiKey?: string | null;
   youtubeChannelIds?: string[];
   curatedYoutubeItems?: unknown[];
+  nfbFilmUrls?: string[];
 };
 
 type SourceResult = {
@@ -129,7 +146,7 @@ function uniqueItems(items: FreeClassic[]): FreeClassic[] {
       return true;
     })
     .sort((a, b) => {
-      const sourceOrder: Record<FreeClassicSource, number> = { archive: 0, youtube: 1, wikimedia: 2 };
+      const sourceOrder: Record<FreeClassicSource, number> = { archive: 0, youtube: 1, wikimedia: 2, nfb: 3 };
       return sourceOrder[a.source] - sourceOrder[b.source] || a.title.localeCompare(b.title);
     })
     .slice(0, MAX_ITEMS);
@@ -333,6 +350,59 @@ function normalizeWikimediaPage(page: WikimediaPage): FreeClassic | null {
   };
 }
 
+export function buildNfbOembedUrl(filmUrl: string): string {
+  const url = new URL(NFB_OEMBED_URL);
+  url.searchParams.set("url", filmUrl);
+  url.searchParams.set("format", "json");
+  return url.toString();
+}
+
+export function normalizeNfbOembedDoc(doc: Record<string, unknown>, filmUrl: string): FreeClassic | null {
+  const title = firstText(doc.title);
+  const posterUrl = firstText(doc.thumbnail_url);
+  if (!title || !posterUrl || !/^https?:\/\//i.test(filmUrl)) return null;
+  const sourceUrl = new URL(filmUrl).toString();
+  const embedUrl = `${sourceUrl.replace(/\/$/, "")}/embed/player/`;
+  return {
+    identifier: sourceUrl,
+    title,
+    description: firstText(doc.description),
+    year: parseYear(doc.year ?? doc.publishedAt),
+    creator: firstText(doc.author_name),
+    posterUrl,
+    embedUrl,
+    mediaUrl: null,
+    source: "nfb",
+    sourceLabel: "NFB.ca",
+    sourceUrl,
+    playback: "iframe",
+    licenseLabel: "NFB official free-to-watch",
+  };
+}
+
+async function fetchNfbClassics(
+  fetchFn: typeof fetch,
+  options: FreeClassicsRouteOptions,
+): Promise<SourceResult> {
+  const filmUrls = options.nfbFilmUrls ?? [...DEFAULT_NFB_FILMS];
+  const results = await mapWithConcurrency(filmUrls, 6, async (filmUrl) => {
+    try {
+      const response = await fetchFn(buildNfbOembedUrl(filmUrl), {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) return null;
+      const doc = await response.json() as Record<string, unknown>;
+      return normalizeNfbOembedDoc(doc, filmUrl);
+    } catch {
+      return null;
+    }
+  });
+  const items = results.filter((item): item is FreeClassic => Boolean(item));
+  if (items.length === 0) throw new Error("NFB.ca did not return any official films");
+  return { source: "nfb", items };
+}
+
 async function fetchArchiveCollection(fetchFn: typeof fetch, collection: ArchiveCollection): Promise<FreeClassic[]> {
   const response = await fetchFn(buildFreeClassicsSearchUrl(collection), {
     headers: { Accept: "application/json" },
@@ -477,6 +547,9 @@ async function fetchFreeClassics(
   if (options.enableArchive !== false) requests.push(fetchArchiveClassics(fetchFn));
   if (options.enableWikimedia !== false) requests.push(fetchWikimediaClassics(fetchFn));
   if (options.enableYoutube !== false) requests.push(fetchYoutubeClassics(fetchFn, options));
+  const enableNfb = options.enableNfb === true ||
+    (options.enableNfb !== false && (options.nfbFilmUrls !== undefined || options.fetchFn === undefined));
+  if (enableNfb) requests.push(fetchNfbClassics(fetchFn, options));
 
   const settled = await Promise.allSettled(requests);
   const healthyResults = settled
@@ -524,7 +597,7 @@ export function createFreeClassicsRouter(options: FreeClassicsRouteOptions = {})
 
       if (!cache) throw new Error("Free Classics cache is unavailable");
       const source = firstText(req.query.source);
-      const sourceFilter = source === "archive" || source === "youtube" || source === "wikimedia" ? source : null;
+       const sourceFilter = source === "archive" || source === "youtube" || source === "wikimedia" || source === "nfb" ? source : null;
       const requestedPage = Number(req.query.page);
       const requestedLimit = Number(req.query.limit);
       const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;

@@ -190,6 +190,8 @@ export interface MovieSummary {
   releaseDate: string;
   voteAverage: number;
   genreIds: number[];
+  /** @maxLength 200 */
+  recommendationReason?: string;
 }
 
 export interface Genre {
@@ -625,6 +627,17 @@ export const ViewingProfileMaturity = {
   NUMBER_18: 18,
 } as const;
 
+export interface FavoritePerson {
+  id: number;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name: string;
+  /** @nullable */
+  profilePath: string | null;
+}
+
 export interface ViewingProfile {
   id: number;
   userId: string;
@@ -646,6 +659,10 @@ export interface ViewingProfile {
      * @nullable
      */
   favoriteDirector?: string | null;
+  /** @maxItems 12 */
+  favoriteActors: FavoritePerson[];
+  /** @maxItems 12 */
+  favoriteDirectors: FavoritePerson[];
   /**
      * @maxLength 120
      * @nullable
@@ -733,6 +750,10 @@ export interface ViewingProfileInput {
      * @nullable
      */
   favoriteDirector?: string | null;
+  /** @maxItems 12 */
+  favoriteActors?: FavoritePerson[];
+  /** @maxItems 12 */
+  favoriteDirectors?: FavoritePerson[];
   /**
      * @maxLength 120
      * @nullable
@@ -817,6 +838,10 @@ export interface ViewingProfileUpdate {
      * @nullable
      */
   favoriteDirector?: string | null;
+  /** @maxItems 12 */
+  favoriteActors?: FavoritePerson[];
+  /** @maxItems 12 */
+  favoriteDirectors?: FavoritePerson[];
   /**
      * @maxLength 120
      * @nullable
@@ -1143,6 +1168,7 @@ export const FreeClassicSource = {
   archive: 'archive',
   youtube: 'youtube',
   wikimedia: 'wikimedia',
+  nfb: 'nfb',
 } as const;
 
 export type FreeClassicPlayback = typeof FreeClassicPlayback[keyof typeof FreeClassicPlayback];
@@ -1181,6 +1207,11 @@ export interface FreeClassicsResponse {
   totalResults: number;
 }
 
+export interface PeopleSearchResponse {
+  results: FavoritePerson[];
+  totalResults: number;
+}
+
 export type ProfileIdQueryParameter = number;
 
 export type GetFreeClassicsParams = {
@@ -1203,6 +1234,7 @@ export const GetFreeClassicsSource = {
   archive: 'archive',
   youtube: 'youtube',
   wikimedia: 'wikimedia',
+  nfb: 'nfb',
 } as const;
 
 export type SearchMoviesParams = {
@@ -1242,6 +1274,22 @@ export const GetCatalogMoviesCollection = {
   'in-theaters': 'in-theaters',
   free: 'free',
   indian: 'indian',
+} as const;
+
+export type SearchPeopleParams = {
+/**
+ * @minLength 2
+ */
+q: string;
+department?: SearchPeopleDepartment;
+};
+
+export type SearchPeopleDepartment = typeof SearchPeopleDepartment[keyof typeof SearchPeopleDepartment];
+
+
+export const SearchPeopleDepartment = {
+  Acting: 'Acting',
+  Directing: 'Directing',
 } as const;
 
 export type GetMoviesByGenreParams = {

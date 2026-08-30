@@ -1,7 +1,15 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
 import { and, asc, count, eq } from "drizzle-orm";
-import { db, userProfilesTable, usersTable, watchlistTable, viewingHistoryTable, ratingsTable } from "@workspace/db";
+import {
+  db,
+  profileFavoritePeopleTable,
+  userProfilesTable,
+  usersTable,
+  watchlistTable,
+  viewingHistoryTable,
+  ratingsTable,
+} from "@workspace/db";
 import {
   CreateProfileBody,
   RequestProfileAvatarUploadBody,
@@ -38,7 +46,75 @@ function isOwnedProfileAvatarPath(value: unknown, userId: string): value is stri
     !value.includes("..");
 }
 
-function profileResponse(profile: typeof userProfilesTable.$inferSelect) {
+type FavoritePersonInput = {
+  id: number;
+  name: string;
+  profilePath?: string | null;
+};
+
+async function favoritePeopleForProfile(profileId: number) {
+  const rows = await db
+    .select()
+    .from(profileFavoritePeopleTable)
+    .where(eq(profileFavoritePeopleTable.profileId, profileId))
+    .orderBy(asc(profileFavoritePeopleTable.kind), asc(profileFavoritePeopleTable.position));
+  return {
+    favoriteActors: rows
+      .filter((row) => row.kind === "actor")
+      .map(({ tmdbPersonId, name, profilePath }) => ({ id: tmdbPersonId, name, profilePath })),
+    favoriteDirectors: rows
+      .filter((row) => row.kind === "director")
+      .map(({ tmdbPersonId, name, profilePath }) => ({ id: tmdbPersonId, name, profilePath })),
+  };
+}
+
+function normalizeFavoritePeople(value: FavoritePersonInput[] | undefined) {
+  if (!value) return undefined;
+  const seen = new Set<number>();
+  return value
+    .map((person) => ({
+      id: Number(person.id),
+      name: person.name.trim(),
+      profilePath: person.profilePath ?? null,
+    }))
+    .filter((person) => Number.isSafeInteger(person.id) && person.id > 0 && person.name && !seen.has(person.id) && seen.add(person.id))
+    .slice(0, 12);
+}
+
+async function syncFavoritePeople(
+  profileId: number,
+  actors: FavoritePersonInput[] | undefined,
+  directors: FavoritePersonInput[] | undefined,
+) {
+  const normalizedActors = normalizeFavoritePeople(actors);
+  const normalizedDirectors = normalizeFavoritePeople(directors);
+  if (normalizedActors === undefined && normalizedDirectors === undefined) return;
+  await db.transaction(async (tx) => {
+    for (const [kind, people] of [
+      ["actor", normalizedActors],
+      ["director", normalizedDirectors],
+    ] as const) {
+      if (people === undefined) continue;
+      await tx.delete(profileFavoritePeopleTable).where(and(
+        eq(profileFavoritePeopleTable.profileId, profileId),
+        eq(profileFavoritePeopleTable.kind, kind),
+      ));
+      if (people.length) {
+        await tx.insert(profileFavoritePeopleTable).values(people.map((person, position) => ({
+          profileId,
+          kind,
+          tmdbPersonId: person.id,
+          name: person.name,
+          profilePath: person.profilePath,
+          position,
+        })));
+      }
+    }
+  });
+}
+
+async function profileResponse(profile: typeof userProfilesTable.$inferSelect) {
+  const favoritePeople = await favoritePeopleForProfile(profile.id);
   return {
     id: profile.id,
     userId: profile.userId,
@@ -55,6 +131,7 @@ function profileResponse(profile: typeof userProfilesTable.$inferSelect) {
     favoriteCountry: profile.favoriteCountry,
     favoriteDecade: profile.favoriteDecade,
     favoriteLanguage: profile.favoriteLanguage,
+    ...favoritePeople,
     isDefault: profile.isDefault,
     createdAt: profile.createdAt.toISOString(),
     updatedAt: profile.updatedAt.toISOString(),
@@ -118,7 +195,7 @@ router.get("/profiles", requireAuth as any, async (req: any, res): Promise<void>
     .from(userProfilesTable)
     .where(eq(userProfilesTable.userId, req.userId))
     .orderBy(asc(userProfilesTable.isDefault), asc(userProfilesTable.createdAt));
-  res.json(profiles.map(profileResponse));
+  res.json(await Promise.all(profiles.map(profileResponse)));
 });
 
 router.post("/profiles", requireAuth as any, async (req: any, res): Promise<void> => {
@@ -159,7 +236,8 @@ router.post("/profiles", requireAuth as any, async (req: any, res): Promise<void
     favoriteLanguage: body.favoriteLanguage?.trim() || null,
     isDefault: false,
   }).returning();
-  res.status(201).json(profileResponse(profile));
+  await syncFavoritePeople(profile.id, body.favoriteActors, body.favoriteDirectors);
+  res.status(201).json(await profileResponse(profile));
 });
 
 router.patch("/profiles/:profileId", requireAuth as any, async (req: any, res): Promise<void> => {
@@ -204,7 +282,8 @@ router.patch("/profiles/:profileId", requireAuth as any, async (req: any, res): 
     ...(body.favoriteLanguage !== undefined ? { favoriteLanguage: body.favoriteLanguage?.trim() || null } : {}),
     updatedAt: new Date(),
   }).where(eq(userProfilesTable.id, profile.id)).returning();
-  res.json(profileResponse(updated));
+  await syncFavoritePeople(updated.id, body.favoriteActors, body.favoriteDirectors);
+  res.json(await profileResponse(updated));
 });
 
 router.delete("/profiles/:profileId", requireAuth as any, async (req: any, res): Promise<void> => {
@@ -235,7 +314,7 @@ router.post("/profiles/:profileId/select", requireAuth as any, async (req: any, 
     res.status(404).json({ error: "Viewing profile not found." });
     return;
   }
-  res.json(profileResponse(profile));
+  res.json(await profileResponse(profile));
 });
 
 router.post("/profiles/:profileId/avatar/upload-url", requireAuth as any, async (req: any, res): Promise<void> => {

@@ -6,7 +6,7 @@ import type { Rating, ViewingHistoryEntry, WatchlistEntry } from "@workspace/api
 import { tmdbPosterUrl } from "@/lib/utils";
 import { withMovieTitle } from "@/lib/movie-links";
 import { Button } from "@/components/ui/button";
-import type { CinemaPreferences } from "@/lib/cinema-preferences";
+import type { CinemaPreferenceKey, CinemaPreferences } from "@/lib/cinema-preferences";
 import { apiFetch } from "@/lib/api-url";
 
 type GraphFilter = "all" | "watched" | "rated" | "loved" | "disliked";
@@ -85,7 +85,7 @@ const FILTERS: Array<{ value: GraphFilter; label: string }> = [
   { value: "disliked", label: "Disliked · 1–4" },
 ];
 
-const PREFERENCE_KEY_BY_KIND: Record<SignalKind, keyof CinemaPreferences> = {
+const PREFERENCE_KEY_BY_KIND: Record<SignalKind, CinemaPreferenceKey> = {
   actor: "favoriteActor",
   director: "favoriteDirector",
   genre: "favoriteGenre",
@@ -403,7 +403,11 @@ export function PersonalCinemaGraph({
 
           <div className="cinema-graph-signal-grid" aria-label="Strongest cinema signals">
             {(["actor", "director", "genre", "country", "decade", "language"] as SignalKind[]).map((kind) => {
-              const selectedPreference = preferences?.[PREFERENCE_KEY_BY_KIND[kind]];
+              const selectedPreference = kind === "actor"
+                ? preferences?.favoriteActors?.map((person) => person.name).join(" · ") || preferences?.favoriteActor
+                : kind === "director"
+                  ? preferences?.favoriteDirectors?.map((person) => person.name).join(" · ") || preferences?.favoriteDirector
+                  : preferences?.[PREFERENCE_KEY_BY_KIND[kind]];
               return (
                 <div key={kind} className="cinema-graph-signal-card">
                   <span className="cinema-graph-signal-icon">{iconForSignal(kind)}</span>

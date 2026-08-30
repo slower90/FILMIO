@@ -63,6 +63,7 @@ import type {
   MovieStory,
   MovieSummary,
   MovieVideosResult,
+  PeopleSearchResponse,
   Post,
   PostComment,
   PostCommentInput,
@@ -83,6 +84,7 @@ import type {
   ReviewInput,
   ReviewUpdate,
   SearchMoviesParams,
+  SearchPeopleParams,
   SearchProfessionalsParams,
   Signal,
   SignalsResponse,
@@ -535,6 +537,90 @@ export function useGetCatalogMovies<TData = Awaited<ReturnType<typeof getCatalog
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCatalogMoviesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSearchPeopleUrl = (params: SearchPeopleParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/movies/people?${stringifiedParams}` : `/api/movies/people`
+}
+
+/**
+ * @summary Search people for profile preferences
+ */
+export const searchPeople = async (params: SearchPeopleParams, options?: Parameters<typeof customFetch>[1]): Promise<PeopleSearchResponse> => {
+
+  return customFetch<PeopleSearchResponse>(getSearchPeopleUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchPeopleQueryKey = (params?: SearchPeopleParams,) => {
+    return [
+    `/api/movies/people`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchPeopleQueryOptions = <TData = Awaited<ReturnType<typeof searchPeople>>, TError = ErrorType<ErrorResponse>>(params: SearchPeopleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchPeople>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchPeopleQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchPeople>>> = ({ signal }) => searchPeople(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchPeople>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchPeopleQueryResult = NonNullable<Awaited<ReturnType<typeof searchPeople>>>
+export type SearchPeopleQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Search people for profile preferences
+ */
+
+export function useSearchPeople<TData = Awaited<ReturnType<typeof searchPeople>>, TError = ErrorType<ErrorResponse>>(
+ params: SearchPeopleParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchPeople>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchPeopleQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

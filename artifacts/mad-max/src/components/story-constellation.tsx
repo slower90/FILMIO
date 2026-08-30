@@ -45,7 +45,7 @@ export function StoryConstellation({ anchor, threads, isLoading }: StoryConstell
 
   return (
     <section className="story-constellation" aria-labelledby="story-constellation-title">
-      <div className="container mx-auto px-4 py-12 md:py-16">
+      <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 md:py-16 lg:px-12">
         <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div className="max-w-xl">
             <p className="editorial-kicker"><Orbit className="h-3.5 w-3.5" aria-hidden="true" /> A living index</p>

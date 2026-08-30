@@ -10,7 +10,7 @@
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
-    "migrate": "psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0000_smart_search.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0001_meilisearch.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0002_performance_indexes.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0003_user_profiles.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0004_signals.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0005_explicit_cinema_preferences.sql"
+    "migrate": "psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0000_smart_search.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0001_meilisearch.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0002_performance_indexes.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0003_user_profiles.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0004_signals.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0005_explicit_cinema_preferences.sql && psql \"$DATABASE_URL\" --set ON_ERROR_STOP=1 -f ./migrations/0006_profile_favorite_people.sql"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

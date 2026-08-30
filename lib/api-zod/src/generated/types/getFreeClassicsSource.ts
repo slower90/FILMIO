@@ -13,4 +13,5 @@ export const GetFreeClassicsSource = {
   archive: 'archive',
   youtube: 'youtube',
   wikimedia: 'wikimedia',
+  nfb: 'nfb',
 } as const;

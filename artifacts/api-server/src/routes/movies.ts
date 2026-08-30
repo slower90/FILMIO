@@ -537,6 +537,32 @@ router.get("/movies/search-smart", async (req, res): Promise<void> => {
 });
 
 // GET /movies/actors — popular global actors, or people matching a search
+router.get("/movies/people", async (req, res): Promise<void> => {
+  const query = String(req.query.q ?? "").trim();
+  const department = String(req.query.department ?? "").trim();
+  if (query.length < 2) {
+    res.status(400).json({ error: "Search query must be at least 2 characters." });
+    return;
+  }
+  const data = await tmdbFetch("/search/person", { query });
+  const allowedDepartment = department === "Acting" || department === "Directing" ? department : null;
+  const seen = new Set<number>();
+  const results = (data?.results ?? [])
+    .filter((person: any) => {
+      if (allowedDepartment && person.known_for_department !== allowedDepartment) return false;
+      if (seen.has(person.id)) return false;
+      seen.add(person.id);
+      return Boolean(person.name);
+    })
+    .slice(0, 12)
+    .map((person: any) => ({
+      id: person.id,
+      name: person.name,
+      profilePath: person.profile_path ?? null,
+    }));
+  res.json({ results, totalResults: results.length });
+});
+
 router.get("/movies/actors", async (req, res): Promise<void> => {
   const query = String(req.query.q ?? "").trim();
   const region = String(req.query.region ?? "").trim().toLowerCase();

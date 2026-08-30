@@ -475,11 +475,11 @@ export function Navbar() {
           </nav>
 
           {/* Right: auth */}
-          <div className="ml-auto flex flex-none items-center gap-1.5 sm:gap-3 lg:ml-5">
+          <div className="ml-auto flex flex-none items-center gap-2 sm:gap-4 lg:ml-5 lg:gap-5">
             <button
               type="button"
               onClick={() => setTheme(isLight ? "dark" : "light")}
-              className="flex h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+              className="mr-1 flex h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary sm:mr-0"
               aria-label={themeLabel}
               title={themeLabel}
               aria-pressed={isLight}

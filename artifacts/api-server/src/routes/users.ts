@@ -8,6 +8,7 @@ import {
   ratingsTable,
   watchlistTable,
   viewingHistoryTable,
+  profileFavoritePeopleTable,
 } from "@workspace/db";
 import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middlewares/auth";
@@ -783,16 +784,17 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
     return r.ok ? (r.json() as Promise<any>) : null;
   };
 
-  const mapTmdb = (m: any) => ({
+  const mapTmdb = (m: any, recommendationReason?: string) => ({
     id: m.id, title: m.title ?? "", posterPath: m.poster_path ?? null,
     backdropPath: m.backdrop_path ?? null, overview: m.overview ?? "",
     releaseDate: m.release_date ?? "", voteAverage: m.vote_average ?? 0, genreIds: m.genre_ids ?? [],
+    ...(recommendationReason ? { recommendationReason } : {}),
   });
 
   if (!req.userId) {
     // Not signed in: return trending
     const data = await tmdbGet("/trending/movie/week");
-    res.json(((data?.results ?? []) as any[]).slice(0, limit).map(mapTmdb));
+    res.json(((data?.results ?? []) as any[]).slice(0, limit).map((movie) => mapTmdb(movie)));
     return;
   }
 
@@ -802,7 +804,7 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
     return;
   }
   const profileId = scope.id;
-  const [watched, ratings, history, saved] = await Promise.all([
+  const [watched, ratings, history, saved, favoritePeople] = await Promise.all([
     db.select().from(watchlistTable)
       .where(profileId === null
         ? and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "watched"))
@@ -823,6 +825,12 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
         ? and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.status, "want_to_watch"))
         : and(eq(watchlistTable.userId, req.userId), eq(watchlistTable.profileId, profileId), eq(watchlistTable.status, "want_to_watch")))
       .limit(12),
+    profileId === null
+      ? Promise.resolve([])
+      : db.select().from(profileFavoritePeopleTable)
+        .where(eq(profileFavoritePeopleTable.profileId, profileId))
+        .orderBy(asc(profileFavoritePeopleTable.position))
+        .limit(16),
   ]);
 
   const ratingByMovie = new Map(ratings.map((rating) => [rating.movieId, rating.score]));
@@ -831,9 +839,9 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
       .map((item) => [item.movieId, item] as const),
   ).values()];
 
-  if (!seeds.length) {
+  if (!seeds.length && !favoritePeople.length) {
     const data = await tmdbGet("/trending/movie/week");
-    res.json(((data?.results ?? []) as any[]).slice(0, limit).map(mapTmdb));
+    res.json(((data?.results ?? []) as any[]).slice(0, limit).map((movie) => mapTmdb(movie)));
     return;
   }
 
@@ -841,7 +849,32 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
   // recent viewing. This keeps recommendations useful without relying on
   // opaque engagement tricks or repeating one narrow genre forever.
   const seen = new Set([...seeds, ...saved].map((item) => item.movieId));
-  const candidateMap = new Map<number, { movie: any; score: number; seedCount: number }>();
+  const candidateMap = new Map<number, { movie: any; score: number; seedCount: number; reason?: string }>();
+  const favoriteResults = await Promise.all(
+    favoritePeople.slice(0, 12).map(async (person) => ({
+      person,
+      data: await tmdbGet(`/person/${person.tmdbPersonId}/movie_credits`),
+    })),
+  );
+  for (const { person, data } of favoriteResults) {
+    const credits = person.kind === "director" ? (data?.crew ?? []) : (data?.cast ?? []);
+    const reason = `Because you like ${person.name}`;
+    for (const [position, movie] of (credits as any[])
+      .filter((candidate) => candidate.poster_path && candidate.id)
+      .sort((a, b) => Number(b.popularity ?? 0) - Number(a.popularity ?? 0))
+      .slice(0, 18)
+      .entries()) {
+      if (seen.has(movie.id)) continue;
+      const quality = Math.min(Number(movie.vote_average ?? 0) / 10, 1);
+      const existing = candidateMap.get(movie.id);
+      candidateMap.set(movie.id, {
+        movie,
+        score: (existing?.score ?? 0) + 7 + quality * 2 + (18 - position) / 18,
+        seedCount: (existing?.seedCount ?? 0) + 1,
+        reason: existing?.reason ?? reason,
+      });
+    }
+  }
   const seedResults = await Promise.all(seeds.slice(0, 8).map(async (seed, index) => ({
     seed,
     index,
@@ -864,6 +897,7 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
         movie,
         score: (existing?.score ?? 0) + score,
         seedCount: (existing?.seedCount ?? 0) + 1,
+        reason: existing?.reason,
       });
     }
   }
@@ -877,7 +911,7 @@ router.get("/recommendations", optionalAuth as any, async (req: any, res): Promi
     const genres = (candidate.movie.genre_ids ?? []) as number[];
     const alreadyHeavy = genres.some((genre) => (genreCounts.get(genre) ?? 0) >= 3);
     if (alreadyHeavy && selected.length < limit - 3) continue;
-    selected.push(mapTmdb(candidate.movie));
+    selected.push(mapTmdb(candidate.movie, candidate.reason));
     for (const genre of genres) genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
     if (selected.length >= limit) break;
   }

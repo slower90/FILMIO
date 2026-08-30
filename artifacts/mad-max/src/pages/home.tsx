@@ -27,6 +27,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 // ── Fetchers ─────────────────────────────────────────────────────────────────
 type CatalogMovies = RowMovie[] & { metadata?: CatalogMetadata };
+type RecommendationMovie = RowMovie & { recommendationReason?: string };
 
 async function fetchCategory(path: string, maxPages: number): Promise<CatalogMovies> {
   const url = path.startsWith("/api/")
@@ -70,7 +71,7 @@ async function fetchClips(): Promise<ClipItem[]> {
   return data.results ?? [];
 }
 
-async function fetchPersonalizedMovies(profileId?: number): Promise<RowMovie[]> {
+async function fetchPersonalizedMovies(profileId?: number): Promise<RecommendationMovie[]> {
   const params = new URLSearchParams({ limit: "20" });
   if (profileId) params.set("profileId", String(profileId));
   const res = await apiFetch(`/api/recommendations?${params.toString()}`);
@@ -384,7 +385,7 @@ export default function Home() {
     enabled: belowFoldReady,
     staleTime: 15 * 60 * 1000,
   });
-  const { data: personalizedFeed, isLoading: loadingPersonalized } = useQuery<RowMovie[]>({
+  const { data: personalizedFeed, isLoading: loadingPersonalized } = useQuery<RecommendationMovie[]>({
     queryKey: ["personalized-recommendations", activeProfile?.id ?? null],
     queryFn: () => fetchPersonalizedMovies(activeProfile?.id),
     enabled: belowFoldReady && profileReady,
@@ -402,6 +403,7 @@ export default function Home() {
 
   const genreFallbackMovies = uniqueMovies(actionMovies, sciFiMovies, comedyMovies, dramaMovies);
   const personalizedMovies = personalizedFeed?.length ? personalizedFeed : genreFallbackMovies;
+  const recommendationReason = personalizedFeed?.find((movie) => movie.recommendationReason)?.recommendationReason;
   const loadingGenreFallback =
     loadGenreFallback &&
     [actionMovies, comedyMovies, dramaMovies, sciFiMovies].some((movies) => movies === undefined);
@@ -471,6 +473,15 @@ export default function Home() {
               threads={uniqueMovies(personalizedMovies.slice(1), trendingMovies, theaterMovies)}
               isLoading={!belowFoldReady || loadingPersonalized || loadingGenreFallback}
             />
+            {recommendationReason && (
+              <div className="container mx-auto px-4" data-testid="recommendation-reason">
+                <p className="border-l-2 border-primary/60 bg-primary/[0.045] px-4 py-3 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                  <span className="font-bold text-primary">A signal from your room</span>
+                  <span className="mx-2 text-primary/60">/</span>
+                  {recommendationReason}
+                </p>
+              </div>
+            )}
             <MovieRow
               title="More from this orbit"
               movies={personalizedMovies}

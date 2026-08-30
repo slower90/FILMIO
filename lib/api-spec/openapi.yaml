@@ -67,16 +67,16 @@ paths:
           in: query
           schema:
             type: string
-            enum: [archive, youtube, wikimedia]
+            enum: [archive, youtube, wikimedia, nfb]
       responses:
         "200":
-          description: Public-domain films from Internet Archive
+          description: Curated legal films from official and public-domain sources
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/FreeClassicsResponse"
         "502":
-          description: Internet Archive is unavailable
+          description: All Free Classics sources are unavailable
           content:
             application/json:
               schema:
@@ -164,6 +164,37 @@ paths:
                 $ref: "#/components/schemas/MoviePagedResult"
         "400":
           description: Invalid collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /movies/people:
+    get:
+      operationId: searchPeople
+      tags: [movies]
+      summary: Search people for profile preferences
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - name: department
+          in: query
+          schema:
+            type: string
+            enum: [Acting, Directing]
+      responses:
+        "200":
+          description: Matching actors and directors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PeopleSearchResponse"
+        "400":
+          description: Search query is too short
           content:
             application/json:
               schema:
@@ -2300,6 +2331,9 @@ components:
           type: array
           items:
             type: integer
+        recommendationReason:
+          type: string
+          maxLength: 200
       required: [id, title, overview, releaseDate, voteAverage, genreIds]
 
     MovieDetail:
@@ -2901,6 +2935,18 @@ components:
         favoriteDirector:
           type: ["string", "null"]
           maxLength: 120
+        favoriteActors:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/FavoritePerson"
+        favoriteDirectors:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/FavoritePerson"
         favoriteGenre:
           type: ["string", "null"]
           maxLength: 120
@@ -2919,7 +2965,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, userId, name, avatarKey, avatarUrl, kidsMode, language, maturity, autoplay, isDefault, createdAt, updatedAt]
+      required: [id, userId, name, avatarKey, avatarUrl, kidsMode, language, maturity, autoplay, favoriteActors, favoriteDirectors, isDefault, createdAt, updatedAt]
 
     ViewingProfileInput:
       type: object
@@ -2949,6 +2995,18 @@ components:
         favoriteDirector:
           type: ["string", "null"]
           maxLength: 120
+        favoriteActors:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/FavoritePerson"
+        favoriteDirectors:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/FavoritePerson"
         favoriteGenre:
           type: ["string", "null"]
           maxLength: 120
@@ -2991,6 +3049,18 @@ components:
         favoriteDirector:
           type: ["string", "null"]
           maxLength: 120
+        favoriteActors:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/FavoritePerson"
+        favoriteDirectors:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/FavoritePerson"
         favoriteGenre:
           type: ["string", "null"]
           maxLength: 120
@@ -3415,7 +3485,7 @@ components:
           format: uri
         source:
           type: string
-          enum: [archive, youtube, wikimedia]
+          enum: [archive, youtube, wikimedia, nfb]
         sourceLabel:
           type: string
         sourceUrl:
@@ -3445,3 +3515,27 @@ components:
         totalResults:
           type: integer
       required: [items, fetchedAt, page, totalPages, totalResults]
+
+    FavoritePerson:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        profilePath:
+          type: ["string", "null"]
+      required: [id, name, profilePath]
+
+    PeopleSearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/FavoritePerson"
+        totalResults:
+          type: integer
+      required: [results, totalResults]

@@ -5,6 +5,7 @@
  * FILMIO - Movie Review & Discovery Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { FavoritePerson } from './favoritePerson';
 import type { ViewingProfileInputAvatarKey } from './viewingProfileInputAvatarKey';
 import type { ViewingProfileInputLanguage } from './viewingProfileInputLanguage';
 import type { ViewingProfileInputMaturity } from './viewingProfileInputMaturity';
@@ -32,6 +33,10 @@ export interface ViewingProfileInput {
      * @nullable
      */
   favoriteDirector?: string | null;
+  /** @maxItems 12 */
+  favoriteActors?: FavoritePerson[];
+  /** @maxItems 12 */
+  favoriteDirectors?: FavoritePerson[];
   /**
      * @maxLength 120
      * @nullable

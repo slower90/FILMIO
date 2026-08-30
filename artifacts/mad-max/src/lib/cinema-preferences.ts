@@ -1,4 +1,4 @@
-import type { ViewingProfile } from "@workspace/api-client-react";
+import type { FavoritePerson, ViewingProfile } from "@workspace/api-client-react";
 
 export const CINEMA_PREFERENCE_FIELDS = [
   { key: "favoriteActor", label: "Favorite actor", placeholder: "Choose or type an actor" },
@@ -10,7 +10,10 @@ export const CINEMA_PREFERENCE_FIELDS = [
 ] as const;
 
 export type CinemaPreferenceKey = (typeof CINEMA_PREFERENCE_FIELDS)[number]["key"];
-export type CinemaPreferences = Pick<ViewingProfile, CinemaPreferenceKey>;
+export type CinemaPreferences = Pick<ViewingProfile, CinemaPreferenceKey> & {
+  favoriteActors?: FavoritePerson[];
+  favoriteDirectors?: FavoritePerson[];
+};
 export type CinemaPreferenceOptions = Record<CinemaPreferenceKey, string[]>;
 
 export type CinemaPreferenceMovieOverview = {

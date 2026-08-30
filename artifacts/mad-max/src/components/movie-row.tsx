@@ -37,6 +37,7 @@ export interface RowMovie {
   externalLink?: boolean;
   /** Used to prefetch the right detail contract before opening the card */
   mediaType?: "movie" | "tv";
+  recommendationReason?: string;
 }
 
 interface MovieRowProps {

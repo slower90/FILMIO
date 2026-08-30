@@ -24,6 +24,7 @@ import {
   useUpdateProfile,
   useUnfollowUser,
 } from "@workspace/api-client-react";
+import type { FavoritePerson, ViewingProfile } from "@workspace/api-client-react";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -47,6 +48,8 @@ import {
   UserPlus,
   Users,
   X,
+  Search,
+  Loader2,
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { ReviewCard } from "@/components/review-card";
@@ -61,6 +64,7 @@ import { resolveProfileId } from "@/lib/profile-route";
 import { tmdbPosterUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { LazyBlurImage } from "@/components/lazy-blur-image";
+import { apiFetch } from "@/lib/api-url";
 
 const EMPTY = "Not enough public signal yet";
 
@@ -177,14 +181,23 @@ type PublicProfileDraft = {
   bio: string;
   avatarUrl: string;
   favoriteGenres: string;
+  favoriteActors: FavoritePerson[];
+  favoriteDirectors: FavoritePerson[];
 };
 
-function profileDraftFrom(profile: { displayName?: string | null; bio?: string | null; avatarUrl?: string | null }, favoriteGenres?: string | null): PublicProfileDraft {
+function profileDraftFrom(
+  profile: { displayName?: string | null; bio?: string | null; avatarUrl?: string | null },
+  favoriteGenres?: string | null,
+  favoriteActors: FavoritePerson[] = [],
+  favoriteDirectors: FavoritePerson[] = [],
+): PublicProfileDraft {
   return {
     displayName: profile.displayName ?? "",
     bio: profile.bio ?? "",
     avatarUrl: profile.avatarUrl ?? "",
     favoriteGenres: favoriteGenres ?? "",
+    favoriteActors,
+    favoriteDirectors,
   };
 }
 
@@ -208,11 +221,11 @@ function MovieOverviewShelves({ preferences }: { preferences?: CinemaPreferences
       <div className="profile-two-column">
         <section className="profile-surface" aria-labelledby="favorite-directors-title">
           <SectionHeading eyebrow="03 / Your choice" title="FAVORITE DIRECTORS" icon={<Film className="h-3.5 w-3.5" aria-hidden="true" />} />
-          <PeopleList titleId="favorite-directors-title" value={preferences?.favoriteDirector} />
+          <PeopleList titleId="favorite-directors-title" value={preferences?.favoriteDirector} people={preferences?.favoriteDirectors} />
         </section>
         <section className="profile-surface" aria-labelledby="favorite-actors-title">
           <SectionHeading eyebrow="04 / Your choice" title="FAVORITE ACTORS" icon={<Users className="h-3.5 w-3.5" aria-hidden="true" />} />
-          <PeopleList titleId="favorite-actors-title" value={preferences?.favoriteActor} />
+          <PeopleList titleId="favorite-actors-title" value={preferences?.favoriteActor} people={preferences?.favoriteActors} />
         </section>
       </div>
     </>
@@ -228,12 +241,118 @@ function DnaColumn({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function PeopleList({ titleId, value }: { titleId: string; value?: string | null }) {
-  return value ? (
+function PeopleList({ titleId, value, people = [] }: { titleId: string; value?: string | null; people?: FavoritePerson[] }) {
+  const displayPeople = people.length ? people : value ? [{ id: 0, name: value, profilePath: null }] : [];
+  return displayPeople.length ? (
     <ol className="profile-people-list" aria-labelledby={titleId}>
-      <li><span className="profile-person-number">01</span><span className="profile-person-name">{value}</span><span className="profile-person-count">Chosen by you</span></li>
+      {displayPeople.map((person, index) => (
+        <li key={`${person.id}-${person.name}`}>
+          <span className="profile-person-number">{String(index + 1).padStart(2, "0")}</span>
+          {person.profilePath && <img src={tmdbPosterUrl(person.profilePath, "w185")} alt="" className="h-10 w-7 rounded-sm object-cover" />}
+          <span className="profile-person-name">{person.name}</span>
+          <span className="profile-person-count">Chosen by you</span>
+        </li>
+      ))}
     </ol>
   ) : <EmptyShelf>Not selected yet. Choose one in room settings.</EmptyShelf>;
+}
+
+function FavoritePeoplePicker({
+  kind,
+  selected,
+  onChange,
+}: {
+  kind: "actor" | "director";
+  selected: FavoritePerson[];
+  onChange: (people: FavoritePerson[]) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<FavoritePerson[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const label = kind === "actor" ? "actors" : "directors";
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setResults([]);
+      setError(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const response = await apiFetch(`/api/movies/people?q=${encodeURIComponent(trimmed)}&department=${kind === "actor" ? "Acting" : "Directing"}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("Search failed");
+        const data = await response.json() as { results?: FavoritePerson[] };
+        setResults((data.results ?? []).filter((person) => !selected.some((chosen) => chosen.id === person.id)));
+      } catch (searchError) {
+        if (!(searchError instanceof DOMException && searchError.name === "AbortError")) setError(true);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [kind, query, selected]);
+
+  const addPerson = (person: FavoritePerson) => {
+    if (selected.length >= 12 || selected.some((chosen) => chosen.id === person.id)) return;
+    onChange([...selected, person]);
+    setQuery("");
+    setResults([]);
+  };
+
+  return (
+    <div className="md:col-span-2">
+      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor={`favorite-${kind}-search`}>
+        Favorite {label}
+      </label>
+      <div className="relative mt-2">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <input
+          id={`favorite-${kind}-search`}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          className="min-h-12 w-full rounded-sm border border-border bg-background pl-10 pr-10 text-base text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+          placeholder={`Search ${label} by name`}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={query.trim().length >= 2}
+          aria-controls={`favorite-${kind}-results`}
+          data-testid={`input-favorite-${kind}`}
+        />
+        {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary" aria-label={`Searching ${label}`} />}
+      </div>
+      {selected.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2" aria-label={`Selected favorite ${label}`}>
+          {selected.map((person) => (
+            <span key={person.id} className="inline-flex min-h-9 items-center gap-2 rounded-full border border-primary/35 bg-primary/10 px-3 text-xs text-foreground">
+              {person.name}
+              <button type="button" onClick={() => onChange(selected.filter((chosen) => chosen.id !== person.id))} className="rounded-full p-1 text-muted-foreground hover:bg-primary/15 hover:text-primary" aria-label={`Remove ${person.name} from favorite ${label}`} data-testid={`button-remove-favorite-${kind}-${person.id}`}>
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {query.trim().length >= 2 && (
+        <div id={`favorite-${kind}-results`} role="listbox" className="mt-2 overflow-hidden rounded-sm border border-border bg-card shadow-lg">
+          {error ? <p className="px-3 py-3 text-xs text-destructive">Could not search right now. Try again.</p> : results.length ? results.map((person) => (
+            <button key={person.id} type="button" role="option" onClick={() => addPerson(person)} className="flex min-h-12 w-full items-center gap-3 px-3 text-left text-sm hover:bg-primary/10 focus:bg-primary/10 focus:outline-none">
+              {person.profilePath ? <img src={tmdbPosterUrl(person.profilePath, "w185")} alt="" className="h-9 w-7 rounded-sm object-cover" /> : <span className="grid h-9 w-7 place-items-center rounded-sm bg-muted text-[10px] text-muted-foreground">?</span>}
+              <span>{person.name}</span>
+            </button>
+          )) : !loading && <p className="px-3 py-3 text-xs text-muted-foreground">No matching {label} found.</p>}
+        </div>
+      )}
+      <span className="mt-2 block text-[11px] normal-case tracking-normal text-muted-foreground">{selected.length}/12 selected. These choices shape your recommendations.</span>
+    </div>
+  );
 }
 
 export default function Profile() {
@@ -270,7 +389,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!editing && isMe && identityProfile) {
-      setDraft(profileDraftFrom(identityProfile, activeProfile?.favoriteGenre));
+       setDraft(profileDraftFrom(identityProfile, activeProfile?.favoriteGenre, activeProfile?.favoriteActors, activeProfile?.favoriteDirectors));
     }
   }, [activeProfile?.favoriteGenre, editing, identityProfile, isMe]);
 
@@ -304,7 +423,7 @@ export default function Profile() {
     createConversation.mutate({ data: { participantId: profile.clerkId } }, { onSuccess: (conversation) => setLocation(`/chat?conv=${conversation.id}`) });
   };
   const openEditor = () => {
-    setDraft(profileDraftFrom(identityProfile || profile, activeProfile?.favoriteGenre));
+    setDraft(profileDraftFrom(identityProfile || profile, activeProfile?.favoriteGenre, activeProfile?.favoriteActors, activeProfile?.favoriteDirectors));
     setEditing(true);
   };
   const saveProfile = async () => {
@@ -333,10 +452,18 @@ export default function Profile() {
           avatarUrl: nextAvatarUrl,
         },
       });
-      if (activeProfile && draft.favoriteGenres.trim() !== (activeProfile.favoriteGenre || "")) {
+       if (activeProfile && (
+         draft.favoriteGenres.trim() !== (activeProfile.favoriteGenre || "") ||
+         JSON.stringify(draft.favoriteActors) !== JSON.stringify(activeProfile.favoriteActors ?? []) ||
+         JSON.stringify(draft.favoriteDirectors) !== JSON.stringify(activeProfile.favoriteDirectors ?? [])
+       )) {
         await updateViewingProfile.mutateAsync({
           profileId: activeProfile.id,
-          data: { favoriteGenre: draft.favoriteGenres.trim() || null },
+           data: {
+             favoriteGenre: draft.favoriteGenres.trim() || null,
+             favoriteActors: draft.favoriteActors,
+             favoriteDirectors: draft.favoriteDirectors,
+           },
         });
       }
       queryClient.setQueryData(getGetMyProfileQueryKey(), updated);
@@ -345,6 +472,15 @@ export default function Profile() {
         queryClient.invalidateQueries({ queryKey: getGetUserStatsQueryKey(profileId) }),
         queryClient.invalidateQueries({ queryKey: getListProfilesQueryKey() }),
       ]);
+      const profiles = queryClient.getQueryData<ViewingProfile[]>(getListProfilesQueryKey());
+      if (profiles && activeProfile) {
+        queryClient.setQueryData(
+          getListProfilesQueryKey(),
+          profiles.map((room) => room.id === activeProfile.id
+            ? { ...room, favoriteGenre: draft.favoriteGenres.trim() || null, favoriteActors: draft.favoriteActors, favoriteDirectors: draft.favoriteDirectors }
+            : room),
+        );
+      }
       setEditing(false);
       toast({ title: "Profile saved", description: "Your public identity and cinema preferences are up to date." });
     } catch (error) {
@@ -424,6 +560,8 @@ export default function Profile() {
                  <input value={draft.favoriteGenres} maxLength={160} onChange={(event) => setDraft({ ...draft, favoriteGenres: event.target.value })} className="mt-2 min-h-12 w-full rounded-sm border border-border bg-background px-3 text-base text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Drama, thriller, romance" />
                  <span className="mt-2 block text-[11px] normal-case tracking-normal text-muted-foreground">Separate genres with commas. This updates the active viewing room.</span>
                </label>
+                <FavoritePeoplePicker kind="actor" selected={draft.favoriteActors} onChange={(favoriteActors) => setDraft({ ...draft, favoriteActors })} />
+                <FavoritePeoplePicker kind="director" selected={draft.favoriteDirectors} onChange={(favoriteDirectors) => setDraft({ ...draft, favoriteDirectors })} />
              </div>
              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
                <Button type="button" variant="outline" onClick={() => setEditing(false)} disabled={saving} className="min-h-12 sm:min-w-32">Cancel</Button>

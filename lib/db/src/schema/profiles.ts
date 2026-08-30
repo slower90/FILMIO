@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, index, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -25,6 +25,23 @@ export const userProfilesTable = pgTable("user_profiles", {
 }, (table) => ({
   userIdx: index("user_profiles_user_id_idx").on(table.userId),
   userDefaultIdx: index("user_profiles_user_default_idx").on(table.userId, table.isDefault),
+}));
+
+export const profileFavoritePeopleTable = pgTable("profile_favorite_people", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").notNull().references(() => userProfilesTable.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  tmdbPersonId: integer("tmdb_person_id").notNull(),
+  name: text("name").notNull(),
+  profilePath: text("profile_path"),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  profileKindPersonIdx: uniqueIndex("profile_favorite_people_profile_kind_person_idx")
+    .on(table.profileId, table.kind, table.tmdbPersonId),
+  profileKindPositionIdx: index("profile_favorite_people_profile_kind_position_idx")
+    .on(table.profileId, table.kind, table.position),
 }));
 
 export const insertUserProfileSchema = createInsertSchema(userProfilesTable).omit({

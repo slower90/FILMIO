@@ -7,6 +7,8 @@ import {
   buildYoutubeSearchUrl,
   createFreeClassicsRouter,
   FREE_CLASSICS_CACHE_TTL_MS,
+  buildNfbOembedUrl,
+  normalizeNfbOembedDoc,
   normalizeFreeClassicDoc,
   selectArchiveMediaUrl,
 } from "./free-classics";
@@ -118,6 +120,77 @@ test("builds restricted Wikimedia and YouTube source queries", () => {
   assert.equal(youtube.searchParams.get("channelId"), "channel-123");
   assert.equal(youtube.searchParams.get("videoEmbeddable"), "true");
   assert.equal(youtube.searchParams.get("type"), "video");
+});
+
+test("normalizes official NFB oEmbed metadata into compliant embed playback", () => {
+  const filmUrl = "https://www.nfb.ca/film/example_film/";
+  const oembedUrl = new URL(buildNfbOembedUrl(filmUrl));
+  assert.equal(oembedUrl.origin + oembedUrl.pathname, "https://www.nfb.ca/remote/services/oembed/");
+  assert.equal(oembedUrl.searchParams.get("url"), filmUrl);
+  assert.equal(oembedUrl.searchParams.get("format"), "json");
+  assert.deepEqual(normalizeNfbOembedDoc({
+    title: "Example Film",
+    description: "An official NFB film.",
+    thumbnail_url: "https://www.nfb.ca/images/example.jpg",
+    author_name: "NFB",
+    year: "1967",
+  }, filmUrl), {
+    identifier: filmUrl,
+    title: "Example Film",
+    description: "An official NFB film.",
+    year: 1967,
+    creator: "NFB",
+    posterUrl: "https://www.nfb.ca/images/example.jpg",
+    embedUrl: "https://www.nfb.ca/film/example_film/embed/player/",
+    mediaUrl: null,
+    source: "nfb",
+    sourceLabel: "NFB.ca",
+    sourceUrl: filmUrl,
+    playback: "iframe",
+    licenseLabel: "NFB official free-to-watch",
+  });
+});
+
+test("keeps NFB partial failures isolated while serving healthy official films", async () => {
+  const router = createFreeClassicsRouter({
+    enableNfb: true,
+    enableYoutube: false,
+    enableWikimedia: false,
+    nfbFilmUrls: [
+      "https://www.nfb.ca/film/healthy_film/",
+      "https://www.nfb.ca/film/unavailable_film/",
+    ],
+    fetchFn: async (input) => {
+      const url = String(input);
+      if (url.includes("remote/services/oembed") && url.includes("unavailable_film")) return response({}, 503);
+      if (url.includes("remote/services/oembed")) {
+        return response({
+          title: "Healthy NFB Film",
+          thumbnail_url: "https://www.nfb.ca/images/healthy.jpg",
+          description: "Still available.",
+        });
+      }
+      return response({ response: { docs: [] } });
+    },
+  });
+  const result = await request(router);
+  assert.equal(result.status, 200);
+  const body = await result.json() as { items: Array<{ source: string; title: string }> };
+  assert.deepEqual(body.items, [{
+    identifier: "https://www.nfb.ca/film/healthy_film/",
+    title: "Healthy NFB Film",
+    description: "Still available.",
+    year: null,
+    creator: null,
+    posterUrl: "https://www.nfb.ca/images/healthy.jpg",
+    embedUrl: "https://www.nfb.ca/film/healthy_film/embed/player/",
+    mediaUrl: null,
+    source: "nfb",
+    sourceLabel: "NFB.ca",
+    sourceUrl: "https://www.nfb.ca/film/healthy_film/",
+    playback: "iframe",
+    licenseLabel: "NFB official free-to-watch",
+  }]);
 });
 
 test("merges healthy archive and Wikimedia items while ignoring duplicate source records", async () => {

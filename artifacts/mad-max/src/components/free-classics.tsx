@@ -27,6 +27,7 @@ const SOURCE_FILTERS: { value: SourceFilter; label: string }[] = [
   { value: "archive", label: "Internet Archive" },
   { value: "youtube", label: "YouTube" },
   { value: "wikimedia", label: "Wikimedia Commons" },
+  { value: "nfb", label: "NFB.ca" },
 ];
 
 async function fetchFreeClassics(page: number, source: SourceFilter): Promise<FreeClassicsResponse> {

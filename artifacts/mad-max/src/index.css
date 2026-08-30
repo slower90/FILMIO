@@ -1230,11 +1230,12 @@ html {
 .story-constellation-map {
   position: relative;
   display: grid;
-  max-width: 74rem;
+  width: 100%;
+  max-width: 72rem;
   min-height: 26rem;
   margin-right: auto;
   margin-left: auto;
-  grid-template-columns: minmax(14rem, 0.9fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(15rem, 0.82fr) minmax(0, 1.18fr);
   align-items: center;
   gap: clamp(2rem, 7vw, 7rem);
 }
@@ -1242,8 +1243,9 @@ html {
 .story-constellation-origin {
   position: relative;
   z-index: 1;
-  max-width: 19rem;
-  padding: 1.1rem;
+  width: min(100%, 20rem);
+  max-width: 20rem;
+  padding: 1rem;
   border: 1px solid hsl(var(--primary) / 0.32);
   background: hsl(var(--background));
   box-shadow: 0 20px 38px -30px hsl(var(--ink) / 0.9);
@@ -1271,7 +1273,7 @@ html {
 }
 
 .story-constellation-origin-image {
-  aspect-ratio: 2 / 2.65;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   margin-top: 0.95rem;
   background: hsl(var(--muted));
@@ -1280,7 +1282,7 @@ html {
 .story-constellation-orbit {
   position: relative;
   display: grid;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .story-constellation-orbit::before {
@@ -1296,11 +1298,11 @@ html {
 .story-constellation-thread {
   position: relative;
   display: grid;
-  min-height: 5.6rem;
-  grid-template-columns: 2.8rem 3.6rem minmax(0, 1fr);
+  min-height: 6.35rem;
+  grid-template-columns: 2.25rem 4.05rem minmax(0, 1fr);
   align-items: center;
-  gap: 0.85rem;
-  padding: 0.75rem 1rem;
+  gap: 0.8rem;
+  padding: 0.7rem 0.9rem;
   border: 1px solid hsl(var(--border) / 0.72);
   background: hsl(var(--background) / 0.52);
   transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
@@ -1323,7 +1325,7 @@ html {
 }
 
 .story-thread-poster {
-  aspect-ratio: 2 / 2.65;
+  aspect-ratio: 2 / 3;
   overflow: hidden;
   background: hsl(var(--muted));
 }
@@ -1356,7 +1358,7 @@ html {
   }
 
   .story-constellation-thread {
-    min-height: 5.2rem;
+    min-height: 5.7rem;
   }
 }
 

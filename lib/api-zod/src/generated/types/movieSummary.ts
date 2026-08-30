@@ -17,4 +17,6 @@ export interface MovieSummary {
   releaseDate: string;
   voteAverage: number;
   genreIds: number[];
+  /** @maxLength 200 */
+  recommendationReason?: string;
 }
