@@ -19,6 +19,8 @@ export * from './conversationInput';
 export * from './crewMember';
 export * from './errorResponse';
 export * from './followResult';
+export * from './freeClassic';
+export * from './freeClassicsResponse';
 export * from './friendRequest';
 export * from './friendRequestStatus';
 export * from './friendsOverview';
