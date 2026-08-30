@@ -19,6 +19,7 @@
 - [Deleted artifact dependency overrides](deleted-artifact-overrides.md) — restoring a package also requires restoring any local override targets referenced by the root lockfile
 - [Drizzle noninteractive pushes](drizzle-noninteractive-push.md) — named-schema conflicts can make both regular and force pushes require a TTY
 - [Expo build port isolation](expo-build-port.md) — static Expo builds must reserve a local Metro port because preview services may occupy 8081
+- [Expo startup metadata fallback](expo-build-port.md) — EXPO_OFFLINE=1 avoids invalid remote native-module JSON while retaining local Metro startup
 - [Generated query nulls](generated-query-nulls.md) — omit nullable initial pagination params; generated clients may serialize null as the literal string "null"
 - [Supabase connector target](supabase-connector-target.md) — an attached Supabase connector must resolve to the project PostgREST API, not the Supabase dashboard HTML
 - [Drizzle array predicates](drizzle-array-predicates.md) — use inArray for runtime PostgreSQL membership filters, not interpolated ANY arrays
