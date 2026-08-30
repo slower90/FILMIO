@@ -20,6 +20,8 @@ export * from './crewMember';
 export * from './errorResponse';
 export * from './followResult';
 export * from './freeClassic';
+export * from './freeClassicPlayback';
+export * from './freeClassicSource';
 export * from './freeClassicsResponse';
 export * from './friendRequest';
 export * from './friendRequestStatus';

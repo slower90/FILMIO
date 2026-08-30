@@ -1136,6 +1136,23 @@ export interface ChatMessageInput {
   content: string;
 }
 
+export type FreeClassicSource = typeof FreeClassicSource[keyof typeof FreeClassicSource];
+
+
+export const FreeClassicSource = {
+  archive: 'archive',
+  youtube: 'youtube',
+  wikimedia: 'wikimedia',
+} as const;
+
+export type FreeClassicPlayback = typeof FreeClassicPlayback[keyof typeof FreeClassicPlayback];
+
+
+export const FreeClassicPlayback = {
+  iframe: 'iframe',
+  video: 'video',
+} as const;
+
 export interface FreeClassic {
   identifier: string;
   title: string;
@@ -1147,6 +1164,11 @@ export interface FreeClassic {
   creator: string | null;
   posterUrl: string;
   embedUrl: string;
+  source: FreeClassicSource;
+  sourceLabel: string;
+  sourceUrl: string;
+  playback: FreeClassicPlayback;
+  licenseLabel: string;
 }
 
 export interface FreeClassicsResponse {

@@ -5,6 +5,8 @@
  * FILMIO - Movie Review & Discovery Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { FreeClassicPlayback } from './freeClassicPlayback';
+import type { FreeClassicSource } from './freeClassicSource';
 
 export interface FreeClassic {
   identifier: string;
@@ -17,4 +19,9 @@ export interface FreeClassic {
   creator: string | null;
   posterUrl: string;
   embedUrl: string;
+  source: FreeClassicSource;
+  sourceLabel: string;
+  sourceUrl: string;
+  playback: FreeClassicPlayback;
+  licenseLabel: string;
 }

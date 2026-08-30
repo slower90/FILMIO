@@ -29,7 +29,7 @@ tags:
   - name: chat
     description: Direct messaging between users
   - name: free-classics
-    description: Public-domain movie discovery and playback via Internet Archive
+    description: Legal free-film discovery and playback from Internet Archive, YouTube, and Wikimedia Commons
 paths:
   /healthz:
     get:
@@ -3342,7 +3342,20 @@ components:
         embedUrl:
           type: string
           format: uri
-      required: [identifier, title, description, year, creator, posterUrl, embedUrl]
+        source:
+          type: string
+          enum: [archive, youtube, wikimedia]
+        sourceLabel:
+          type: string
+        sourceUrl:
+          type: string
+          format: uri
+        playback:
+          type: string
+          enum: [iframe, video]
+        licenseLabel:
+          type: string
+      required: [identifier, title, description, year, creator, posterUrl, embedUrl, source, sourceLabel, sourceUrl, playback, licenseLabel]
 
     FreeClassicsResponse:
       type: object

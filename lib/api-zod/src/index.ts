@@ -19,6 +19,8 @@ export type * from "./generated/types/friendsOverviewCounts";
 export type * from "./generated/types/friendUser";
 export type * from "./generated/types/friendUserRelationship";
 export type * from "./generated/types/freeClassic";
+export type * from "./generated/types/freeClassicPlayback";
+export type * from "./generated/types/freeClassicSource";
 export type * from "./generated/types/freeClassicsResponse";
 export type * from "./generated/types/genre";
 export type * from "./generated/types/genreListResult";

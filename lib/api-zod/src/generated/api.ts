@@ -27,7 +27,12 @@ export const GetFreeClassicsResponse = zod.object({
   "year": zod.number().int().nullable(),
   "creator": zod.string().nullable(),
   "posterUrl": zod.string().url(),
-  "embedUrl": zod.string().url()
+  "embedUrl": zod.string().url(),
+  "source": zod.enum(['archive', 'youtube', 'wikimedia']),
+  "sourceLabel": zod.string(),
+  "sourceUrl": zod.string().url(),
+  "playback": zod.enum(['iframe', 'video']),
+  "licenseLabel": zod.string()
 })),
   "fetchedAt": zod.coerce.date()
 })
