@@ -13,6 +13,7 @@ import postsRouter from "./posts";
 import adminSearchRouter from "./admin-search";
 import profilesRouter from "./profiles";
 import signalsRouter from "./signals";
+import freeClassicsRouter from "./free-classics";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(animeRouter);
 router.use(newsRouter);
 router.use(postsRouter);
 router.use(adminSearchRouter);
+router.use(freeClassicsRouter);
 
 export default router;
