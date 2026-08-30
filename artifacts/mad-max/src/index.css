@@ -418,6 +418,7 @@ html {
   .filmio-video-player .video-js.vjs-user-inactive .vjs-control-bar {
     transition: none;
     opacity: 1;
+    visibility: visible;
   }
 
   .filmio-skeleton {

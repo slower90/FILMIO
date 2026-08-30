@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { apiFetch } from "@/lib/api-url";
 import { withMovieTitle } from "@/lib/movie-links";
 import { tmdbPosterUrl } from "@/lib/utils";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 import type { RowMovie } from "@/components/movie-row";
 
 const ROTATION_MS = 7000;
@@ -91,11 +92,13 @@ export function IndianPosterFeature() {
           aria-roledescription="carousel"
           aria-label="Rotating Indian movie spotlight"
         >
-          <img
+          <LazyBlurImage
             src={tmdbPosterUrl(activeMovie.posterPath)}
+            placeholderSrc={tmdbPosterUrl(activeMovie.posterPath, "w780")}
             alt=""
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-20 blur-2xl"
+            className="scale-110 opacity-20 blur-2xl"
+            wrapperClassName="absolute inset-0 h-full w-full"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--ink)/0.35)] via-[hsl(var(--ink)/0.5)] to-[hsl(var(--ink)/0.96)]" />
 
@@ -106,12 +109,14 @@ export function IndianPosterFeature() {
               aria-label={`Open details for ${activeMovie.title}`}
               data-testid="link-indian-spotlight-poster"
             >
-              <img
+              <LazyBlurImage
                 src={tmdbPosterUrl(activeMovie.posterPath)}
+                placeholderSrc={tmdbPosterUrl(activeMovie.posterPath, "w92")}
                 alt={`${activeMovie.title} poster`}
                 width={342}
                 height={513}
-                className="aspect-[2/3] h-auto w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                className="transition-transform duration-500 group-hover:scale-[1.03]"
+                wrapperClassName="w-full"
               />
               <span className="absolute inset-x-2 bottom-2 rounded-sm bg-[hsl(var(--ink)/0.82)] px-2 py-2 text-center text-[9px] font-bold uppercase tracking-[0.16em] text-primary opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                 Open movie details

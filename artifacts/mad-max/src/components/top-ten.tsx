@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { withMovieTitle } from "@/lib/movie-links";
 import { ChevronDown, ChevronUp, Star, Trophy } from "lucide-react";
 import { tmdbPosterUrl } from "@/lib/utils";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 import type { RowMovie } from "@/components/movie-row";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPrismRatings, getPrismDisplayRating } from "@/lib/mad-max-ratings";
@@ -72,14 +73,14 @@ export function TopTen({ movies, isLoading }: TopTenProps) {
                     <span className="w-10 shrink-0 text-center text-4xl font-display font-bold italic text-muted-foreground/35 group-hover:text-primary/70 transition-colors">
                       {String(rank).padStart(2, "0")}
                     </span>
-                    <img
+                    <LazyBlurImage
                       src={tmdbPosterUrl(movie.posterPath, "w185")}
+                      placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")}
                       alt={movie.title}
                       width={185}
                       height={278}
-                      className="w-12 h-[72px] shrink-0 rounded-md object-cover shadow-lg"
-                      loading="lazy"
-                      decoding="async"
+                      className="shadow-lg"
+                      wrapperClassName="h-[72px] w-12 shrink-0 rounded-md"
                     />
                     <div className="min-w-0 flex-1">
                       <h3 className="font-display uppercase tracking-wide font-bold text-sm line-clamp-1 group-hover:text-primary transition-colors">

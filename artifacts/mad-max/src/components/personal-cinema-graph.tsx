@@ -8,6 +8,7 @@ import { withMovieTitle } from "@/lib/movie-links";
 import { Button } from "@/components/ui/button";
 import type { CinemaPreferenceKey, CinemaPreferences } from "@/lib/cinema-preferences";
 import { apiFetch } from "@/lib/api-url";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 
 type GraphFilter = "all" | "watched" | "rated" | "loved" | "disliked";
 type SignalKind = "actor" | "director" | "genre" | "country" | "decade" | "language";
@@ -423,7 +424,14 @@ export function PersonalCinemaGraph({
             {filteredMovies.map((movie) => (
               <li key={movie.id}>
                 <button type="button" onClick={() => setSelectedMovieId(movie.id)} className="group flex w-full items-center gap-3 text-left">
-                  <img src={tmdbPosterUrl(movie.posterPath)} alt="" width={44} height={64} className="h-16 w-11 shrink-0 object-cover" loading="lazy" />
+                  <LazyBlurImage
+                    src={tmdbPosterUrl(movie.posterPath)}
+                    placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")}
+                    alt=""
+                    width={44}
+                    height={64}
+                    wrapperClassName="h-16 w-11 shrink-0"
+                  />
                   <span className="min-w-0 flex-1"><strong className="block truncate font-display text-sm uppercase group-hover:text-primary">{movie.title}</strong><span className="mt-1 block text-[10px] uppercase tracking-wider text-muted-foreground">{movie.rating ? `Rated ${movie.rating}/10` : movie.watched ? "Watched" : "Saved to watchlist"}</span></span>
                   <ArrowUpRight className="h-4 w-4 shrink-0 text-primary" />
                 </button>

@@ -74,16 +74,15 @@ export default defineConfig({
       },
       output: {
         manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined;
-          if (id.includes('@clerk/')) return 'clerk-vendor';
-          if (
-            id.includes('/lucide-react/') ||
-            id.includes('/gsap/') ||
-            id.includes('/recharts/') ||
-            id.includes('/@radix-ui/')
-          ) {
-            return 'ui-vendor';
-          }
+          const normalizedId = id.replaceAll('\\', '/');
+          if (!normalizedId.includes('/node_modules/')) return undefined;
+          if (normalizedId.includes('/@clerk/')) return 'clerk-vendor';
+          if (normalizedId.includes('/video.js/')) return 'media-vendor';
+          if (normalizedId.includes('/recharts/')) return 'charts-vendor';
+          if (normalizedId.includes('/framer-motion/')) return 'motion-vendor';
+          if (normalizedId.includes('/gsap/')) return 'animation-vendor';
+          if (normalizedId.includes('/lucide-react/')) return 'icons-vendor';
+          if (normalizedId.includes('/@radix-ui/')) return 'radix-vendor';
           return 'vendor';
         },
       },

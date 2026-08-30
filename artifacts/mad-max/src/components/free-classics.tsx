@@ -114,7 +114,7 @@ function FreeClassicsVideoPlayer({ item }: { item: FreeClassic }) {
   }
 
   return (
-    <div className="filmio-video-player relative h-full w-full" data-vjs-player>
+    <div className="relative h-full w-full" data-vjs-player>
       <video
         ref={videoRef}
         className="video-js vjs-big-play-centered h-full w-full"
@@ -185,7 +185,7 @@ export function FreeClassicsCard({ item }: { item: FreeClassic }) {
             {item.year ? `${item.year} · ` : ""}{item.creator ? `${item.creator} · ` : ""}{item.licenseLabel} · {sourceName}
           </DialogDescription>
         </DialogHeader>
-        <div className="aspect-video w-full overflow-hidden border border-border bg-[hsl(var(--surface-deep))]">
+        <div className="filmio-video-player aspect-video w-full overflow-hidden border border-border bg-[hsl(var(--surface-deep))]">
           {item.playback === "video" ? <FreeClassicsVideoPlayer item={item} /> : (
             <iframe
               src={item.embedUrl}

@@ -2,6 +2,7 @@ import { ArrowUpRight, Orbit } from "lucide-react";
 import { Link } from "wouter";
 import { tmdbPosterUrl } from "@/lib/utils";
 import { withMovieTitle } from "@/lib/movie-links";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 import type { RowMovie } from "@/components/movie-row";
 
 const THREAD_LABELS = [
@@ -69,13 +70,14 @@ export function StoryConstellation({ anchor, threads, isLoading }: StoryConstell
               <span className="story-constellation-coordinate">Origin / 00</span>
               <StoryLink movie={anchor} className="group block">
                 <div className="story-constellation-origin-image">
-                  <img
+                  <LazyBlurImage
                     src={tmdbPosterUrl(anchor.posterPath)}
+                    placeholderSrc={tmdbPosterUrl(anchor.posterPath, "w92")}
                     alt={anchor.title}
                     width={342}
                     height={513}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    loading="lazy"
+                    className="transition-transform duration-500 group-hover:scale-[1.03]"
+                    wrapperClassName="h-full w-full"
                   />
                 </div>
                 <div className="mt-4 flex items-start justify-between gap-4">
@@ -95,13 +97,14 @@ export function StoryConstellation({ anchor, threads, isLoading }: StoryConstell
                 <StoryLink key={`${movie.id}-${movie.title}`} movie={movie} className="story-constellation-thread group">
                   <span className="story-thread-number">0{index + 1}</span>
                   <div className="story-thread-poster">
-                    <img
+                    <LazyBlurImage
                       src={tmdbPosterUrl(movie.posterPath)}
+                      placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")}
                       alt=""
                       width={342}
                       height={513}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
+                      className="transition-transform duration-500 group-hover:scale-105"
+                      wrapperClassName="h-full w-full"
                     />
                   </div>
                   <div className="min-w-0">

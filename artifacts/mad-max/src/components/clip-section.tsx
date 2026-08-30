@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, X, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { apiFetch } from "@/lib/api-url";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 
 export interface ClipItem {
   id: string;
@@ -188,14 +189,14 @@ export function ClipSection({ clips, isLoading }: { clips: ClipItem[]; isLoading
                   onClick={() => setSelected(clip)}
                   className="group relative aspect-video overflow-hidden rounded-xl border border-border/70 bg-muted text-left"
                 >
-                  <img
+                  <LazyBlurImage
                     src={`https://image.tmdb.org/t/p/w780${clip.posterPath ?? ""}`}
+                    placeholderSrc={`https://image.tmdb.org/t/p/w342${clip.posterPath ?? ""}`}
                     alt={`${clip.movieTitle}: ${clip.title}`}
                     width={780}
                     height={439}
-                    className="absolute inset-0 w-full h-full object-cover opacity-70 transition duration-300 group-hover:scale-105 group-hover:opacity-50"
-                    loading="lazy"
-                    decoding="async"
+                    className="opacity-70 transition duration-300 group-hover:scale-105 group-hover:opacity-50"
+                    wrapperClassName="absolute inset-0 h-full w-full"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                   <span className="absolute left-3 top-3 rounded-full bg-primary p-2 text-primary-foreground shadow-lg">
