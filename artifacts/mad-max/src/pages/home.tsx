@@ -20,6 +20,8 @@ import { SurpriseMe } from "@/components/surprise-me";
 import { apiFetch } from "@/lib/api-url";
 import { FreeClassicsSection } from "@/components/free-classics";
 import { IndianPosterFeature } from "@/components/indian-poster-feature";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
+import { Skeleton } from "@/components/ui/skeleton";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -35,7 +37,7 @@ async function fetchCategory(path: string, maxPages: number): Promise<CatalogMov
   const data = await res.json();
   return Object.assign((data.results ?? []).map((movie: RowMovie) =>
     path.startsWith("tv-")
-      ? { ...movie, linkHref: `/movies/${movie.id}?type=tv` }
+        ? { ...movie, linkHref: `/movies/${movie.id}?type=tv`, mediaType: "tv" as const }
       : movie,
   ), { metadata: data.metadata });
 }
@@ -281,14 +283,14 @@ function TrendingNewsCard({ item }: { item: TrendingNewsItem }) {
     >
         <div className={`relative aspect-[16/9] overflow-hidden ${isAnime ? "bg-gradient-to-br from-red-950 via-rose-950 to-slate-950" : "bg-gradient-to-br from-amber-950 via-orange-950 to-slate-950"}`}>
         {item.thumbnail && !imageFailed ? (
-          <img
+          <LazyBlurImage
             src={item.thumbnail}
+            placeholderSrc={item.thumbnail}
             alt={`${item.title} — ${item.category} news`}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             width={640}
             height={360}
-            loading="lazy"
-            decoding="async"
+            wrapperClassName="absolute inset-0 h-full w-full"
             onError={() => setImageFailed(true)}
           />
         ) : (
@@ -340,7 +342,7 @@ function TrendingNewsSection() {
         </div>
         {isLoading ? (
           <div className="grid gap-3 md:grid-cols-2">
-            {Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-md bg-muted" />)}
+             {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-24 rounded-md" />)}
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Trending news is being updated.</div>

@@ -6,6 +6,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import type { FreeClassic, FreeClassicSource, FreeClassicsResponse } from "@workspace/api-client-react";
 import { apiFetch } from "@/lib/api-url";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogClose,
@@ -51,6 +54,8 @@ function sourceMimeType(item: FreeClassic): string {
 function FreeClassicsVideoPlayer({ item }: { item: FreeClassic }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<ReturnType<typeof videojs> | null>(null);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (!videoRef.current || !item.mediaUrl) return;
@@ -76,7 +81,17 @@ function FreeClassicsVideoPlayer({ item }: { item: FreeClassic }) {
       },
     });
     playerRef.current = player;
+    const showFeedback = (message: string) => {
+      setFeedback(message);
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), 650);
+    };
+    player.on("play", () => showFeedback("Playing"));
+    player.on("pause", () => showFeedback("Paused"));
+    player.on("seeking", () => showFeedback("Seeking"));
+    player.on("waiting", () => showFeedback("Buffering"));
     return () => {
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
       if (playerRef.current) {
         playerRef.current.dispose();
         playerRef.current = null;
@@ -98,7 +113,7 @@ function FreeClassicsVideoPlayer({ item }: { item: FreeClassic }) {
   }
 
   return (
-    <div className="filmio-video-player h-full w-full" data-vjs-player>
+    <div className="filmio-video-player relative h-full w-full" data-vjs-player>
       <video
         ref={videoRef}
         className="video-js vjs-big-play-centered h-full w-full"
@@ -106,6 +121,16 @@ function FreeClassicsVideoPlayer({ item }: { item: FreeClassic }) {
         aria-label={`Play ${item.title}`}
         data-testid={`video-free-classic-${item.source}-${item.identifier}`}
       />
+      <div
+        className={cn(
+          "pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/60 bg-background/80 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary backdrop-blur-sm transition-[opacity,transform] duration-300",
+          feedback ? "scale-100 opacity-100" : "scale-95 opacity-0",
+        )}
+        aria-live="polite"
+        data-testid="free-classics-player-feedback"
+      >
+        {feedback}
+      </div>
     </div>
   );
 }
@@ -123,15 +148,15 @@ export function FreeClassicsCard({ item }: { item: FreeClassic }) {
           aria-label={`Play ${item.title}, ${item.year ?? "classic film"}, from ${sourceName}`}
         >
           <div className="poster-shell poster-lift relative aspect-[2/3] overflow-hidden rounded-[0.35rem] border border-border/70">
-            {item.posterUrl ? (
-              <img
+             {item.posterUrl ? (
+               <LazyBlurImage
                 src={item.posterUrl}
+                 placeholderSrc={item.posterUrl}
                 alt={`${item.title} poster`}
                 width={342}
                 height={513}
-                loading="lazy"
-                decoding="async"
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                 wrapperClassName="absolute inset-0 h-full w-full"
               />
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground"><Film aria-hidden="true" /></div>
@@ -241,8 +266,16 @@ export function FreeClassicsSection({ fullPage = false }: { fullPage?: boolean }
             ))}
           </div>
         )}
-        {query.isLoading ? (
-          <div className="flex gap-3 overflow-hidden" data-testid="free-classics-loading">{Array.from({ length: fullPage ? 8 : 6 }).map((_, index) => <div key={index} className="w-[9.2rem] flex-none sm:w-40 md:w-44"><div className="aspect-[2/3] animate-pulse rounded bg-muted" /><div className="mt-2 h-3 w-3/4 animate-pulse rounded bg-muted" /></div>)}</div>
+         {query.isLoading ? (
+           <div className={fullPage ? "grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 lg:grid-cols-6" : "flex gap-3 overflow-hidden"} data-testid="free-classics-loading">
+             {Array.from({ length: fullPage ? 8 : 6 }).map((_, index) => (
+               <div key={index} className="w-[9.2rem] flex-none sm:w-40 md:w-44">
+                 <Skeleton className="aspect-[2/3] rounded-[0.35rem]" />
+                 <Skeleton className="mt-2 h-3 w-3/4" />
+                 <Skeleton className="mt-1 h-2.5 w-1/2" />
+               </div>
+             ))}
+           </div>
         ) : query.isError ? (
           <div className="flex items-center gap-3 border border-dashed border-border p-6 text-sm text-muted-foreground" data-testid="free-classics-error"><p>Free Classics are temporarily unavailable.</p><button type="button" onClick={() => query.refetch()} className="inline-flex min-h-11 items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary hover:text-foreground" data-testid="button-retry-free-classics"><RotateCcw className="h-3.5 w-3.5" /> Retry</button></div>
         ) : items.length === 0 ? (

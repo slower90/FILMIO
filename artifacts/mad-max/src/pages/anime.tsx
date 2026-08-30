@@ -5,6 +5,8 @@ import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { Link } from "wouter";
 import { Search, ExternalLink, Star, Tv } from "lucide-react";
 import { apiFetch } from "@/lib/api-url";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface AnimeItem {
   id: number;
@@ -42,11 +44,14 @@ function AnimeCard({ anime }: { anime: AnimeItem }) {
       <div className="flex-none w-32 md:w-36">
         <div className="aspect-[2/3] rounded overflow-hidden bg-muted relative">
           {anime.posterPath ? (
-            <img
+             <LazyBlurImage
               src={anime.posterPath}
+               placeholderSrc={anime.posterPath}
               alt={anime.title}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
+               width={342}
+               height={513}
+               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+               wrapperClassName="absolute inset-0 h-full w-full"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -102,14 +107,14 @@ function AnimeRow({
           </div>
         ) : (
           <div
-            className="flex gap-3 overflow-x-auto scroll-smooth pb-3"
+             className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-3"
             style={{ scrollbarWidth: "none" }}
           >
             {isLoading
               ? Array.from({ length: 12 }).map((_, i) => (
-                  <div key={i} className="flex-none w-32 md:w-36">
-                    <div className="aspect-[2/3] rounded bg-muted animate-pulse" />
-                    <div className="mt-2 h-3 w-3/4 rounded bg-muted animate-pulse" />
+                   <div key={i} className="flex-none snap-start w-32 md:w-36">
+                     <Skeleton className="aspect-[2/3] rounded" />
+                     <Skeleton className="mt-2 h-3 w-3/4" />
                   </div>
                 ))
               : items.length === 0
@@ -184,10 +189,10 @@ export default function Anime() {
             Search Results for "{debouncedQ}"
           </h2>
           {searching ? (
-            <div className="flex gap-4 overflow-x-auto pb-3" style={{ scrollbarWidth: "none" }}>
+             <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3" style={{ scrollbarWidth: "none" }}>
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex-none w-32">
-                  <div className="aspect-[2/3] rounded bg-muted animate-pulse" />
+                   <Skeleton className="aspect-[2/3] rounded" />
                 </div>
               ))}
             </div>

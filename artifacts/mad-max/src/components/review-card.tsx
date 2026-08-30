@@ -6,7 +6,7 @@ import {
   getListCommentsQueryKey,
 } from "@workspace/api-client-react";
 import { RatingStars } from "./rating-stars";
-import { Heart, MessageSquare, BadgeCheck, Loader2 } from "lucide-react";
+import { Heart, MessageSquare, BadgeCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { tmdbPosterUrl } from "@/lib/utils";
 import { withMovieTitle } from "@/lib/movie-links";
@@ -19,6 +19,8 @@ import {
   submitComment as submitCommentMutation,
   validateCommentSubmission,
 } from "@/lib/review-submissions";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ReviewCardProps {
   review: Review;
@@ -65,13 +67,17 @@ export function ReviewCard({ review, showMovie = true }: ReviewCardProps) {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link href={`/profile/${review.userId}`} className="shrink-0">
-            <img
+            <LazyBlurImage
               src={
                 review.authorAvatarUrl ||
                 `https://api.dicebear.com/7.x/initials/svg?seed=${review.authorName}`
               }
+              placeholderSrc={review.authorAvatarUrl ?? undefined}
               alt={review.authorName || "User"}
-              className="w-10 h-10 rounded-full object-cover border border-border bg-muted"
+              width={40}
+              height={40}
+              className="h-full w-full rounded-full object-cover"
+              wrapperClassName="h-10 w-10 shrink-0 rounded-full border border-border bg-muted"
             />
           </Link>
           <div>
@@ -104,12 +110,14 @@ export function ReviewCard({ review, showMovie = true }: ReviewCardProps) {
           href={withMovieTitle(`/movies/${review.movieId}`, review.movieTitle || `Film ${review.movieId}`)}
           className="group flex items-center gap-3 bg-secondary/30 rounded p-2 hover:bg-secondary/50 transition-colors"
         >
-          <img
+          <LazyBlurImage
             src={tmdbPosterUrl(review.moviePosterPath, "w92")}
+            placeholderSrc={tmdbPosterUrl(review.moviePosterPath, "w92")}
             alt={review.movieTitle || "Movie"}
             width={92}
             height={138}
-            className="w-8 h-12 object-cover rounded shrink-0"
+            className="h-full w-full rounded object-cover"
+            wrapperClassName="h-12 w-8 shrink-0 rounded"
           />
           <span className="font-display uppercase tracking-wide text-sm font-bold group-hover:text-primary transition-colors line-clamp-1">
             {review.movieTitle}
@@ -152,9 +160,10 @@ export function ReviewCard({ review, showMovie = true }: ReviewCardProps) {
       {commentsOpen && (
         <div className="space-y-3 border-t border-border/50 pt-3">
           {commentsQuery.isLoading ? (
-            <p className="text-xs text-muted-foreground flex items-center gap-2">
-              <Loader2 className="w-3 h-3 animate-spin" /> Loading comments…
-            </p>
+              <div className="flex items-center gap-2" aria-label="Loading comments">
+                <Skeleton className="h-3 w-3 rounded-full" />
+                <Skeleton className="h-3 w-28" />
+              </div>
           ) : commentsQuery.isError ? (
             <p className="text-xs text-destructive">
               Could not load comments. Try again.

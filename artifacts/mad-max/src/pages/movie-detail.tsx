@@ -16,7 +16,7 @@ import {
 import { Navbar } from "@/components/navbar";
 import { apiFetch } from "@/lib/api-url";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
-import { tmdbBackdropSrcSet, tmdbBackdropUrl, tmdbPosterUrl, tmdbLogoUrl } from "@/lib/utils";
+import { tmdbBackdropUrl, tmdbPosterUrl, tmdbLogoUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RatingStars } from "@/components/rating-stars";
@@ -34,13 +34,19 @@ import {
   submitRatingAndReview,
   validateReviewForm,
 } from "@/lib/review-submissions";
-import { getMovieLoadingQuote } from "@/lib/movie-quotes";
 import { getPrismDisplayRating } from "@/lib/mad-max-ratings";
 import { CatalogStatusNotice, type CatalogMetadata } from "@/components/catalog-status-notice";
 import { SITE_URL } from "@/lib/seo";
 import { movieStoryPath, withMovieTitle } from "@/lib/movie-links";
 import { useActiveProfile } from "@/lib/profile-context";
 import { MovieScoreFingerprint } from "@/components/movie-score-fingerprint";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  fetchMovieOverview,
+  getMovieOverviewQueryKey,
+  type MovieOverviewResponse,
+} from "@/lib/movie-prefetch";
 
 // ── Fetchers for non-spec endpoints ──────────────────────────────────────────
 
@@ -56,20 +62,6 @@ async function fetchMoviesByGenre(genreId: number): Promise<RowMovie[]> {
   if (!res.ok) return [];
   const data = await res.json();
   return data.results ?? [];
-}
-
-async function fetchMovieOverview(movieId: number, mediaType: "movie" | "tv"): Promise<any> {
-  const res = await apiFetch(`/api/movies/${movieId}/overview?type=${mediaType}`);
-  if (!res.ok) throw new Error("Unable to load movie");
-  return res.json();
-}
-
-interface MovieOverviewResponse {
-  movie: any;
-  credits: { cast: any[] };
-  providers: { flatrate: any[]; free: any[]; ads: any[]; rent: any[]; buy: any[]; link: string | null };
-  videos: { results: any[] };
-  metadata?: CatalogMetadata;
 }
 
 type WatchProvider = {
@@ -115,7 +107,6 @@ export default function MovieDetail() {
   const searchParams = new URLSearchParams(search);
   const titleHint = searchParams.get("title") || undefined;
   const mediaType = searchParams.get("type") === "tv" ? "tv" : "movie";
-  const loadingQuote = getMovieLoadingQuote(titleHint);
   const { isSignedIn } = useUser();
   const { activeProfile } = useActiveProfile();
   const queryClient = useQueryClient();
@@ -136,7 +127,7 @@ export default function MovieDetail() {
   const createReview = useCreateReview();
 
   const { data: overview, isLoading: loadingMovie } = useQuery<MovieOverviewResponse>({
-    queryKey: ["movie-overview", movieId, mediaType],
+    queryKey: getMovieOverviewQueryKey(movieId, mediaType),
     queryFn: () => fetchMovieOverview(movieId, mediaType),
     enabled: !!movieId,
     staleTime: 10 * 60 * 1000,
@@ -307,26 +298,29 @@ export default function MovieDetail() {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Navbar />
-        <div className="flex flex-1 items-center justify-center px-6 py-20">
-          <div className="w-full max-w-2xl text-center">
-            <Clapperboard className="mx-auto mb-6 h-10 w-10 animate-pulse text-primary" />
-            <p className="cinema-kicker mb-4">Loading your feature</p>
-            {titleHint && (
-              <p className="mb-6 text-sm uppercase tracking-[0.18em] text-muted-foreground">
-                {titleHint}
-              </p>
-            )}
-            <blockquote className="font-display text-3xl uppercase leading-tight tracking-wide text-foreground md:text-5xl">
-              “{loadingQuote.text}”
-            </blockquote>
-            <cite className="mt-5 block text-xs not-italic uppercase tracking-[0.2em] text-primary">
-              — {loadingQuote.source}
-            </cite>
-            <div className="mx-auto mt-10 h-1 max-w-xs overflow-hidden rounded-full bg-muted">
-              <div className="h-full w-1/2 animate-[loading-bar_1.4s_ease-in-out_infinite] rounded-full bg-primary" />
+        <main className="flex-1">
+          <Skeleton className="h-[42vh] min-h-[22rem] w-full rounded-none" />
+          <div className="container relative z-10 mx-auto -mt-24 px-4 md:-mt-32">
+            <div className="flex flex-col items-end gap-6 md:flex-row">
+              <Skeleton className="h-56 w-36 shrink-0 rounded-md sm:h-64 sm:w-44" />
+              <div className="w-full space-y-4 pb-1">
+                <Skeleton className="h-12 w-4/5 max-w-2xl md:h-20" />
+                <Skeleton className="h-5 w-56" />
+                <Skeleton className="h-4 w-full max-w-xl" />
+                <Skeleton className="h-4 w-4/5 max-w-lg" />
+                {titleHint && (
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Preparing {titleHint}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="mt-14 grid gap-4 md:grid-cols-3">
+              <Skeleton className="h-32 md:col-span-2" />
+              <Skeleton className="h-32" />
             </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -525,17 +519,17 @@ export default function MovieDetail() {
         ) : (
           <>
             <div className="absolute inset-0">
-              <img
-                src={tmdbBackdropUrl(movie.backdropPath || movie.posterPath)}
-                srcSet={tmdbBackdropSrcSet(movie.backdropPath || movie.posterPath)}
-                sizes="100vw"
-                alt={movie.title}
-                width={1280}
-                height={720}
-                className="h-full w-full object-cover object-top"
-                fetchPriority="high"
-                decoding="async"
-              />
+               <LazyBlurImage
+                 src={tmdbBackdropUrl(movie.backdropPath || movie.posterPath)}
+                 placeholderSrc={tmdbBackdropUrl(movie.backdropPath || movie.posterPath, "w780")}
+                 sizes="100vw"
+                 alt={movie.title}
+                 width={1280}
+                 height={720}
+                 className="h-full w-full object-cover object-top"
+                 wrapperClassName="absolute inset-0 h-full w-full"
+                 eager
+               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-background/60" />
 
@@ -563,12 +557,14 @@ export default function MovieDetail() {
       {/* ── Movie info: poster + title + meta, right below the banner ────── */}
       <div className="container mx-auto px-4 relative z-10 -mt-24 md:-mt-32">
         <div className="flex flex-col md:flex-row gap-8 items-end">
-          <img
+          <LazyBlurImage
             src={tmdbPosterUrl(movie.posterPath, "w500")}
+            placeholderSrc={tmdbPosterUrl(movie.posterPath, "w185")}
             alt={movie.title}
             width={500}
             height={750}
-            className="w-28 sm:w-32 md:w-44 lg:w-56 rounded-md shadow-2xl border border-border/50 box-glow shrink-0"
+            className="h-full w-full rounded-md object-cover"
+            wrapperClassName="w-28 shrink-0 rounded-md border border-border/50 shadow-2xl box-glow sm:w-32 md:w-44 lg:w-56"
           />
 
           <div className="flex-1 space-y-4 pb-1">

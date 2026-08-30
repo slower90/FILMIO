@@ -178,6 +178,23 @@ html {
   color-scheme: light;
 }
 
+.filmio-skeleton {
+  background:
+    linear-gradient(
+      105deg,
+      hsl(var(--muted)) 20%,
+      hsl(var(--primary) / 0.16) 42%,
+      hsl(var(--muted)) 64%
+    ) !important;
+  background-size: 220% 100% !important;
+  animation: filmio-shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes filmio-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -40% 0; }
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -343,6 +360,18 @@ html {
   min-height: 3.25rem;
   padding: 0 0.45rem;
   background: linear-gradient(180deg, transparent, hsl(240 10% 4% / 0.96) 28%);
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.filmio-video-player .video-js.vjs-user-inactive .vjs-control-bar {
+  opacity: 0;
+}
+
+.filmio-video-player .video-js.vjs-user-active .vjs-control-bar,
+.filmio-video-player .video-js:hover .vjs-control-bar,
+.filmio-video-player .video-js .vjs-control-bar:focus-within {
+  opacity: 1;
 }
 
 .filmio-video-player .video-js .vjs-play-progress,
@@ -381,8 +410,29 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .scroll-smooth {
+    scroll-behavior: auto !important;
+  }
+
+  .filmio-video-player .video-js .vjs-control-bar,
+  .filmio-video-player .video-js.vjs-user-inactive .vjs-control-bar {
+    transition: none;
+    opacity: 1;
+  }
+
+  .filmio-skeleton {
+    animation: none;
+  }
+
   .like-pop {
     animation: none;
+  }
+}
+
+@media (hover: none) {
+  .filmio-video-player .video-js .vjs-control-bar,
+  .filmio-video-player .video-js.vjs-user-inactive .vjs-control-bar {
+    opacity: 1;
   }
 }
 

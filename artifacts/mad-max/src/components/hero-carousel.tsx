@@ -8,6 +8,7 @@ import { fetchPrismRatings, getPrismDisplayRating } from "@/lib/mad-max-ratings"
 import { useQuery } from "@tanstack/react-query";
 import gsap from "gsap";
 import { withMovieTitle } from "@/lib/movie-links";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 
 export interface HeroMovie extends RowMovie {
   backdropPath?: string | null;
@@ -232,10 +233,11 @@ export function HeroCarousel({ movies }: { movies: HeroMovie[] }) {
             className="absolute inset-0 will-change-transform"
            style={{ opacity: reduceMotion ? (i === index ? 1 : 0) : i === 0 ? 1 : 0 }}
         >
-           {adjacentIndexes.has(i) && (
-             <img
+             {adjacentIndexes.has(i) && (
+              <LazyBlurImage
                src={tmdbBackdropUrl((m as HeroMovie).backdropPath ?? m.posterPath)}
                srcSet={tmdbBackdropSrcSet((m as HeroMovie).backdropPath ?? m.posterPath)}
+                placeholderSrc={tmdbBackdropUrl((m as HeroMovie).backdropPath ?? m.posterPath, "w780")}
                sizes="100vw"
                alt={`${m.title} backdrop`}
                width={1280}
@@ -243,7 +245,8 @@ export function HeroCarousel({ movies }: { movies: HeroMovie[] }) {
                className="h-full w-full object-cover object-center"
                loading={i === index ? "eager" : "lazy"}
                fetchPriority={i === index ? "high" : "low"}
-               decoding="async"
+                wrapperClassName="absolute inset-0 h-full w-full"
+                eager={i === index}
              />
            )}
         </div>

@@ -60,6 +60,7 @@ import type { CinemaPreferences } from "@/lib/cinema-preferences";
 import { resolveProfileId } from "@/lib/profile-route";
 import { tmdbPosterUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 
 const EMPTY = "Not enough public signal yet";
 
@@ -107,7 +108,14 @@ function PosterCard({ movie, rank, label }: { movie: ProfileMovie; rank?: number
     >
       <div className="profile-poster-frame">
         {rank !== undefined && <span className="profile-rank">{String(rank).padStart(2, "0")}</span>}
-        <img src={tmdbPosterUrl(movie.posterPath, "w342")} alt={`${title} poster`} loading="lazy" />
+        <LazyBlurImage
+          src={tmdbPosterUrl(movie.posterPath, "w342")}
+          placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")}
+          alt={`${title} poster`}
+          width={342}
+          height={513}
+          wrapperClassName="absolute inset-0 h-full w-full"
+        />
         <span className="profile-poster-shade" />
         {movie.score !== undefined && <span className="profile-poster-score"><Star aria-hidden="true" /> {movie.score}/10</span>}
       </div>
@@ -450,13 +458,13 @@ export default function Profile() {
           </section>
           <section className="profile-surface" aria-labelledby="watchlist-title">
             <SectionHeading eyebrow="07 / Held for later" title="WATCHLIST" icon={<Bookmark className="h-3.5 w-3.5" aria-hidden="true" />} />
-            {isMe && watchlist.length ? <div className="profile-watchlist-list">{watchlist.slice(0, 5).map((entry) => <Link href={withMovieTitle(`/movies/${entry.movieId}`, entry.movieTitle || `Film ${entry.movieId}`)} key={entry.id} className="profile-watchlist-row" data-testid={`link-profile-watchlist-${entry.id}`}><img src={tmdbPosterUrl(entry.moviePosterPath, "w154")} alt="" loading="lazy" /><span><strong>{entry.movieTitle || `Film ${entry.movieId}`}</strong><small>{entry.status === "watched" ? "Watched" : "Want to watch"}</small></span><ArrowUpRight aria-hidden="true" /></Link>)}</div> : <EmptyShelf privateShelf={!isMe}>{isMe ? "Your watchlist is empty." : "This watchlist is private."}</EmptyShelf>}
+            {isMe && watchlist.length ? <div className="profile-watchlist-list">{watchlist.slice(0, 5).map((entry) => <Link href={withMovieTitle(`/movies/${entry.movieId}`, entry.movieTitle || `Film ${entry.movieId}`)} key={entry.id} className="profile-watchlist-row" data-testid={`link-profile-watchlist-${entry.id}`}><LazyBlurImage src={tmdbPosterUrl(entry.moviePosterPath, "w154")} placeholderSrc={tmdbPosterUrl(entry.moviePosterPath, "w92")} alt="" width={154} height={231} className="h-full w-full object-cover" wrapperClassName="h-16 w-[2.7rem]" /><span><strong>{entry.movieTitle || `Film ${entry.movieId}`}</strong><small>{entry.status === "watched" ? "Watched" : "Want to watch"}</small></span><ArrowUpRight aria-hidden="true" /></Link>)}</div> : <EmptyShelf privateShelf={!isMe}>{isMe ? "Your watchlist is empty." : "This watchlist is private."}</EmptyShelf>}
           </section>
         </div>
 
         <section className="profile-journey" aria-labelledby="film-journey-title">
           <SectionHeading eyebrow="08 / The logbook" title="FILM JOURNEY" note={isMe ? "The films that have passed through this viewing room." : "A viewing history is private to its owner."} icon={<CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />} />
-          {isMe && watchedMovies.length ? <div className="profile-journey-strip">{watchedMovies.slice(0, 8).map((movie, index) => <Link href={withMovieTitle(`/movies/${movie.id}`, movie.title)} className="profile-journey-card" key={`${movie.id}-${index}`} data-testid={`link-profile-journey-${movie.id}`}><span className="profile-journey-date">FRAME {String(index + 1).padStart(2, "0")}</span><img src={tmdbPosterUrl(movie.posterPath, "w342")} alt={`${movie.title} poster`} loading="lazy" /><strong>{movie.title}</strong><small>{yearOf(movie.releaseDate) || "Catalog year unavailable"}</small></Link>)}</div> : <EmptyShelf privateShelf={!isMe}>{isMe ? "Your journey begins with the first watched film." : "No public journey shared."}</EmptyShelf>}
+            {isMe && watchedMovies.length ? <div className="profile-journey-strip">{watchedMovies.slice(0, 8).map((movie, index) => <Link href={withMovieTitle(`/movies/${movie.id}`, movie.title)} className="profile-journey-card" key={`${movie.id}-${index}`} data-testid={`link-profile-journey-${movie.id}`}><span className="profile-journey-date">FRAME {String(index + 1).padStart(2, "0")}</span><LazyBlurImage src={tmdbPosterUrl(movie.posterPath, "w342")} placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")} alt={`${movie.title} poster`} width={342} height={513} wrapperClassName="w-full" /><strong>{movie.title}</strong><small>{yearOf(movie.releaseDate) || "Catalog year unavailable"}</small></Link>)}</div> : <EmptyShelf privateShelf={!isMe}>{isMe ? "Your journey begins with the first watched film." : "No public journey shared."}</EmptyShelf>}
         </section>
 
         <section className="profile-reviews-section" aria-labelledby="recent-reviews-title">

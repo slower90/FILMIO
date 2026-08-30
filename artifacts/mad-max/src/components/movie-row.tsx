@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ChevronRight, Star, Plus, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, Plus, Check } from "lucide-react";
 import { tmdbPosterUrl } from "@/lib/utils";
 import { createWatchlistAddPayload } from "@/lib/authenticated-flow-contracts";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,10 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchPrismRatings, getPrismDisplayRating, type PrismRatings } from "@/lib/mad-max-ratings";
 import { withMovieTitle } from "@/lib/movie-links";
 import { useActiveProfile } from "@/lib/profile-context";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
+import { Skeleton } from "@/components/ui/skeleton";
+import { prefetchMovieOverview } from "@/lib/movie-prefetch";
+import { useNearViewport } from "@/hooks/use-near-viewport";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -31,6 +35,8 @@ export interface RowMovie {
   linkHref?: string;
   /** If set, link opens in a new tab */
   externalLink?: boolean;
+  /** Used to prefetch the right detail contract before opening the card */
+  mediaType?: "movie" | "tv";
 }
 
 interface MovieRowProps {
@@ -64,20 +70,33 @@ function MovieCard({
   const addToWatchlist = useAddToWatchlist();
   const removeFromWatchlist = useRemoveFromWatchlist();
   const isSaving = addToWatchlist.isPending || removeFromWatchlist.isPending;
+  const mediaType = movie.mediaType ?? (href.includes("type=tv") ? "tv" : "movie");
+  const { ref: cardRef, isNearViewport } = useNearViewport<HTMLDivElement>(
+    "320px 0px",
+    !movie.externalLink,
+  );
+  const prefetch = () => {
+    if (!movie.externalLink) {
+      void prefetchMovieOverview(queryClient, movie.id, mediaType);
+    }
+  };
+  useEffect(() => {
+    if (isNearViewport) prefetch();
+  }, [isNearViewport, movie.id, mediaType, queryClient]);
 
   const openMovie = (
     <div
         className="poster-shell poster-lift relative aspect-[2/3] overflow-hidden rounded-[0.35rem] border border-border/70"
     >
-      <img
-        src={tmdbPosterUrl(movie.posterPath)}
-        alt={movie.title}
-        width={342}
-        height={513}
-        className="h-full w-full object-cover"
-        loading="lazy"
-        decoding="async"
-      />
+        <LazyBlurImage
+          src={tmdbPosterUrl(movie.posterPath)}
+          placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")}
+          alt={movie.title}
+          width={342}
+          height={513}
+          className="transition-transform duration-500 group-hover:scale-105"
+          wrapperClassName="absolute inset-0 h-full w-full"
+        />
       <div
         className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/70 px-1.5 py-1 backdrop-blur-sm"
         title="FILMIO rating"
@@ -129,8 +148,9 @@ function MovieCard({
   };
 
   return (
-    <div
-      className="group w-[8.35rem] flex-none transform-gpu transition-[transform,opacity] duration-200 hover:-translate-y-1.5 hover:scale-[1.025] focus-within:-translate-y-1.5 sm:w-36 md:w-40"
+      <div
+       ref={cardRef}
+      className="group w-[8.35rem] flex-none snap-start transform-gpu transition-[transform,opacity] duration-200 hover:-translate-y-1.5 hover:scale-[1.025] focus-within:-translate-y-1.5 sm:w-36 md:w-40"
       data-row-card
       data-testid={`card-movie-${movie.id}`}
     >
@@ -139,7 +159,7 @@ function MovieCard({
           {openMovie}
         </a>
       ) : (
-        <Link href={href} aria-label={`Open ${movie.title}`}>
+        <Link href={href} aria-label={`Open ${movie.title}`} onMouseEnter={prefetch} onFocus={prefetch}>
           {openMovie}
         </Link>
       )}
@@ -273,6 +293,15 @@ export function MovieRow({ title, movies, isLoading, className, seeAllHref, seeA
   }, []);
 
   const visibleMovies = expanded ? movies : movies.slice(0, 8);
+  const scrollBy = (direction: "left" | "right") => {
+    const track = scrollRef.current;
+    if (!track) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    track.scrollBy({
+      left: direction === "left" ? -track.clientWidth * 0.8 : track.clientWidth * 0.8,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  };
 
   return (
     <section ref={sectionRef} className={cn("py-9 md:py-11", className)}>
@@ -284,24 +313,48 @@ export function MovieRow({ title, movies, isLoading, className, seeAllHref, seeA
                <h2 className="text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">{title}</h2>
                <span className="mt-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:hidden">Swipe to browse</span>
              </div>
-              {seeAllHref ? (
-                <Link
-                  href={seeAllHref}
-                  className="inline-flex min-h-11 items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary transition-colors hover:text-foreground"
-                  data-testid={`link-see-all-${title?.toLowerCase().replace(/\W+/g, "-")}`}
-                >
-                  {seeAllLabel} <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              ) : (
-                <span className="hidden text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:block">Curated for tonight</span>
-              )}
+               <div className="flex items-center gap-3">
+                 {seeAllHref ? (
+                   <Link
+                     href={seeAllHref}
+                     className="inline-flex min-h-11 items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary transition-colors hover:text-foreground"
+                     data-testid={`link-see-all-${title?.toLowerCase().replace(/\W+/g, "-")}`}
+                   >
+                     {seeAllLabel} <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                   </Link>
+                 ) : (
+                   <span className="hidden text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:block">Curated for tonight</span>
+                 )}
+                 {!isLoading && movies.length > 4 && (
+                   <div className="hidden items-center gap-1 sm:flex">
+                     <button
+                       type="button"
+                       onClick={() => scrollBy("left")}
+                       className="grid h-9 w-9 place-items-center rounded-full border border-border text-muted-foreground transition-[transform,color,border-color] hover:-translate-x-0.5 hover:border-primary hover:text-primary active:scale-95"
+                       aria-label={`Scroll ${title || "movie selection"} left`}
+                       data-testid={`button-scroll-left-${title?.toLowerCase().replace(/\W+/g, "-") || "movies"}`}
+                     >
+                       <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                     </button>
+                     <button
+                       type="button"
+                       onClick={() => scrollBy("right")}
+                       className="grid h-9 w-9 place-items-center rounded-full border border-border text-muted-foreground transition-[transform,color,border-color] hover:translate-x-0.5 hover:border-primary hover:text-primary active:scale-95"
+                       aria-label={`Scroll ${title || "movie selection"} right`}
+                       data-testid={`button-scroll-right-${title?.toLowerCase().replace(/\W+/g, "-") || "movies"}`}
+                     >
+                       <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                     </button>
+                   </div>
+                 )}
+               </div>
           </div>
         ) : null}
 
         {/* Scroll track — overflow-y:visible lets hovered cards scale up without clipping */}
         <div
           ref={scrollRef}
-          className="flex gap-3 overflow-x-auto pb-4"
+           className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-4"
            aria-label={title ? `${title} movies` : "Movie selection"}
           style={{
             scrollbarWidth: "none",
@@ -311,14 +364,14 @@ export function MovieRow({ title, movies, isLoading, className, seeAllHref, seeA
         >
           {isLoading
             ? Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-                <div
+                   <div
                   key={i}
-                   className="w-[8.35rem] flex-none sm:w-36 md:w-40"
+                    className="w-[8.35rem] flex-none snap-start sm:w-36 md:w-40"
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
-                   <div className="poster-shell aspect-[2/3] rounded animate-pulse" />
-                  <div className="mt-2 h-3 w-3/4 rounded bg-muted animate-pulse" />
-                  <div className="mt-1 h-2.5 w-1/2 rounded bg-muted animate-pulse" />
+                    <Skeleton className="poster-shell aspect-[2/3] rounded-[0.35rem]" />
+                   <Skeleton className="mt-2 h-3 w-3/4" />
+                   <Skeleton className="mt-1 h-2.5 w-1/2" />
                 </div>
               ))
              : visibleMovies.map((movie) => (

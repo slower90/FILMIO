@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
-import gsap from "gsap";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { HelmetProvider } from "react-helmet-async";
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -332,13 +332,25 @@ function ClickSound() {
 // Fades the page in on every route change
 function PageFade({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const ref = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    if (!ref.current) return;
-    gsap.fromTo(ref.current, { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.out" });
   }, [location]);
-  return <div ref={ref}>{children}</div>;
+
+  return (
+    <AnimatePresence initial={false} mode="wait">
+      <motion.div
+        key={location}
+        initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: reduceMotion ? 0 : -5 }}
+        transition={{ duration: reduceMotion ? 0 : 0.24, ease: "easeOut" }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
 }
 
 function SiteFooter() {

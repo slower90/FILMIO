@@ -31,7 +31,7 @@ export const buttonVariants = ({
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", asChild = false, children, ...props }, ref) => {
     const classes = cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 font-display uppercase tracking-widest",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm text-sm font-medium transition-[transform,background-color,border-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] hover:-translate-y-px font-display uppercase tracking-widest",
       variantClass[variant],
       sizeClass[size],
       className,

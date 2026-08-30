@@ -18,6 +18,7 @@ import { withMovieTitle } from "@/lib/movie-links";
 import { fetchPrismRatings, type PrismRatings } from "@/lib/mad-max-ratings";
 import type { RowMovie } from "@/components/movie-row";
 import { apiFetch } from "@/lib/api-url";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 
 type CinemaNowNewsItem = {
   id: string;
@@ -116,14 +117,14 @@ function TrendPulse({ signal, index }: { signal: PulseSignal; index: number }) {
           <SignalIcon kind={signal.kind} />
         </span>
         {signal.movie?.posterPath ? (
-          <img
+          <LazyBlurImage
             src={tmdbPosterUrl(signal.movie.posterPath, "w92")}
+            placeholderSrc={tmdbPosterUrl(signal.movie.posterPath, "w92")}
             alt=""
             width={46}
             height={69}
             className="cinema-now-signal-poster"
-            loading="lazy"
-            decoding="async"
+            wrapperClassName="cinema-now-signal-poster"
           />
         ) : (
           <span className="cinema-now-signal-poster cinema-now-signal-poster--empty" aria-hidden="true">

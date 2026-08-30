@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
 import gsap from "gsap";
 import { apiFetch } from "@/lib/api-url";
+import { LazyBlurImage } from "@/components/lazy-blur-image";
 
 interface Actor {
   id: number;
@@ -44,12 +45,16 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
       const onWheel = (event: WheelEvent) => {
         if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
         event.preventDefault();
-        gsap.to(track, {
-          scrollLeft: track.scrollLeft + event.deltaY * 2.5,
-          duration: 0.5,
-          ease: "power2.out",
-          overwrite: "auto",
-        });
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          track.scrollLeft += event.deltaY * 2.5;
+        } else {
+          gsap.to(track, {
+            scrollLeft: track.scrollLeft + event.deltaY * 2.5,
+            duration: 0.5,
+            ease: "power2.out",
+            overwrite: "auto",
+          });
+        }
       };
       track.addEventListener("wheel", onWheel, { passive: false });
       return { track, onWheel };
@@ -60,6 +65,10 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
   const moveActors = (direction: "left" | "right") => {
     const track = scrollRef.current;
     if (!track) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      track.scrollBy({ left: direction === "left" ? -520 : 520, behavior: "auto" });
+      return;
+    }
     gsap.to(track, {
       scrollLeft: track.scrollLeft + (direction === "left" ? -520 : 520),
       duration: 0.55,
@@ -70,6 +79,10 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
   const moveIndianActors = (direction: "left" | "right") => {
     const track = indianScrollRef.current;
     if (!track) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      track.scrollBy({ left: direction === "left" ? -520 : 520, behavior: "auto" });
+      return;
+    }
     gsap.to(track, {
       scrollLeft: track.scrollLeft + (direction === "left" ? -520 : 520),
       duration: 0.55,
@@ -88,10 +101,7 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
     <div className="group/actors relative">
       <button
         type="button"
-        onClick={() => {
-          const track = trackRef.current;
-          if (track) gsap.to(track, { scrollLeft: track.scrollLeft - 520, duration: 0.55, ease: "power2.out", overwrite: "auto" });
-        }}
+        onClick={() => (trackRef === scrollRef ? moveActors("left") : moveIndianActors("left"))}
         aria-label={`Scroll ${label} left`}
         className="absolute left-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-xl backdrop-blur transition hover:border-primary hover:bg-primary hover:text-primary-foreground md:flex"
       >
@@ -99,10 +109,7 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
       </button>
       <button
         type="button"
-        onClick={() => {
-          const track = trackRef.current;
-          if (track) gsap.to(track, { scrollLeft: track.scrollLeft + 520, duration: 0.55, ease: "power2.out", overwrite: "auto" });
-        }}
+        onClick={() => (trackRef === scrollRef ? moveActors("right") : moveIndianActors("right"))}
         aria-label={`Scroll ${label} right`}
         className="absolute right-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-xl backdrop-blur transition hover:border-primary hover:bg-primary hover:text-primary-foreground md:flex"
       >
@@ -120,7 +127,7 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
               <Link key={actor.id} href={`/actors/${actor.id}`} className="group w-24 flex-none snap-start text-center md:w-28" role="listitem">
                 <div className="relative mx-auto h-24 w-24 overflow-hidden rounded-full border-2 border-border bg-card p-0.5 shadow-lg shadow-black/30 transition duration-300 group-hover:scale-105 group-hover:border-primary group-hover:shadow-primary/20 md:h-28 md:w-28">
                   {actor.profilePath ? (
-                    <img src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`} alt={actor.name} className="h-full w-full rounded-full object-cover" loading="lazy" />
+                    <LazyBlurImage src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`} placeholderSrc={`https://image.tmdb.org/t/p/w92${actor.profilePath}`} alt={actor.name} width={185} height={185} className="h-full w-full rounded-full object-cover" wrapperClassName="h-full w-full rounded-full" />
                   ) : <UserRound className="mx-auto mt-5 h-9 w-9 text-muted-foreground" />}
                 </div>
                 <p className="mt-3 line-clamp-2 text-xs font-semibold leading-tight group-hover:text-primary md:text-sm">{actor.name}</p>
