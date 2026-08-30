@@ -28,6 +28,8 @@ tags:
     description: Industry professional profiles
   - name: chat
     description: Direct messaging between users
+  - name: free-classics
+    description: Public-domain movie discovery and playback via Internet Archive
 paths:
   /healthz:
     get:
@@ -41,6 +43,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /free-classics:
+    get:
+      operationId: getFreeClassics
+      tags: [free-classics]
+      summary: List curated public-domain films
+      responses:
+        "200":
+          description: Public-domain films from Internet Archive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreeClassicsResponse"
+        "502":
+          description: Internet Archive is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ─── MOVIES ──────────────────────────────────────────────────────────────────
   /movies/search:
@@ -3301,3 +3322,36 @@ components:
           type: string
           minLength: 1
       required: [content]
+
+    FreeClassic:
+      type: object
+      properties:
+        identifier:
+          type: string
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        creator:
+          type: ["string", "null"]
+        posterUrl:
+          type: string
+          format: uri
+        embedUrl:
+          type: string
+          format: uri
+      required: [identifier, title, description, year, creator, posterUrl, embedUrl]
+
+    FreeClassicsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FreeClassic"
+        fetchedAt:
+          type: string
+          format: date-time
+      required: [items, fetchedAt]
