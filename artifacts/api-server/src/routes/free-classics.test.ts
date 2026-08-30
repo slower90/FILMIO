@@ -89,7 +89,8 @@ test("serves normalized items and caches the upstream response for six hours", a
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
   assert.equal(calls, 1);
-  assert.deepEqual((await first.json()).items, [
+  const firstPayload = (await first.json()) as { items: unknown };
+  assert.deepEqual(firstPayload.items, [
     {
       identifier: "one",
       title: "One",

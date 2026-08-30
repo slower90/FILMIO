@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { FreeClassicsResponse } from "@workspace/api-zod";
+import { GetFreeClassicsResponse } from "@workspace/api-zod";
 
 const INTERNET_ARCHIVE_SEARCH_URL = "https://archive.org/advancedsearch.php";
 const INTERNET_ARCHIVE_QUERY = "mediatype:movies AND collection:feature_films";
@@ -144,7 +144,7 @@ export function createFreeClassicsRouter(options: FreeClassicsRouteOptions = {})
 
       if (!cache) throw new Error("Free Classics cache is unavailable");
       res.json(
-        FreeClassicsResponse.parse({
+        GetFreeClassicsResponse.parse({
           items: cache.items,
           fetchedAt: new Date(cache.fetchedAt).toISOString(),
         }),
