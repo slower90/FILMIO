@@ -461,6 +461,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/actors/:id" component={ActorDetail} />
           <Route path="/feed" component={Feed} />
           <Route path="/friends" component={Friends} />
+          <Route path="/profile" component={Profile} />
           <Route path="/profile/:id" component={Profile} />
           <Route path="/professionals" component={ProtectedProfessionals} />
           <Route path="/professionals/dashboard" component={ProtectedProfessionalDashboard} />

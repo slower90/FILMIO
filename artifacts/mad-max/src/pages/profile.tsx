@@ -1,22 +1,27 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useClerk, useUser } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  getGetMyProfileQueryKey,
   getGetUserProfileQueryKey,
   getGetUserStatsQueryKey,
   getGetViewingHistoryQueryKey,
+  getListProfilesQueryKey,
   getGetWatchlistQueryKey,
   getListMyRatingsQueryKey,
   getListReviewsQueryKey,
   useCreateConversation,
   useFollowUser,
+  useGetMyProfile,
   useGetUserProfile,
   useGetUserStats,
   useGetViewingHistory,
   useGetWatchlist,
   useListMyRatings,
   useListReviews,
+  useUpdateMyProfile,
+  useUpdateProfile,
   useUnfollowUser,
 } from "@workspace/api-client-react";
 import {
@@ -24,6 +29,7 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Bookmark,
+  Briefcase,
   CalendarDays,
   Clapperboard,
   Compass,
@@ -32,12 +38,15 @@ import {
   LogOut,
   MessageSquare,
   Network,
+  Pencil,
   Play,
+  Save,
   ShieldCheck,
   Star,
   UserMinus,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { ReviewCard } from "@/components/review-card";
@@ -48,7 +57,9 @@ import { useActiveProfile } from "@/lib/profile-context";
 import { withMovieTitle } from "@/lib/movie-links";
 import { buildProfileCinemaData, type ProfileMovie } from "@/lib/profile-identity";
 import type { CinemaPreferences } from "@/lib/cinema-preferences";
+import { resolveProfileId } from "@/lib/profile-route";
 import { tmdbPosterUrl } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const EMPTY = "Not enough public signal yet";
 
@@ -121,6 +132,60 @@ function ProfileSkeleton() {
   );
 }
 
+function ProfileSignInState() {
+  return (
+    <div className="min-h-[100dvh] bg-background film-grain">
+      <Navbar />
+      <main className="container mx-auto max-w-xl px-4 pt-40 text-center">
+        <Clapperboard className="mx-auto h-10 w-10 text-primary" aria-hidden="true" />
+        <p className="mt-6 cinema-kicker">Your cinematic identity</p>
+        <h1 className="mt-4 text-3xl font-display font-bold uppercase tracking-wide">Sign in to open your profile</h1>
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">Keep your public identity, cinema universe, and activity in one place.</p>
+        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <Button asChild className="min-h-12"><Link href="/sign-in?redirect=%2Fprofile">Sign in</Link></Button>
+          <Button asChild variant="outline" className="min-h-12"><Link href="/sign-up?redirect=%2Fprofile">Create account</Link></Button>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function ProfileUnavailable({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="min-h-[100dvh] bg-background film-grain">
+      <Navbar />
+      <main className="profile-error container mx-auto max-w-2xl px-4 pt-40 text-center">
+        <Clapperboard className="mx-auto h-10 w-10 text-primary" aria-hidden="true" />
+        <h1 className="mt-6 text-3xl">This screening is unavailable</h1>
+        <p className="mt-3 text-muted-foreground">We could not load this cinema room right now.</p>
+        <Button type="button" className="mt-8 min-h-12" onClick={onRetry} data-testid="button-retry-profile">Try again</Button>
+      </main>
+    </div>
+  );
+}
+
+type PublicProfileDraft = {
+  displayName: string;
+  bio: string;
+  avatarUrl: string;
+  favoriteGenres: string;
+};
+
+function profileDraftFrom(profile: { displayName?: string | null; bio?: string | null; avatarUrl?: string | null }, favoriteGenres?: string | null): PublicProfileDraft {
+  return {
+    displayName: profile.displayName ?? "",
+    bio: profile.bio ?? "",
+    avatarUrl: profile.avatarUrl ?? "",
+    favoriteGenres: favoriteGenres ?? "",
+  };
+}
+
+function getMutationError(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  const responseError = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+  return responseError || "We could not save your profile. Please try again.";
+}
+
 function MovieOverviewShelves({ preferences }: { preferences?: CinemaPreferences }) {
   return (
     <>
@@ -169,23 +234,38 @@ export default function Profile() {
   const { signOut } = useClerk();
   const [, setLocation] = useLocation();
   const { activeProfile } = useActiveProfile();
-  const isMe = !!id && currentUser?.id === id;
-  const profileId = id || "";
+  const { toast } = useToast();
+  const profileId = resolveProfileId(id, currentUser?.id);
+  const isMe = !!currentUser && currentUser.id === profileId;
   const profileParams = activeProfile ? { profileId: activeProfile.id } : undefined;
 
-  const profileQuery = useGetUserProfile(profileId, { query: { queryKey: getGetUserProfileQueryKey(profileId), enabled: !!profileId } });
+  const profileQuery = useGetUserProfile(profileId, { query: { queryKey: getGetUserProfileQueryKey(profileId), enabled: userLoaded && !!profileId } });
   const statsQuery = useGetUserStats(profileId, { query: { queryKey: getGetUserStatsQueryKey(profileId), enabled: !!profileId } });
   const reviewsQuery = useListReviews({ userId: profileId }, { query: { queryKey: getListReviewsQueryKey({ userId: profileId }), enabled: !!profileId } });
   const ratingsQuery = useListMyRatings(profileParams, { query: { queryKey: getListMyRatingsQueryKey(profileParams), enabled: isMe && !!activeProfile } });
   const historyQuery = useGetViewingHistory(profileParams, { query: { queryKey: getGetViewingHistoryQueryKey(profileParams), enabled: isMe && !!activeProfile } });
   const watchlistQuery = useGetWatchlist(profileParams, { query: { queryKey: getGetWatchlistQueryKey(profileParams), enabled: isMe && !!activeProfile } });
+  const myProfileQuery = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey(), enabled: isMe } });
   const followUser = useFollowUser();
   const unfollowUser = useUnfollowUser();
   const createConversation = useCreateConversation();
+  const updateMyProfile = useUpdateMyProfile();
+  const updateViewingProfile = useUpdateProfile();
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<PublicProfileDraft | null>(null);
   const profile = profileQuery.data;
   const stats = statsQuery.data;
   const reviews = reviewsQuery.data || [];
+  const identityProfile = myProfileQuery.data || profile;
+
+  useEffect(() => {
+    if (!editing && isMe && identityProfile) {
+      setDraft(profileDraftFrom(identityProfile, activeProfile?.favoriteGenre));
+    }
+  }, [activeProfile?.favoriteGenre, editing, identityProfile, isMe]);
+
   const cinemaData = useMemo(() => buildProfileCinemaData({
     isOwner: isMe,
     history: historyQuery.data || [],
@@ -197,10 +277,11 @@ export default function Profile() {
   const likesReceived = reviews.reduce((total, review) => total + (review.likesCount || 0), 0);
 
   if (!userLoaded || profileQuery.isLoading) return <ProfileSkeleton />;
+  if (!id && !currentUser) return <ProfileSignInState />;
   if (profileQuery.isError) {
-    return <div className="min-h-[100dvh] bg-background film-grain"><Navbar /><main className="profile-error container mx-auto max-w-2xl px-4 pt-40 text-center"><Clapperboard className="mx-auto h-10 w-10 text-primary" /><h1 className="mt-6 text-3xl">This screening is unavailable</h1><p className="mt-3 text-muted-foreground">We could not load this cinema room right now.</p><Button type="button" className="mt-8" onClick={() => void profileQuery.refetch()} data-testid="button-retry-profile">Try again</Button></main></div>;
+    return <ProfileUnavailable onRetry={() => void profileQuery.refetch()} />;
   }
-  if (!profile) return null;
+  if (!profile) return <ProfileUnavailable onRetry={() => void profileQuery.refetch()} />;
 
   const displayName = profile.displayName || profile.username || "FILMIO member";
   const filmsWatched = isMe ? watchedIds.size : null;
@@ -213,6 +294,56 @@ export default function Profile() {
   const handleMessage = () => {
     if (!currentUser) { setLocation(`/sign-in?redirect=${encodeURIComponent(`/profile/${profileId}`)}`); return; }
     createConversation.mutate({ data: { participantId: profile.clerkId } }, { onSuccess: (conversation) => setLocation(`/chat?conv=${conversation.id}`) });
+  };
+  const openEditor = () => {
+    setDraft(profileDraftFrom(identityProfile || profile, activeProfile?.favoriteGenre));
+    setEditing(true);
+  };
+  const saveProfile = async () => {
+    if (!draft) return;
+    const nextDisplayName = draft.displayName.trim();
+    const nextAvatarUrl = draft.avatarUrl.trim();
+    if (!nextDisplayName) {
+      toast({ variant: "destructive", title: "Name required", description: "Add a display name before saving." });
+      return;
+    }
+    if (nextAvatarUrl) {
+      try {
+        const parsed = new URL(nextAvatarUrl);
+        if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("invalid");
+      } catch {
+        toast({ variant: "destructive", title: "Picture URL is invalid", description: "Use a complete http:// or https:// image URL." });
+        return;
+      }
+    }
+    setSaving(true);
+    try {
+      const updated = await updateMyProfile.mutateAsync({
+        data: {
+          displayName: nextDisplayName,
+          bio: draft.bio.trim(),
+          avatarUrl: nextAvatarUrl,
+        },
+      });
+      if (activeProfile && draft.favoriteGenres.trim() !== (activeProfile.favoriteGenre || "")) {
+        await updateViewingProfile.mutateAsync({
+          profileId: activeProfile.id,
+          data: { favoriteGenre: draft.favoriteGenres.trim() || null },
+        });
+      }
+      queryClient.setQueryData(getGetMyProfileQueryKey(), updated);
+      queryClient.setQueryData(getGetUserProfileQueryKey(profileId), updated);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetUserStatsQueryKey(profileId) }),
+        queryClient.invalidateQueries({ queryKey: getListProfilesQueryKey() }),
+      ]);
+      setEditing(false);
+      toast({ title: "Profile saved", description: "Your public identity and cinema preferences are up to date." });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Could not save profile", description: getMutationError(error) });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -234,8 +365,9 @@ export default function Profile() {
               <p className="profile-archetype"><span>Archetype</span><strong>Not yet authored</strong><small>FILMIO will never guess a taste identity.</small></p>
               {profile.bio && <p className="profile-bio" data-testid="text-profile-bio">{profile.bio}</p>}
               <div className="profile-actions">
-                {!isMe ? <><Button type="button" variant={profile.isFollowedByMe ? "outline" : "default"} onClick={handleFollowToggle} disabled={followUser.isPending || unfollowUser.isPending} className="profile-action-primary" data-testid="button-profile-follow">{profile.isFollowedByMe ? <><UserMinus aria-hidden="true" /> Unfollow</> : <><UserPlus aria-hidden="true" /> Follow</>}</Button><Button type="button" variant="outline" onClick={handleMessage} disabled={createConversation.isPending} data-testid="button-profile-message"><MessageSquare aria-hidden="true" /> {createConversation.isPending ? "Opening" : "Message"}</Button></> : <Button type="button" variant="outline" onClick={() => void signOut()} data-testid="button-profile-sign-out"><LogOut aria-hidden="true" /> Sign out</Button>}
+                 {!isMe ? <><Button type="button" variant={profile.isFollowedByMe ? "outline" : "default"} onClick={handleFollowToggle} disabled={followUser.isPending || unfollowUser.isPending} className="profile-action-primary" data-testid="button-profile-follow">{profile.isFollowedByMe ? <><UserMinus aria-hidden="true" /> Unfollow</> : <><UserPlus aria-hidden="true" /> Follow</>}</Button><Button type="button" variant="outline" onClick={handleMessage} disabled={createConversation.isPending} data-testid="button-profile-message"><MessageSquare aria-hidden="true" /> {createConversation.isPending ? "Opening" : "Message"}</Button></> : <><Button type="button" variant="default" onClick={openEditor} className="profile-action-primary" data-testid="button-edit-profile"><Pencil aria-hidden="true" /> Edit profile</Button><Button type="button" variant="outline" onClick={() => void signOut()} data-testid="button-profile-sign-out"><LogOut aria-hidden="true" /> Sign out</Button></>}
                 {profile.isProfessional && <Link href={`/professionals/${profile.id}`} className="profile-professional-link" data-testid="link-professional-profile"><Network aria-hidden="true" /> View professional profile</Link>}
+                 {isMe && <Link href="/professionals/dashboard" className="profile-professional-link" data-testid="link-edit-professional-profile"><Briefcase aria-hidden="true" /> {profile.isProfessional ? "Edit professional profile" : "Build professional profile"}</Link>}
               </div>
             </div>
             <div className="profile-stats-rail" aria-label="Profile statistics">
@@ -244,11 +376,57 @@ export default function Profile() {
               <Stat label="Films watched" value={filmsWatched} privateValue={!isMe} icon={<Eye aria-hidden="true" />} />
               <Stat label="Films rated" value={filmsRated} privateValue={!isMe} icon={<Star aria-hidden="true" />} />
               <Stat label="Reviews" value={stats?.reviewsCount ?? profile.reviewsCount} />
+               <Stat label="Watchlist" value={stats?.watchlistCount ?? null} privateValue={!isMe} icon={<Bookmark aria-hidden="true" />} />
               <Stat label="Likes received" value={likesReceived} />
             </div>
           </div>
         </div>
       </header>
+
+       {isMe && editing && draft && (
+         <section className="container mx-auto max-w-6xl px-4 pt-8" aria-labelledby="edit-profile-title">
+           <div className="rounded-md border border-primary/30 bg-card/70 p-5 shadow-[0_18px_50px_hsl(var(--ink)/0.16)] sm:p-7">
+             <div className="flex items-start justify-between gap-4">
+               <div>
+                 <p className="cinema-kicker">Public identity</p>
+                 <h2 id="edit-profile-title" className="mt-2 text-2xl font-display font-bold uppercase">Edit your profile</h2>
+                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">These details are visible on your public FILMIO profile. Your viewing history, ratings, and watchlist remain private.</p>
+               </div>
+               <button type="button" onClick={() => setEditing(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-primary/10 hover:text-primary" aria-label="Close profile editor">
+                 <X className="h-5 w-5" aria-hidden="true" />
+               </button>
+             </div>
+             <div className="mt-7 grid gap-5 md:grid-cols-2">
+               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                 Display name
+                 <input value={draft.displayName} maxLength={80} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} className="mt-2 min-h-12 w-full rounded-sm border border-border bg-background px-3 text-base text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30" autoComplete="name" />
+               </label>
+               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                 Profile picture URL
+                 <input value={draft.avatarUrl} maxLength={500} onChange={(event) => setDraft({ ...draft, avatarUrl: event.target.value })} className="mt-2 min-h-12 w-full rounded-sm border border-border bg-background px-3 text-base text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="https://…" inputMode="url" />
+                 <span className="mt-2 block text-[11px] normal-case tracking-normal text-muted-foreground">Use a public JPG, PNG, or WebP image URL. Clear it to use initials.</span>
+               </label>
+               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground md:col-span-2">
+                 Bio
+                 <textarea value={draft.bio} maxLength={500} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} className="mt-2 min-h-28 w-full resize-y rounded-sm border border-border bg-background px-3 py-3 text-base leading-relaxed text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Tell other film lovers what you look for in a story." />
+                 <span className="mt-2 block text-right text-[11px] normal-case tracking-normal text-muted-foreground">{draft.bio.length}/500</span>
+               </label>
+               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground md:col-span-2">
+                 Favorite genres
+                 <input value={draft.favoriteGenres} maxLength={160} onChange={(event) => setDraft({ ...draft, favoriteGenres: event.target.value })} className="mt-2 min-h-12 w-full rounded-sm border border-border bg-background px-3 text-base text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Drama, thriller, romance" />
+                 <span className="mt-2 block text-[11px] normal-case tracking-normal text-muted-foreground">Separate genres with commas. This updates the active viewing room.</span>
+               </label>
+             </div>
+             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+               <Button type="button" variant="outline" onClick={() => setEditing(false)} disabled={saving} className="min-h-12 sm:min-w-32">Cancel</Button>
+               <Button type="button" onClick={() => void saveProfile()} disabled={saving} className="min-h-12 sm:min-w-40" data-testid="button-save-profile">
+                 <Save className="mr-2 h-4 w-4" aria-hidden="true" /> {saving ? "Saving…" : "Save changes"}
+               </Button>
+               <Link href="/profiles" className="inline-flex min-h-12 items-center justify-center px-3 text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 sm:ml-auto">Full viewing-room settings <ArrowUpRight className="ml-2 h-4 w-4" aria-hidden="true" /></Link>
+             </div>
+           </div>
+         </section>
+       )}
 
       <main className="container mx-auto max-w-6xl px-4">
         <div className="profile-section-intro"><span className="cinema-kicker">A profile, in chapters</span><p>Some rooms are public. Some belong only to the person holding the ticket.</p></div>
