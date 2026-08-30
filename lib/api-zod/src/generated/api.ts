@@ -17,6 +17,23 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary List curated public-domain films
+ */
+export const GetFreeClassicsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "identifier": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "creator": zod.string().nullable(),
+  "posterUrl": zod.string().url(),
+  "embedUrl": zod.string().url()
+})),
+  "fetchedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Search movies
  */
 export const searchMoviesQueryPageDefault = 1;
