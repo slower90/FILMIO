@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { HelmetProvider } from "react-helmet-async";
-import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from '@clerk/react';
+import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Switch, Route, useLocation, Router as WouterRouter } from 'wouter';
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -273,6 +274,18 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+function ClerkApiAuthBridge() {
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    setAuthTokenGetter(isSignedIn ? getToken : null);
+    return () => setAuthTokenGetter(null);
+  }, [getToken, isLoaded, isSignedIn]);
+
+  return null;
+}
+
 // A tiny client-only interaction sound. It is created after a real pointer
 // gesture, so browsers do not block it as unsolicited autoplay.
 function ClickSound() {
@@ -439,6 +452,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ProfileProvider>
           <ClickSound />
+          <ClerkApiAuthBridge />
           <ClerkQueryClientCacheInvalidator />
           <SiteSeo />
           <PageFade>

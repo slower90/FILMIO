@@ -30,3 +30,4 @@
 - [Optional-auth route tests](auth-route-tests.md) — register Clerk middleware before mounting routes that call getAuth, even when testing anonymous requests
 - [External Clerk deployments](clerk-railway-deploy.md) — Replit-managed Clerk production-key swapping does not automatically apply to external Railway builds
 - [Browse query routing](browse-query-routing.md) — Wouter location can be pathname-only; parse browser search for query-driven listing state
+- [Web API authentication across origins](web-api-auth.md) — separate-origin web deployments must forward the Clerk session token instead of relying only on cookies

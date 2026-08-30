@@ -94,6 +94,31 @@ test("rating-plus-review refreshes reviews and stats without a page reload", () 
   ]);
 });
 
+test("sends ratings to the active viewing profile", () => {
+  const rating = deferredMutation();
+  const review = deferredMutation();
+
+  submitRatingAndReview({
+    movieId: 550,
+    rating: "8",
+    reviewContent: "",
+    profileId: 12,
+    upsertRating: rating,
+    createReview: review,
+    effects: {
+      invalidateRatingStats: () => undefined,
+      invalidateAudienceReviews: () => undefined,
+      setMessage: () => undefined,
+      setError: () => undefined,
+      clearForm: () => undefined,
+    },
+  });
+
+  assert.deepEqual(rating.calls, [
+    { data: { movieId: 550, score: 8 }, params: { profileId: 12 } },
+  ]);
+});
+
 test("signed-out rating and comment submissions are blocked with prompts", () => {
   assert.equal(
     validateReviewForm({ isSignedIn: false, rating: "8", reviewContent: "" }),
