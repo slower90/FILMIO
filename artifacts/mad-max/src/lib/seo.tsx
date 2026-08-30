@@ -32,9 +32,17 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
     title: "Film & Entertainment News | FILMIO",
     description: "Keep up with film, TV, anime, and entertainment news for curious viewers and serious movie fans in India and worldwide.",
   },
+  "/signals": {
+    title: "Personal Signals | FILMIO",
+    description: "A quiet personal radar for the movie moments worth seeing on FILMIO.",
+  },
   "/free-movies": {
     title: "Free Movies to Watch in India | FILMIO",
     description: "Discover legitimate free and ad-supported movies available through official providers, with ratings and reviews from FILMIO.",
+  },
+  "/free-classics": {
+    title: "Free Classics: Public Domain Films | FILMIO",
+    description: "Watch enduring public-domain films legally and for free through the Internet Archive screening room on FILMIO.",
   },
   "/pricing": {
     title: "FILMIO Membership | Film Community",
@@ -98,7 +106,7 @@ export function SiteSeo() {
   const canonicalUrl = new URL(path, SITE_URL).toString();
   const imageUrl = `${SITE_URL}/logo.svg`;
   const isPrivateRoute =
-    ["/search", "/watchlist", "/feed", "/chat", "/professionals", "/profile"].some(
+    ["/search", "/watchlist", "/feed", "/chat", "/signals", "/professionals", "/profile"].some(
       (prefix) => path === prefix || path.startsWith(`${prefix}/`),
     ) || path.startsWith("/sign-in") || path.startsWith("/sign-up");
 

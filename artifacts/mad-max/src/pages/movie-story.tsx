@@ -1,6 +1,6 @@
 import { useGetMovieStory, getGetMovieStoryQueryKey, type MovieStory } from "@workspace/api-client-react";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, ArrowUpRight, BookOpen, CalendarDays, Clock3, ExternalLink, FileText, Film, Info, Library } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, CalendarDays, Clock3, ExternalLink, FileText, Film, Info, Library, MapPin, Tag, Users } from "lucide-react";
 import { Link, useParams, useSearch } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
@@ -104,6 +104,48 @@ function StoryMeta({ story }: { story: MovieStory }) {
       )}
       {updatedDate && <span className="text-muted-foreground/70">Updated {updatedDate}</span>}
     </div>
+  );
+}
+
+function StoryTopics({ topics = [] }: { topics?: MovieStory["topics"] }) {
+  if (!topics.length) return null;
+  const people = topics.filter((topic) => topic.kind === "person");
+  const genres = topics.filter((topic) => topic.kind === "genre");
+  const countries = topics.filter((topic) => topic.kind === "country");
+
+  return (
+    <section className="mt-20 border-y border-border/80 py-8 sm:mt-24 sm:py-10" aria-labelledby="story-topics-heading" data-testid="story-topics">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="cinema-kicker text-primary">Keep following the thread</p>
+          <h2 id="story-topics-heading" className="mt-3 text-2xl font-medium tracking-[-0.03em] sm:text-3xl">More to discover around this title</h2>
+        </div>
+        <p className="max-w-md text-sm leading-6 text-muted-foreground">Move from the film to the people, genres, and places that give its story a wider frame.</p>
+      </div>
+      <div className="mt-7 flex flex-wrap gap-3" role="list" aria-label="Related movie topics">
+        {people.map((topic) => (
+          <Link key={`${topic.kind}-${topic.label}`} href={topic.href} className="story-topic-chip" role="listitem" data-testid="story-topic-person">
+            <Users className="h-3.5 w-3.5" aria-hidden="true" />
+            {topic.label}
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        ))}
+        {genres.map((topic) => (
+          <Link key={`${topic.kind}-${topic.label}`} href={topic.href} className="story-topic-chip" role="listitem" data-testid="story-topic-genre">
+            <Tag className="h-3.5 w-3.5" aria-hidden="true" />
+            {topic.label}
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        ))}
+        {countries.map((topic) => (
+          <Link key={`${topic.kind}-${topic.label}`} href={topic.href} className="story-topic-chip" role="listitem" data-testid="story-topic-country">
+            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+            {topic.label}
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -248,7 +290,7 @@ export default function MovieStory() {
           </Link>
           <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,1fr)_14rem] xl:grid-cols-[minmax(0,48rem)_17rem]">
             <div>
-              <p className="editorial-kicker mb-7">A source-backed film note</p>
+               <p className="editorial-kicker mb-7">A source-backed film note · {sections.length} chapters</p>
               <StoryMeta story={story} />
               <h1 className="mt-7 max-w-5xl text-[clamp(2.65rem,7vw,6.7rem)] font-medium leading-[0.92] tracking-[-0.065em] text-foreground normal-case" data-testid="heading-story-headline">
                 {story.headline}
@@ -277,7 +319,7 @@ export default function MovieStory() {
         <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-12" data-testid="status-story-partial">
           <div className="flex items-start gap-3 border border-primary/30 bg-primary/10 px-4 py-4 text-sm leading-6 text-foreground/80">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <p><span className="font-bold text-primary">This story is still taking shape.</span> Some details are unavailable, but the sourced notes below are ready to read.</p>
+            <p><span className="font-bold text-primary">This story is still taking shape.</span> Some catalog or reference details are unavailable, so FILMIO has kept only the sourced notes it can stand behind.</p>
           </div>
         </div>
       )}
@@ -285,7 +327,7 @@ export default function MovieStory() {
       <main className="mx-auto grid max-w-7xl gap-10 px-5 pt-12 sm:px-8 sm:pt-16 lg:grid-cols-[12rem_minmax(0,47rem)] lg:gap-16 lg:px-12">
         <aside className="hidden lg:block">
           <div className="sticky top-28 border-t border-primary/60 pt-4">
-            <p className="text-[0.63rem] font-bold uppercase tracking-[0.2em] text-primary">In this story</p>
+             <p className="text-[0.63rem] font-bold uppercase tracking-[0.2em] text-primary">Follow the thread</p>
             <ol className="mt-5 space-y-4">
               {sections.map((section, index) => (
                 <li key={section.id}>
@@ -324,8 +366,9 @@ export default function MovieStory() {
             </div>
           )}
           <StorySources story={story} />
+           <StoryTopics topics={story.topics ?? []} />
           <div className="mt-14 flex flex-col gap-4 border-t border-border pt-7 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs leading-5 text-muted-foreground">More context, ratings, and viewing options for {movie.title}.</p>
+             <p className="text-xs leading-5 text-muted-foreground">Ready for the next scene? More context, ratings, and viewing options for {movie.title}.</p>
             <div className="flex flex-wrap gap-3">
               <Button asChild variant="outline" size="sm">
                 <Link href={movieLink} data-testid="link-story-details">

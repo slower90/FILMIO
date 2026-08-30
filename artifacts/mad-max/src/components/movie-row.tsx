@@ -38,6 +38,8 @@ interface MovieRowProps {
   movies: RowMovie[];
   isLoading?: boolean;
   className?: string;
+  seeAllHref?: string;
+  seeAllLabel?: string;
 }
 
 const SKELETON_COUNT = 12;
@@ -178,7 +180,7 @@ function MovieCard({
 }
 
 // ── Row ───────────────────────────────────────────────────────────────────────
-export function MovieRow({ title, movies, isLoading, className }: MovieRowProps) {
+export function MovieRow({ title, movies, isLoading, className, seeAllHref, seeAllLabel = "See all" }: MovieRowProps) {
   const scrollRef  = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
@@ -282,7 +284,17 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
                <h2 className="text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">{title}</h2>
                <span className="mt-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:hidden">Swipe to browse</span>
              </div>
-             <span className="hidden text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:block">Curated for tonight</span>
+              {seeAllHref ? (
+                <Link
+                  href={seeAllHref}
+                  className="inline-flex min-h-11 items-center gap-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary transition-colors hover:text-foreground"
+                  data-testid={`link-see-all-${title?.toLowerCase().replace(/\W+/g, "-")}`}
+                >
+                  {seeAllLabel} <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              ) : (
+                <span className="hidden text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:block">Curated for tonight</span>
+              )}
           </div>
         ) : null}
 
@@ -319,22 +331,38 @@ export function MovieRow({ title, movies, isLoading, className }: MovieRowProps)
                  profileId={activeProfile?.id}
                />
              ))}
-          {!isLoading && movies.length > 8 && !expanded && (
-            <button
-              type="button"
-              onClick={() => setExpanded(true)}
-                className="group flex-none aspect-[2/3] w-[8.35rem] rounded border border-primary/35 bg-primary/[0.06] flex flex-col items-center justify-center gap-3 text-primary transition-[background-color,color,border-color] hover:border-primary hover:bg-primary hover:text-primary-foreground sm:w-36 md:w-40"
-              aria-label={`See more movies in ${title}`}
-                data-testid={`button-see-more-${title?.toLowerCase().replace(/\W+/g, "-")}`}
-            >
-               <span className="w-11 h-11 rounded-full border border-current flex items-center justify-center transition-transform group-hover:translate-x-1">
-                <ChevronRight className="w-5 h-5" />
-              </span>
-              <span className="text-[10px] font-display font-bold uppercase tracking-widest text-center px-2">
-                See more
-              </span>
-            </button>
-          )}
+           {!isLoading && movies.length > 8 && !expanded && (
+             seeAllHref ? (
+               <Link
+                 href={seeAllHref}
+                 className="group flex-none aspect-[2/3] w-[8.35rem] rounded border border-primary/35 bg-primary/[0.06] flex flex-col items-center justify-center gap-3 text-primary transition-[background-color,color,border-color] hover:border-primary hover:bg-primary hover:text-primary-foreground sm:w-36 md:w-40"
+                 aria-label={`${seeAllLabel} ${title}`}
+                 data-testid={`link-see-more-${title?.toLowerCase().replace(/\W+/g, "-")}`}
+               >
+                 <span className="w-11 h-11 rounded-full border border-current flex items-center justify-center transition-transform group-hover:translate-x-1">
+                   <ChevronRight className="w-5 h-5" />
+                 </span>
+                 <span className="text-[10px] font-display font-bold uppercase tracking-widest text-center px-2">
+                   {seeAllLabel}
+                 </span>
+               </Link>
+             ) : (
+               <button
+                 type="button"
+                 onClick={() => setExpanded(true)}
+                 className="group flex-none aspect-[2/3] w-[8.35rem] rounded border border-primary/35 bg-primary/[0.06] flex flex-col items-center justify-center gap-3 text-primary transition-[background-color,color,border-color] hover:border-primary hover:bg-primary hover:text-primary-foreground sm:w-36 md:w-40"
+                 aria-label={`See more movies in ${title}`}
+                 data-testid={`button-see-more-${title?.toLowerCase().replace(/\W+/g, "-")}`}
+               >
+                 <span className="w-11 h-11 rounded-full border border-current flex items-center justify-center transition-transform group-hover:translate-x-1">
+                   <ChevronRight className="w-5 h-5" />
+                 </span>
+                 <span className="text-[10px] font-display font-bold uppercase tracking-widest text-center px-2">
+                   See more
+                 </span>
+               </button>
+             )
+           )}
         </div>
       </div>
     </section>

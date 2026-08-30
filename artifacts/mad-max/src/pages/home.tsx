@@ -153,6 +153,7 @@ function IndianRow({ language, name }: { language: string; name: string }) {
       movies={data ?? []}
       isLoading={isLoading}
       className="border-b border-border/30"
+      seeAllHref={`/browse?collection=indian${language ? `&language=${language}` : ""}`}
     />
   );
 }
@@ -179,6 +180,7 @@ function GenreRow({ id, name }: { id: number; name: string }) {
       movies={data ?? []}
       isLoading={isLoading}
       className="border-b border-border/30"
+      seeAllHref={`/genre/${id}`}
     />
   );
 }
@@ -476,8 +478,9 @@ export default function Home() {
             <MovieRow
               title="More from this orbit"
               movies={personalizedMovies}
-                isLoading={!belowFoldReady || loadingPersonalized || loadingGenreFallback}
+               isLoading={!belowFoldReady || loadingPersonalized || loadingGenreFallback}
               className="border-b border-border/30"
+               seeAllHref="/discover"
             />
              {belowFoldReady && <ActorRow />}
              {belowFoldReady && <MoodAgentRow />}
@@ -487,24 +490,28 @@ export default function Home() {
               movies={tvTopRated ?? []}
               isLoading={!belowFoldReady || loadingTvTopRated}
               className="border-b border-border/30"
+               seeAllHref="/browse?collection=tv-top-rated"
             />
             <MovieRow
               title="Next transmissions"
               movies={tvUpcoming ?? []}
               isLoading={!belowFoldReady || loadingTvUpcoming}
               className="border-b border-border/30"
+               seeAllHref="/browse?collection=tv-upcoming"
             />
             <MovieRow
               title="India, right now"
               movies={theaterMovies ?? []}
               isLoading={!belowFoldReady || loadingTheaters}
               className="border-b border-border/30"
+               seeAllHref="/browse?collection=in-theaters"
             />
             <MovieRow
               title="Coming into focus"
               movies={upcomingMovies ?? []}
               isLoading={!belowFoldReady || loadingUpcoming}
               className="border-b border-border/30"
+               seeAllHref="/browse?collection=upcoming"
             />
             <ClipSection clips={clips ?? []} isLoading={!belowFoldReady || loadingClips} />
           </>
@@ -514,7 +521,7 @@ export default function Home() {
           <>
             <DiscoveryHeading eyebrow="The shared atmosphere" title="What is moving through cinema" description="Not a chart. A live cross-section of the stories currently finding their way to people." centered />
             <StoryConstellation anchor={trendingMovies?.[0]} threads={uniqueMovies(trendingMovies?.slice(1), animeMovies, theaterMovies)} isLoading={loadingTrending} />
-            <MovieRow title="More from the live signal" movies={trendingMovies ?? []} isLoading={loadingTrending} className="border-b border-border/30" />
+            <MovieRow title="More from the live signal" movies={trendingMovies ?? []} isLoading={loadingTrending} className="border-b border-border/30" seeAllHref="/browse?collection=trending" />
             <MoodAgentRow heading="What people felt" />
           </>
         )}
@@ -536,10 +543,10 @@ export default function Home() {
         {activeTab === "watch-next" && (
           <>
             <DiscoveryHeading eyebrow="Plan your next screen" title="Your next screen" description="Movies, series, and cinema releases worth keeping an eye on." />
-            <MovieRow title="Series with momentum" movies={tvTopRated ?? []} isLoading={!belowFoldReady || loadingTvTopRated} className="border-b border-border/30" />
-            <MovieRow title="Next transmissions" movies={tvUpcoming ?? []} isLoading={!belowFoldReady || loadingTvUpcoming} className="border-b border-border/30" />
-            <MovieRow title="India, right now" movies={theaterMovies ?? []} isLoading={!belowFoldReady || loadingTheaters} className="border-b border-border/30" />
-            <MovieRow title="Coming into focus" movies={upcomingMovies ?? []} isLoading={!belowFoldReady || loadingUpcoming} className="border-b border-border/30" />
+            <MovieRow title="Series with momentum" movies={tvTopRated ?? []} isLoading={!belowFoldReady || loadingTvTopRated} className="border-b border-border/30" seeAllHref="/browse?collection=tv-top-rated" />
+            <MovieRow title="Next transmissions" movies={tvUpcoming ?? []} isLoading={!belowFoldReady || loadingTvUpcoming} className="border-b border-border/30" seeAllHref="/browse?collection=tv-upcoming" />
+            <MovieRow title="India, right now" movies={theaterMovies ?? []} isLoading={!belowFoldReady || loadingTheaters} className="border-b border-border/30" seeAllHref="/browse?collection=in-theaters" />
+            <MovieRow title="Coming into focus" movies={upcomingMovies ?? []} isLoading={!belowFoldReady || loadingUpcoming} className="border-b border-border/30" seeAllHref="/browse?collection=upcoming" />
             <ClipSection clips={clips ?? []} isLoading={!belowFoldReady || loadingClips} />
           </>
         )}

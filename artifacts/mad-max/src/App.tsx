@@ -40,6 +40,7 @@ const FooterPage = lazy(() => import('@/pages/footer-page'));
 const Pricing = lazy(() => import('@/pages/pricing'));
 const FreeMovies = lazy(() => import('@/pages/free-movies'));
 const FreeClassics = lazy(() => import('@/pages/free-classics'));
+const Browse = lazy(() => import('@/pages/browse'));
 const MovieStory = lazy(() => import('@/pages/movie-story'));
 const Friends = lazy(() => import('@/pages/friends'));
 const Profiles = lazy(() => import('@/pages/profiles'));
@@ -468,6 +469,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/pricing" component={Pricing} />
           <Route path="/free-movies" component={FreeMovies} />
           <Route path="/free-classics" component={FreeClassics} />
+          <Route path="/browse" component={Browse} />
           <Route path="/chat" component={Chat} />
           <Route path="/genres" component={Genres} />
           <Route path="/genre/:id" component={GenrePage} />

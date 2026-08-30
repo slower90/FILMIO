@@ -1,6 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { Film, Play, RotateCcw, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import videojs from "video.js";
+import "video.js/dist/video-js.css";
+import { Film, Loader2, Play, RotateCcw, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import type { FreeClassic, FreeClassicSource, FreeClassicsResponse } from "@workspace/api-client-react";
 import { apiFetch } from "@/lib/api-url";
@@ -15,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 
 type SourceFilter = "all" | FreeClassicSource;
+const PAGE_SIZE = 20;
 
 const SOURCE_FILTERS: { value: SourceFilter; label: string }[] = [
   { value: "all", label: "All sources" },
@@ -23,16 +26,92 @@ const SOURCE_FILTERS: { value: SourceFilter; label: string }[] = [
   { value: "wikimedia", label: "Wikimedia Commons" },
 ];
 
-async function fetchFreeClassics(): Promise<FreeClassicsResponse> {
-  const response = await apiFetch("/api/free-classics");
+async function fetchFreeClassics(page: number, source: SourceFilter): Promise<FreeClassicsResponse> {
+  const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+  if (source !== "all") params.set("source", source);
+  const response = await apiFetch(`/api/free-classics?${params.toString()}`);
   if (!response.ok) throw new Error("Unable to load Free Classics");
   const data = (await response.json()) as Partial<FreeClassicsResponse>;
-  return { items: Array.isArray(data.items) ? data.items : [], fetchedAt: data.fetchedAt ?? "" };
+  return {
+    items: Array.isArray(data.items) ? data.items : [],
+    fetchedAt: data.fetchedAt ?? "",
+    page: data.page ?? page,
+    totalPages: data.totalPages ?? page,
+    totalResults: data.totalResults ?? data.items?.length ?? 0,
+  };
+}
+
+function sourceMimeType(item: FreeClassic): string {
+  const source = item.mediaUrl ?? item.embedUrl;
+  if (/\.webm(?:[?#]|$)/i.test(source)) return "video/webm";
+  if (/\.ogv(?:[?#]|$)/i.test(source)) return "video/ogg";
+  return "video/mp4";
+}
+
+function FreeClassicsVideoPlayer({ item }: { item: FreeClassic }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playerRef = useRef<ReturnType<typeof videojs> | null>(null);
+
+  useEffect(() => {
+    if (!videoRef.current || !item.mediaUrl) return;
+    const player = videojs(videoRef.current, {
+      controls: true,
+      responsive: true,
+      fluid: true,
+      preload: "metadata",
+      poster: item.posterUrl,
+      playbackRates: [0.5, 1, 1.25, 1.5, 2],
+      sources: [{ src: item.mediaUrl, type: sourceMimeType(item) }],
+      controlBar: {
+        children: [
+          "playToggle",
+          "progressControl",
+          "volumePanel",
+          "currentTimeDisplay",
+          "timeDivider",
+          "durationDisplay",
+          "playbackRateMenuButton",
+          "fullscreenToggle",
+        ],
+      },
+    });
+    playerRef.current = player;
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.dispose();
+        playerRef.current = null;
+      }
+    };
+  }, [item]);
+
+  if (!item.mediaUrl) {
+    return (
+      <iframe
+        src={item.embedUrl}
+        title={`Play ${item.title}`}
+        className="h-full w-full"
+        allow="fullscreen; autoplay"
+        allowFullScreen
+        data-testid={`iframe-free-classic-${item.source}-${item.identifier}`}
+      />
+    );
+  }
+
+  return (
+    <div className="filmio-video-player h-full w-full" data-vjs-player>
+      <video
+        ref={videoRef}
+        className="video-js vjs-big-play-centered h-full w-full"
+        playsInline
+        aria-label={`Play ${item.title}`}
+        data-testid={`video-free-classic-${item.source}-${item.identifier}`}
+      />
+    </div>
+  );
 }
 
 export function FreeClassicsCard({ item }: { item: FreeClassic }) {
   const sourceName = item.sourceLabel || SOURCE_FILTERS.find((filter) => filter.value === item.source)?.label || "Free source";
-  const mediaTitle = `Watch ${item.title} on ${sourceName}`;
 
   return (
     <Dialog>
@@ -81,23 +160,10 @@ export function FreeClassicsCard({ item }: { item: FreeClassic }) {
           </DialogDescription>
         </DialogHeader>
         <div className="aspect-video w-full overflow-hidden border border-border bg-black">
-          {item.playback === "video" ? (
-            <video
-              src={item.embedUrl}
-              poster={item.posterUrl}
-              controls
-              playsInline
-              preload="metadata"
-              className="h-full w-full object-contain"
-              aria-label={mediaTitle}
-              data-testid={`video-free-classic-${item.source}-${item.identifier}`}
-            >
-              Your browser does not support this Wikimedia Commons video.
-            </video>
-          ) : (
+          {item.playback === "video" ? <FreeClassicsVideoPlayer item={item} /> : (
             <iframe
               src={item.embedUrl}
-              title={mediaTitle}
+              title={`Watch ${item.title} on ${sourceName}`}
               className="h-full w-full"
               allow="fullscreen; autoplay"
               allowFullScreen
@@ -128,14 +194,22 @@ export function FreeClassicsCard({ item }: { item: FreeClassic }) {
 
 export function FreeClassicsSection({ fullPage = false }: { fullPage?: boolean }) {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
-  const query = useQuery<FreeClassicsResponse>({
-    queryKey: ["free-classics"],
-    queryFn: fetchFreeClassics,
+  const query = useInfiniteQuery<FreeClassicsResponse>({
+    queryKey: ["free-classics", sourceFilter],
+    queryFn: ({ pageParam }) => fetchFreeClassics(Number(pageParam), sourceFilter),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
     staleTime: 30 * 60 * 1000,
   });
-  const allItems = query.data?.items ?? [];
-  const filteredItems = sourceFilter === "all" ? allItems : allItems.filter((item) => item.source === sourceFilter);
-  const items = fullPage ? filteredItems : filteredItems.slice(0, 10);
+  const allItems = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const seen = new Set<string>();
+  const uniqueItems = allItems.filter((item) => {
+    const key = `${item.source}:${item.identifier}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const items = fullPage ? uniqueItems : uniqueItems.slice(0, 10);
 
   return (
     <section className={fullPage ? "border-t border-border/30 pb-20" : "border-y border-border/30 py-10"} data-testid="free-classics-section">
@@ -173,10 +247,27 @@ export function FreeClassicsSection({ fullPage = false }: { fullPage?: boolean }
         ) : items.length === 0 ? (
           <p className="border border-dashed border-border p-6 text-sm text-muted-foreground" data-testid="free-classics-empty">{sourceFilter === "all" ? "No Free Classics are available right now." : "No films are available from this source right now."}</p>
         ) : (
-          <div className={fullPage ? "grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 lg:grid-cols-6" : "flex gap-3 overflow-x-auto pb-4 [scrollbar-width:none]"} aria-label="Free Classics films" data-testid="free-classics-grid">
+           <div className={fullPage ? "grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 lg:grid-cols-6" : "flex gap-3 overflow-x-auto pb-4 [scrollbar-width:none]"} aria-label="Free Classics films" data-testid="free-classics-grid">
             {items.map((item) => <FreeClassicsCard key={`${item.source}:${item.identifier}`} item={item} />)}
           </div>
         )}
+         {fullPage && query.hasNextPage && (
+           <div className="mt-10 flex justify-center">
+             <button
+               type="button"
+               onClick={() => query.fetchNextPage()}
+               disabled={query.isFetchingNextPage}
+               className="inline-flex min-h-11 items-center gap-2 border border-primary/50 px-5 text-xs font-bold uppercase tracking-wider text-primary transition hover:border-primary hover:bg-primary/10 disabled:cursor-wait disabled:opacity-60"
+               data-testid="button-load-more-free-classics"
+             >
+               {query.isFetchingNextPage && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+               {query.isFetchingNextPage ? "Loading screening room" : "Load more classics"}
+             </button>
+           </div>
+         )}
+         {fullPage && !query.hasNextPage && items.length > 0 && (
+           <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">End of the available screening room</p>
+         )}
       </div>
     </section>
   );
