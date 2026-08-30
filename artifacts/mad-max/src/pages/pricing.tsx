@@ -32,7 +32,7 @@ function FeatureMark({ enabled }: { enabled: boolean }) {
     </span>
   ) : (
     <span
-      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-neutral-600"
+      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground"
       aria-label="Not included"
     >
       <X className="h-4 w-4" aria-hidden="true" />
@@ -42,11 +42,11 @@ function FeatureMark({ enabled }: { enabled: boolean }) {
 
 export default function Pricing() {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
       <main>
-        <section className="relative overflow-hidden border-b border-white/10 px-5 pb-16 pt-32 md:pb-20 md:pt-40">
+        <section className="relative overflow-hidden border-b border-border/70 px-5 pb-16 pt-32 md:pb-20 md:pt-40">
           <div className="pointer-events-none absolute inset-0 opacity-40">
             <div className="absolute left-1/2 top-0 h-[32rem] w-[46rem] -translate-x-1/2 rounded-full bg-primary/20 blur-[120px]" />
             <div className="absolute -right-40 bottom-0 h-72 w-72 rounded-full bg-primary/10 blur-[100px]" />
@@ -57,10 +57,10 @@ export default function Pricing() {
               <Crown className="h-3.5 w-3.5" aria-hidden="true" />
               Professional access
             </div>
-            <h1 className="font-display text-5xl font-bold uppercase tracking-tight text-white text-glow md:text-7xl">
+            <h1 className="font-display text-5xl font-bold uppercase tracking-tight text-foreground text-glow md:text-7xl">
               Choose your <span className="text-primary">cut</span>
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-neutral-400 md:text-lg">
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
               Go from discovering great stories to building your place in the
               entertainment community.
             </p>
@@ -69,15 +69,15 @@ export default function Pricing() {
 
         <section className="px-5 py-12 md:py-16">
           <div className="mx-auto grid max-w-5xl gap-5 lg:grid-cols-2 lg:items-stretch">
-            <article className="flex flex-col rounded-2xl border border-white/10 bg-[#101014] p-6 md:p-8">
+            <article className="flex flex-col rounded-2xl border border-border bg-card p-6 md:p-8">
               <div className="mb-8">
-                <p className="text-xs font-bold uppercase tracking-[0.25em] text-neutral-500">
+                <p className="text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground">
                   For every fan
                 </p>
                 <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wider">
                   Free
                 </h2>
-                <p className="mt-3 text-sm leading-6 text-neutral-400">
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
                   The essential FILMIO experience for finding your next
                   obsession.
                 </p>
@@ -85,22 +85,22 @@ export default function Pricing() {
 
               <div className="mb-8 flex items-end gap-2">
                 <span className="font-display text-5xl font-bold">₹0</span>
-                <span className="mb-2 text-sm text-neutral-500">forever</span>
+                <span className="mb-2 text-sm text-muted-foreground">forever</span>
               </div>
 
               <Link
                 href="/"
-                className="mb-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-white/15 px-5 py-3 text-xs font-bold uppercase tracking-[0.15em] text-white transition hover:border-primary hover:text-primary"
+                className="mb-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-border px-5 py-3 text-xs font-bold uppercase tracking-[0.15em] text-foreground transition hover:border-primary hover:text-primary"
               >
                 Explore for free
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
 
-              <div className="mt-auto space-y-4 border-t border-white/10 pt-6">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">
+              <div className="mt-auto space-y-4 border-t border-border pt-6">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                   Includes
                 </p>
-                <ul className="space-y-4 text-sm text-neutral-300">
+                <ul className="space-y-4 text-sm text-muted-foreground">
                   <li className="flex items-start gap-3">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
                     Core browsing and search
@@ -129,7 +129,7 @@ export default function Pricing() {
                   Pro
                   <Clapperboard className="h-6 w-6 text-primary" aria-hidden="true" />
                 </h2>
-                <p className="mt-3 text-sm leading-6 text-neutral-300">
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
                   More reach, deeper connections, and a sharper view of your
                   professional journey.
                 </p>
@@ -137,7 +137,7 @@ export default function Pricing() {
 
               <div className="mb-8 flex items-end gap-2">
                 <span className="font-display text-5xl font-bold text-primary">₹199</span>
-                <span className="mb-2 text-sm text-neutral-400">/ month</span>
+                <span className="mb-2 text-sm text-muted-foreground">/ month</span>
               </div>
 
               <Link
@@ -148,11 +148,11 @@ export default function Pricing() {
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
 
-              <div className="mt-auto space-y-4 border-t border-white/15 pt-6">
+              <div className="mt-auto space-y-4 border-t border-border/80 pt-6">
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
                   Everything in Free, plus
                 </p>
-                <ul className="space-y-4 text-sm text-neutral-200">
+                <ul className="space-y-4 text-sm text-foreground">
                   {features
                     .filter((feature) => !feature.free && feature.pro)
                     .map((feature) => (
@@ -168,8 +168,8 @@ export default function Pricing() {
         </section>
 
         <section className="px-5 pb-16 md:pb-24">
-          <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d11]">
-            <div className="border-b border-white/10 px-5 py-6 md:px-8">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="border-b border-border px-5 py-6 md:px-8">
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">
                 Compare plans
               </p>
@@ -179,7 +179,7 @@ export default function Pricing() {
             </div>
             <div className="overflow-x-auto">
               <div className="min-w-[36rem]">
-                <div className="grid grid-cols-[1fr_7rem_7rem] border-b border-white/10 px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-500 md:grid-cols-[1fr_9rem_9rem] md:px-8">
+                <div className="grid grid-cols-[1fr_7rem_7rem] border-b border-border px-5 py-4 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground md:grid-cols-[1fr_9rem_9rem] md:px-8">
                   <span>Feature</span>
                   <span className="text-center">Free</span>
                   <span className="text-center text-primary">Pro</span>
@@ -187,9 +187,9 @@ export default function Pricing() {
                 {features.map((feature) => (
                   <div
                     key={feature.label}
-                    className="grid grid-cols-[1fr_7rem_7rem] items-center border-b border-white/5 px-5 py-4 text-sm last:border-0 md:grid-cols-[1fr_9rem_9rem] md:px-8"
+                    className="grid grid-cols-[1fr_7rem_7rem] items-center border-b border-border/50 px-5 py-4 text-sm last:border-0 md:grid-cols-[1fr_9rem_9rem] md:px-8"
                   >
-                    <span className="pr-4 text-neutral-300">{feature.label}</span>
+                    <span className="pr-4 text-muted-foreground">{feature.label}</span>
                     <span className="flex justify-center">
                       <FeatureMark enabled={feature.free} />
                     </span>
@@ -205,13 +205,13 @@ export default function Pricing() {
 
         <section id="launch-note" className="px-5 pb-20">
           <div className="mx-auto flex max-w-5xl flex-col gap-4 rounded-xl border border-primary/40 bg-primary/10 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-8">
-            <p className="text-sm font-medium leading-6 text-[#ffd3d9]">
+            <p className="text-sm font-medium leading-6 text-foreground">
               Everything is free right now — launch phase, no charges yet, go
               and explore all features.
             </p>
             <Link
               href="/"
-              className="inline-flex shrink-0 items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary hover:text-white"
+              className="inline-flex shrink-0 items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary hover:text-foreground"
             >
               Explore FILMIO
               <ArrowRight className="h-4 w-4" aria-hidden="true" />

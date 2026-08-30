@@ -64,11 +64,11 @@ function RankedAnimeCard({ anime, rank }: { anime: RankedAnime; rank: number }) 
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground"><Tv className="h-8 w-8" /></div>
         )}
-        <div className="absolute left-2 top-2 flex h-8 min-w-8 items-center justify-center rounded bg-black/80 px-2 font-display text-lg font-bold text-primary">
+        <div className="absolute left-2 top-2 flex h-8 min-w-8 items-center justify-center rounded bg-[hsl(var(--ink)/0.8)] px-2 font-display text-lg font-bold text-primary">
           {String(rank).padStart(2, "0")}
         </div>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent px-3 pb-3 pt-10">
-          <p className="line-clamp-2 text-sm font-bold text-white">{anime.title}</p>
+          <p className="line-clamp-2 text-sm font-bold text-[hsl(var(--editorial-cream))]">{anime.title}</p>
         </div>
       </div>
     </a>

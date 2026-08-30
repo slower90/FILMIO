@@ -93,7 +93,7 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
           if (track) gsap.to(track, { scrollLeft: track.scrollLeft - 520, duration: 0.55, ease: "power2.out", overwrite: "auto" });
         }}
         aria-label={`Scroll ${label} left`}
-        className="absolute left-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-white shadow-xl backdrop-blur transition hover:border-primary hover:bg-primary hover:text-primary-foreground md:flex"
+        className="absolute left-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-xl backdrop-blur transition hover:border-primary hover:bg-primary hover:text-primary-foreground md:flex"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
@@ -104,7 +104,7 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
           if (track) gsap.to(track, { scrollLeft: track.scrollLeft + 520, duration: 0.55, ease: "power2.out", overwrite: "auto" });
         }}
         aria-label={`Scroll ${label} right`}
-        className="absolute right-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-white shadow-xl backdrop-blur transition hover:border-primary hover:bg-primary hover:text-primary-foreground md:flex"
+        className="absolute right-1 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-xl backdrop-blur transition hover:border-primary hover:bg-primary hover:text-primary-foreground md:flex"
       >
         <ChevronRight className="h-5 w-5" />
       </button>
@@ -144,7 +144,7 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
         <div className="mb-4 flex items-end justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">Meet the stars</p>
-            <h2 className="mt-1 text-2xl font-display font-bold uppercase tracking-wider text-white md:text-3xl">Top 20 Actors</h2>
+            <h2 className="mt-1 text-2xl font-display font-bold uppercase tracking-wider text-foreground md:text-3xl">Top 20 Actors</h2>
           </div>
           <Link href="/actors" className="hidden items-center gap-1 text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 sm:flex">
             See more actors <ChevronRight className="h-4 w-4" />
@@ -156,7 +156,7 @@ export function ActorRow({ showIndian = true }: { showIndian?: boolean }) {
           <>
             <div className="mb-4 mt-8">
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary">From India</p>
-              <h3 className="mt-1 text-xl font-display font-bold uppercase tracking-wider text-white">Top Indian Actors</h3>
+              <h3 className="mt-1 text-xl font-display font-bold uppercase tracking-wider text-foreground">Top Indian Actors</h3>
             </div>
             {actorCarousel(indianActors, loadingIndianActors, indianScrollRef, "Top Indian actors", true)}
           </>

@@ -127,8 +127,55 @@
   --friends-slate: 220 20% 18%;
 }
 
+.light {
+  --background: 40 20% 98%;
+  --foreground: 224 25% 11%;
+  --border: 220 15% 84%;
+  --input: 220 15% 91%;
+  --ring: 38 82% 40%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 224 25% 11%;
+  --card-border: 220 15% 86%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 25% 11%;
+  --popover-border: 220 15% 82%;
+
+  --primary: 38 82% 42%;
+  --primary-foreground: 40 20% 98%;
+
+  --secondary: 220 15% 93%;
+  --secondary-foreground: 224 25% 16%;
+
+  --muted: 220 15% 93%;
+  --muted-foreground: 220 14% 38%;
+
+  --accent: 11 57% 43%;
+  --accent-foreground: 40 20% 98%;
+
+  --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 100%;
+
+  --ink: 224 25% 11%;
+  --copper: 15 67% 42%;
+  --surface-raised: 40 15% 96%;
+  --surface-deep: 40 18% 94%;
+  --line-soft: 220 15% 88%;
+  --hero-scrim: 224 25% 11%;
+  --editorial-cream: 224 25% 11%;
+  --projector: 38 82% 42%;
+  --screen-blue: 203 42% 45%;
+  --friends-coral: 12 67% 48%;
+  --friends-slate: 220 15% 93%;
+}
+
 html {
   color-scheme: dark;
+}
+
+.light {
+  color-scheme: light;
 }
 
 @layer base {
@@ -187,7 +234,7 @@ html {
   transform: perspective(720px) rotateX(7deg) translateY(-4px);
   border-color: hsl(var(--primary)) !important;
   box-shadow:
-    0 10px 0 #08080c,
+    0 10px 0 hsl(var(--surface-deep)),
     0 18px 30px hsl(var(--primary) / 0.22) !important;
 }
 

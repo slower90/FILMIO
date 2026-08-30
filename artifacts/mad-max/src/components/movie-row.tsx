@@ -91,7 +91,7 @@ function MovieCard({
         <span className="text-[9px] font-bold uppercase leading-none tracking-[0.08em] text-primary">
           FILMIO
         </span>
-        <span className="text-[10px] font-bold leading-none text-white">
+        <span className="text-[10px] font-bold leading-none text-[hsl(var(--editorial-cream))]">
           {getPrismDisplayRating(movie.voteAverage, rating).toFixed(1)}
         </span>
       </div>

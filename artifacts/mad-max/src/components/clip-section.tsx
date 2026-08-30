@@ -203,8 +203,8 @@ export function ClipSection({ clips, isLoading }: { clips: ClipItem[]; isLoading
                   </span>
                   <span className="absolute inset-x-3 bottom-3">
                     <span className="block text-[10px] uppercase tracking-wider text-primary font-bold">{clip.type}</span>
-                    <span className="block text-xs font-bold text-white line-clamp-1">{clip.title}</span>
-                    <span className="block text-[10px] text-white/60 mt-1">{clip.movieTitle}</span>
+                  <span className="block line-clamp-1 text-xs font-bold text-foreground">{clip.title}</span>
+                  <span className="mt-1 block text-[10px] text-muted-foreground">{clip.movieTitle}</span>
                   </span>
                 </button>
               ))}
@@ -214,7 +214,7 @@ export function ClipSection({ clips, isLoading }: { clips: ClipItem[]; isLoading
       </section>
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-4xl overflow-hidden border-border bg-[#0b0b10] p-0">
+        <DialogContent className="max-w-4xl overflow-hidden border-border bg-background p-0">
           <DialogTitle className="sr-only">{selected?.title ?? "Video clip"}</DialogTitle>
           {selected && (adState === "loading" || adState === "playing") ? (
             <div className="relative flex aspect-video flex-col items-center justify-center gap-4 overflow-hidden px-6 text-center">

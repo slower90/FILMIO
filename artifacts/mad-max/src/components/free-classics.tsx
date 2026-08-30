@@ -159,7 +159,7 @@ export function FreeClassicsCard({ item }: { item: FreeClassic }) {
             {item.year ? `${item.year} · ` : ""}{item.creator ? `${item.creator} · ` : ""}{item.licenseLabel} · {sourceName}
           </DialogDescription>
         </DialogHeader>
-        <div className="aspect-video w-full overflow-hidden border border-border bg-black">
+        <div className="aspect-video w-full overflow-hidden border border-border bg-[hsl(var(--surface-deep))]">
           {item.playback === "video" ? <FreeClassicsVideoPlayer item={item} /> : (
             <iframe
               src={item.embedUrl}

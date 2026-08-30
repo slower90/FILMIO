@@ -18,7 +18,10 @@ import {
   Radar,
   TrendingUp,
   ChevronRight,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { recordMoodSignal } from "@/lib/mood-agent";
@@ -354,6 +357,7 @@ function SideDrawer({ open, onClose, unreadCount }: DrawerProps) {
 export function Navbar() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { signOut } = useClerk();
+  const { resolvedTheme, setTheme } = useTheme();
   const [location] = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -370,6 +374,8 @@ export function Navbar() {
     },
   });
   const unreadSignalCount = signals?.unreadCount ?? 0;
+  const isLight = resolvedTheme === "light";
+  const themeLabel = isLight ? "Switch to dark theme" : "Switch to light theme";
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 28);
@@ -470,6 +476,17 @@ export function Navbar() {
 
           {/* Right: auth */}
           <div className="ml-auto flex flex-none items-center gap-1.5 sm:gap-3 lg:ml-5">
+            <button
+              type="button"
+              onClick={() => setTheme(isLight ? "dark" : "light")}
+              className="flex h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+              aria-label={themeLabel}
+              title={themeLabel}
+              aria-pressed={isLight}
+              data-testid="button-theme-toggle"
+            >
+              {isLight ? <Moon className="h-4 w-4" aria-hidden="true" /> : <Sun className="h-4 w-4" aria-hidden="true" />}
+            </button>
             <Link
               href="/watchlist"
               className={cn(
