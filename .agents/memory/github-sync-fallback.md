@@ -44,3 +44,9 @@ GraphQL branch and blob reads can remain available when the GitHub connector ret
 **Why:** A delayed parity check could verify the remote head and 15 of 16 feature blobs through GraphQL, but guarded GraphQL and Git Data writes were rejected before GitHub accepted them.
 
 **How to apply:** Use GraphQL for the final head/blob audit, re-read the head after a short delay, report every missing or stale path with its remote SHA, and stop rather than falling back to an unguarded push.
+
+The connector's GraphQL `GitObject` parity query exposes `oid`, but not `byteSize`; calculate the local Git blob SHA and compare OIDs instead of requesting unsupported size fields.
+
+**Why:** Requesting `byteSize` on the generic `GitObject` interface makes the entire multi-file audit fail before any blob results are returned.
+
+**How to apply:** Query `object(expression: ...) { oid }` for changed paths, then use the local blob hash and a separate filesystem size check when byte counts are needed.
