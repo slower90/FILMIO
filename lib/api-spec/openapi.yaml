@@ -1,4 +1,1049 @@
- schema:
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: FILMIO - Movie Review & Discovery Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: movies
+    description: Movie search and details via TMDB
+  - name: reviews
+    description: User reviews for movies
+  - name: ratings
+    description: Movie ratings
+  - name: watchlist
+    description: User watchlist management
+  - name: users
+    description: User profiles and social follows
+  - name: feed
+    description: Social activity feed
+  - name: recommendations
+    description: Personalized movie recommendations
+  - name: professionals
+    description: Industry professional profiles
+  - name: chat
+    description: Direct messaging between users
+  - name: free-classics
+    description: Legal free-film discovery and playback from Internet Archive, YouTube, and Wikimedia Commons
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /free-classics:
+    get:
+      operationId: getFreeClassics
+      tags: [free-classics]
+      summary: List curated public-domain films
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [archive, youtube, wikimedia]
+      responses:
+        "200":
+          description: Public-domain films from Internet Archive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreeClassicsResponse"
+        "502":
+          description: Internet Archive is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── MOVIES ──────────────────────────────────────────────────────────────────
+  /movies/search:
+    get:
+      operationId: searchMovies
+      tags: [movies]
+      summary: Search movies
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieSearchResult"
+
+  /movies/trending:
+    get:
+      operationId: getTrendingMovies
+      tags: [movies]
+      summary: Trending movies this week
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Trending movies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoviePagedResult"
+
+  /movies/catalog:
+    get:
+      operationId: getCatalogMovies
+      tags: [movies]
+      summary: Get a paginated movie collection
+      parameters:
+        - name: collection
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [trending, popular, top-rated, tv-popular, tv-top-rated, tv-upcoming, upcoming, in-theaters, free, indian]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 20
+        - name: language
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated movie collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoviePagedResult"
+        "400":
+          description: Invalid collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /movies/genres:
+    get:
+      operationId: getMovieGenres
+      tags: [movies]
+      summary: List all movie genres
+      responses:
+        "200":
+          description: Genre list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenreListResult"
+
+  /movies/by-genre:
+    get:
+      operationId: getMoviesByGenre
+      tags: [movies]
+      summary: Get movies by genre
+      parameters:
+        - name: genreId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Movies in genre
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoviePagedResult"
+
+  /movies/{movieId}:
+    get:
+      operationId: getMovieDetails
+      tags: [movies]
+      summary: Movie details
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Movie detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /movies/{movieId}/credits:
+    get:
+      operationId: getMovieCredits
+      tags: [movies]
+      summary: Cast and crew for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieCredits"
+
+  /movies/{movieId}/watch-providers:
+    get:
+      operationId: getMovieWatchProviders
+      tags: [movies]
+      summary: Streaming platforms for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Watch providers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchProvidersResult"
+
+  /movies/{movieId}/videos:
+    get:
+      operationId: getMovieVideos
+      tags: [movies]
+      summary: Trailers and clips for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Videos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieVideosResult"
+
+  /movies/{movieId}/stats:
+    get:
+      operationId: getMovieStats
+      tags: [movies]
+      summary: Aggregated review stats for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Movie stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieStats"
+
+  /movies/{movieId}/story:
+    get:
+      operationId: getMovieStory
+      tags: [movies]
+      summary: Source-backed FILMIO editorial story
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [movie, tv]
+            default: movie
+      responses:
+        "200":
+          description: Editorial story
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieStory"
+        "404":
+          description: Movie not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Story temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── REVIEWS ─────────────────────────────────────────────────────────────────
+  /reviews:
+    get:
+      operationId: listReviews
+      tags: [reviews]
+      summary: List reviews (filter by movieId or userId)
+      parameters:
+        - name: movieId
+          in: query
+          schema:
+            type: integer
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [critic, audience, all]
+            default: all
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Reviews list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+    post:
+      operationId: createReview
+      tags: [reviews]
+      summary: Create a review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reviews/trending:
+    get:
+      operationId: getTrendingReviews
+      tags: [reviews]
+      summary: Most liked reviews recently
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Trending reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+
+  /reviews/{id}:
+    get:
+      operationId: getReview
+      tags: [reviews]
+      summary: Get a single review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateReview
+      tags: [reviews]
+      summary: Update a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteReview
+      tags: [reviews]
+      summary: Delete a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /reviews/{id}/like:
+    post:
+      operationId: likeReview
+      tags: [reviews]
+      summary: Toggle like on a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Like toggled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LikeResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reviews/{id}/comments:
+    get:
+      operationId: listComments
+      tags: [reviews]
+      summary: List comments on a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: createComment
+      tags: [reviews]
+      summary: Add a comment on a review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── RATINGS ─────────────────────────────────────────────────────────────────
+  /ratings:
+    post:
+      operationId: upsertRating
+      tags: [ratings]
+      summary: Create or update a movie rating
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RatingInput"
+      responses:
+        "200":
+          description: Rating saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rating"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ratings/movie/{movieId}:
+    get:
+      operationId: getMovieRating
+      tags: [ratings]
+      summary: Get aggregated rating for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Aggregated rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MovieRatingAggregate"
+
+  /ratings/my:
+    get:
+      operationId: listMyRatings
+      tags: [ratings]
+      summary: List the current profile's movie ratings
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "200":
+          description: Current profile ratings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rating"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ratings/my/{movieId}:
+    get:
+      operationId: getMyMovieRating
+      tags: [ratings]
+      summary: Get current user's rating for a movie
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "200":
+          description: User's rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rating"
+        "404":
+          description: Not rated yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── SIGNALS ──────────────────────────────────────────────────────────────────
+  /signals:
+    get:
+      operationId: listSignals
+      tags: [signals]
+      summary: List personal FILMIO signals
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+        - name: unreadOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Personal signals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignalsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Viewing profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /signals/{id}/read:
+    patch:
+      operationId: markSignalRead
+      tags: [signals]
+      summary: Mark a signal as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Updated signal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Signal"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Signal not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /signals/read-all:
+    post:
+      operationId: markAllSignalsRead
+      tags: [signals]
+      summary: Mark all personal signals as read
+      responses:
+        "204":
+          description: Signals marked as read
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── WATCHLIST ────────────────────────────────────────────────────────────────
+  /watchlist:
+    get:
+      operationId: getWatchlist
+      tags: [watchlist]
+      summary: Get current user's watchlist
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "200":
+          description: Watchlist
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WatchlistEntry"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: addToWatchlist
+      tags: [watchlist]
+      summary: Add a movie to watchlist
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchlistInput"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistEntry"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /watchlist/{movieId}:
+    delete:
+      operationId: removeFromWatchlist
+      tags: [watchlist]
+      summary: Remove a movie from watchlist
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "204":
+          description: Removed
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateWatchlistEntry
+      tags: [watchlist]
+      summary: Update watchlist entry status
+      parameters:
+        - name: movieId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchlistUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchlistEntry"
+
+  # ─── USERS ────────────────────────────────────────────────────────────────────
+  /users/me:
+    get:
+      operationId: getMyProfile
+      tags: [users]
+      summary: Get current user's profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateMyProfile
+      tags: [users]
+      summary: Update current user's profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/me/viewing-history:
+    get:
+      operationId: getViewingHistory
+      tags: [users]
+      summary: Get the current profile's viewing history
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "200":
+          description: Viewing history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ViewingHistoryEntry"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: mergeViewingHistory
+      tags: [users]
+      summary: Merge movies into the current profile's viewing history
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ViewingHistoryInput"
+      responses:
+        "200":
+          description: Updated viewing history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ViewingHistoryEntry"
+        "400":
+          description: Invalid history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: clearViewingHistory
+      tags: [users]
+      summary: Clear the current profile's viewing history
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "204":
+          description: History cleared
+        "401":
+          description: Unauthorized
+
+  /profiles:
+    get:
+      operationId: listProfiles
+      tags: [users]
+      summary: List viewing profiles for the current account
+      responses:
+        "200":
+          description: Viewing profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ViewingProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createProfile
+      tags: [users]
+      summary: Create a viewing profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ViewingProfileInput"
+      responses:
+        "201":
+          description: Created profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ViewingProfile"
+        "400":
+          description: Invalid profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Profile limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /profiles/{profileId}:
+    patch:
+      operationId: updateProfile
+      tags: [users]
+      summary: Update a viewing profile
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ViewingProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ViewingProfile"
+        "400":
+          description: Invalid profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteProfile
+      tags: [users]
+      summary: Delete a non-default viewing profile
+      parameters:
+        - $ref: "#/components/parameters/ProfileId"
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: The default profile cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /profiles/{profileId}/select:
