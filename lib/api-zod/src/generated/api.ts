@@ -19,6 +19,19 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List curated public-domain films
  */
+export const getFreeClassicsQueryPageDefault = 1;
+
+export const getFreeClassicsQueryLimitDefault = 20;
+export const getFreeClassicsQueryLimitMax = 50;
+
+
+
+export const GetFreeClassicsQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).default(getFreeClassicsQueryPageDefault),
+  "limit": zod.coerce.number().int().min(1).max(getFreeClassicsQueryLimitMax).default(getFreeClassicsQueryLimitDefault),
+  "source": zod.enum(['archive', 'youtube', 'wikimedia']).optional()
+})
+
 export const GetFreeClassicsResponse = zod.object({
   "items": zod.array(zod.object({
   "identifier": zod.string(),
@@ -28,13 +41,17 @@ export const GetFreeClassicsResponse = zod.object({
   "creator": zod.string().nullable(),
   "posterUrl": zod.string().url(),
   "embedUrl": zod.string().url(),
+  "mediaUrl": zod.string().url().nullable(),
   "source": zod.enum(['archive', 'youtube', 'wikimedia']),
   "sourceLabel": zod.string(),
   "sourceUrl": zod.string().url(),
   "playback": zod.enum(['iframe', 'video']),
   "licenseLabel": zod.string()
 })),
-  "fetchedAt": zod.coerce.date()
+  "fetchedAt": zod.coerce.date(),
+  "page": zod.number().int(),
+  "totalPages": zod.number().int(),
+  "totalResults": zod.number().int()
 })
 
 
@@ -75,6 +92,40 @@ export const GetTrendingMoviesQueryParams = zod.object({
 })
 
 export const GetTrendingMoviesResponse = zod.object({
+  "results": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "posterPath": zod.string().nullish(),
+  "backdropPath": zod.string().nullish(),
+  "overview": zod.string(),
+  "releaseDate": zod.string(),
+  "voteAverage": zod.number(),
+  "genreIds": zod.array(zod.number().int())
+})),
+  "page": zod.number().int(),
+  "totalPages": zod.number().int(),
+  "totalResults": zod.number().int()
+})
+
+
+/**
+ * @summary Get a paginated movie collection
+ */
+export const getCatalogMoviesQueryPageDefault = 1;
+
+export const getCatalogMoviesQueryLimitDefault = 20;
+export const getCatalogMoviesQueryLimitMax = 20;
+
+
+
+export const GetCatalogMoviesQueryParams = zod.object({
+  "collection": zod.enum(['trending', 'popular', 'top-rated', 'tv-popular', 'tv-top-rated', 'tv-upcoming', 'upcoming', 'in-theaters', 'free', 'indian']),
+  "page": zod.coerce.number().int().min(1).default(getCatalogMoviesQueryPageDefault),
+  "limit": zod.coerce.number().int().min(1).max(getCatalogMoviesQueryLimitMax).default(getCatalogMoviesQueryLimitDefault),
+  "language": zod.coerce.string().optional()
+})
+
+export const GetCatalogMoviesResponse = zod.object({
   "results": zod.array(zod.object({
   "id": zod.number().int(),
   "title": zod.string(),

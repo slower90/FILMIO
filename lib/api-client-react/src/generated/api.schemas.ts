@@ -1164,6 +1164,8 @@ export interface FreeClassic {
   creator: string | null;
   posterUrl: string;
   embedUrl: string;
+  /** @nullable */
+  mediaUrl: string | null;
   source: FreeClassicSource;
   sourceLabel: string;
   sourceUrl: string;
@@ -1174,9 +1176,34 @@ export interface FreeClassic {
 export interface FreeClassicsResponse {
   items: FreeClassic[];
   fetchedAt: string;
+  page: number;
+  totalPages: number;
+  totalResults: number;
 }
 
 export type ProfileIdQueryParameter = number;
+
+export type GetFreeClassicsParams = {
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+source?: GetFreeClassicsSource;
+};
+
+export type GetFreeClassicsSource = typeof GetFreeClassicsSource[keyof typeof GetFreeClassicsSource];
+
+
+export const GetFreeClassicsSource = {
+  archive: 'archive',
+  youtube: 'youtube',
+  wikimedia: 'wikimedia',
+} as const;
 
 export type SearchMoviesParams = {
 q: string;
@@ -1186,6 +1213,36 @@ page?: number;
 export type GetTrendingMoviesParams = {
 page?: number;
 };
+
+export type GetCatalogMoviesParams = {
+collection: GetCatalogMoviesCollection;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 20
+ */
+limit?: number;
+language?: string;
+};
+
+export type GetCatalogMoviesCollection = typeof GetCatalogMoviesCollection[keyof typeof GetCatalogMoviesCollection];
+
+
+export const GetCatalogMoviesCollection = {
+  trending: 'trending',
+  popular: 'popular',
+  'top-rated': 'top-rated',
+  'tv-popular': 'tv-popular',
+  'tv-top-rated': 'tv-top-rated',
+  'tv-upcoming': 'tv-upcoming',
+  upcoming: 'upcoming',
+  'in-theaters': 'in-theaters',
+  free: 'free',
+  indian: 'indian',
+} as const;
 
 export type GetMoviesByGenreParams = {
 genreId: number;

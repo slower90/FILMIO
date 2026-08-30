@@ -19,6 +19,8 @@ export interface FreeClassic {
   creator: string | null;
   posterUrl: string;
   embedUrl: string;
+  /** @nullable */
+  mediaUrl: string | null;
   source: FreeClassicSource;
   sourceLabel: string;
   sourceUrl: string;

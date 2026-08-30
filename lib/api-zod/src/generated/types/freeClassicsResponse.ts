@@ -10,4 +10,7 @@ import type { FreeClassic } from './freeClassic';
 export interface FreeClassicsResponse {
   items: FreeClassic[];
   fetchedAt: Date;
+  page: number;
+  totalPages: number;
+  totalResults: number;
 }
