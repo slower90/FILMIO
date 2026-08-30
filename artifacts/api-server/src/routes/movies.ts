@@ -248,6 +248,49 @@ const tmdbFetchMultiPageWithMetadata = async (
   };
 };
 
+type CatalogCollection =
+  | "trending"
+  | "popular"
+  | "top-rated"
+  | "tv-popular"
+  | "tv-top-rated"
+  | "tv-upcoming"
+  | "upcoming"
+  | "in-theaters"
+  | "free"
+  | "indian";
+
+const catalogCollectionConfig: Record<CatalogCollection, {
+  path: string;
+  params?: Record<string, string | number>;
+  includeUnreleased?: boolean;
+}> = {
+  trending: { path: "/trending/movie/week" },
+  popular: { path: "/movie/popular" },
+  "top-rated": { path: "/movie/top_rated" },
+  "tv-popular": { path: "/tv/popular" },
+  "tv-top-rated": { path: "/tv/top_rated" },
+  "tv-upcoming": { path: "/tv/on_the_air", includeUnreleased: true },
+  upcoming: { path: "/movie/upcoming", params: { region: "IN" }, includeUnreleased: true },
+  "in-theaters": { path: "/movie/now_playing", params: { region: "IN" } },
+  free: {
+    path: "/discover/movie",
+    params: {
+      watch_region: "IN",
+      with_watch_monetization_types: "free|ads",
+      sort_by: "popularity.desc",
+    },
+  },
+  indian: {
+    path: "/discover/movie",
+    params: {
+      with_origin_country: "IN",
+      region: "IN",
+      sort_by: "popularity.desc",
+    },
+  },
+};
+
 // ─── Collection endpoints (must come before /:movieId) ───────────────────────
 
 // GET /movies/search-multi?q=  — TMDB multi-search (movies + TV + people)
@@ -690,6 +733,55 @@ router.get("/movies/trending", async (req, res): Promise<void> => {
     totalPages: data.total_pages ?? 1,
     totalResults: data.total_results ?? 0,
   });
+});
+
+// GET /movies/catalog?collection=popular&page=1&limit=20
+// This page-oriented endpoint powers dedicated listing pages while the older
+// maxPages endpoints remain available to the homepage and existing clients.
+router.get("/movies/catalog", async (req, res): Promise<void> => {
+  const collection = String(req.query.collection ?? "") as CatalogCollection;
+  const config = catalogCollectionConfig[collection];
+  if (!config) {
+    res.status(400).json({ error: "Unsupported catalog collection" });
+    return;
+  }
+
+  const requestedPage = Number(req.query.page);
+  const requestedLimit = Number(req.query.limit);
+  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const limit = Number.isInteger(requestedLimit) && requestedLimit > 0
+    ? Math.min(requestedLimit, 20)
+    : 20;
+  const params: Record<string, string | number> = {
+    ...(config.params ?? {}),
+    page,
+  };
+  if (collection === "indian" && String(req.query.language ?? "").trim()) {
+    params.with_original_language = String(req.query.language).trim().toLowerCase();
+  }
+
+  try {
+    const response = await tmdbFetchWithMetadata(config.path, params);
+    const data = response.data as {
+      page?: number;
+      total_pages?: number;
+      total_results?: number;
+      results?: unknown;
+    };
+    const mapped = (Array.isArray(data.results) ? data.results : [])
+      .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+      .map(mapMovie)
+      .filter((movie) => config.includeUnreleased || hasReleased(movie));
+    res.json({
+      results: mapped.slice(0, limit),
+      page: data.page ?? page,
+      totalPages: data.total_pages ?? page,
+      totalResults: data.total_results ?? mapped.length,
+    });
+  } catch (error) {
+    req.log?.error({ err: error, collection, page }, "Catalog page unavailable");
+    res.status(502).json({ error: "Catalog page unavailable" });
+  }
 });
 
 // GET /movies/popular?maxPages=3

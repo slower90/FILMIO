@@ -8,6 +8,7 @@ import {
   createFreeClassicsRouter,
   FREE_CLASSICS_CACHE_TTL_MS,
   normalizeFreeClassicDoc,
+  selectArchiveMediaUrl,
 } from "./free-classics";
 
 function response(payload: unknown, status = 200): Response {
@@ -17,7 +18,10 @@ function response(payload: unknown, status = 200): Response {
   });
 }
 
-async function request(router: ReturnType<typeof createFreeClassicsRouter>): Promise<globalThis.Response> {
+async function request(
+  router: ReturnType<typeof createFreeClassicsRouter>,
+  query = "",
+): Promise<globalThis.Response> {
   const app = express();
   app.use(router);
   const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
@@ -26,7 +30,7 @@ async function request(router: ReturnType<typeof createFreeClassicsRouter>): Pro
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Test server did not bind");
   try {
-    return await fetch(`http://127.0.0.1:${address.port}/free-classics`);
+    return await fetch(`http://127.0.0.1:${address.port}/free-classics${query}`);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
@@ -49,6 +53,7 @@ test("normalizes curated archive metadata into source-aware playback metadata", 
       creator: "Studio",
       posterUrl: "https://archive.org/services/img/the-film%2F1939",
       embedUrl: "https://archive.org/embed/the-film%2F1939",
+      mediaUrl: null,
       source: "archive",
       sourceLabel: "Internet Archive",
       sourceUrl: "https://archive.org/details/the-film%2F1939",
@@ -57,6 +62,19 @@ test("normalizes curated archive metadata into source-aware playback metadata", 
     },
   );
   assert.equal(normalizeFreeClassicDoc({ identifier: "missing-title" }), null);
+});
+
+test("selects a public Archive video file and safely encodes its path", () => {
+  assert.equal(
+    selectArchiveMediaUrl("feature/film", [
+      { name: "feature-film_meta.sqlite" },
+      { name: "poster.jpg" },
+      { name: "private.mp4", private: "true" },
+      { name: "The Feature Film.mp4" },
+    ]),
+    "https://archive.org/download/feature%2Ffilm/The%20Feature%20Film.mp4",
+  );
+  assert.equal(selectArchiveMediaUrl("no-video", [{ name: "captions.srt" }]), null);
 });
 
 test("uses the curated feature-films search instead of an unrestricted archive query", () => {
@@ -92,6 +110,9 @@ test("merges healthy archive and Wikimedia items while ignoring duplicate source
     fetchFn: async (input) => {
       calls += 1;
       const url = String(input);
+      if (url.includes("archive.org/metadata/")) {
+        return response({ files: [{ name: "one.mp4", format: "MPEG4" }] });
+      }
       if (url.includes("commons.wikimedia.org")) {
         return response({
           query: {
@@ -126,7 +147,7 @@ test("merges healthy archive and Wikimedia items while ignoring duplicate source
 
   const result = await request(router);
   assert.equal(result.status, 200);
-  assert.equal(calls, 2);
+  assert.equal(calls, 4);
   assert.deepEqual(await result.json(), {
     items: [
       {
@@ -137,10 +158,11 @@ test("merges healthy archive and Wikimedia items while ignoring duplicate source
         creator: null,
         posterUrl: "https://archive.org/services/img/one",
         embedUrl: "https://archive.org/embed/one",
+         mediaUrl: "https://archive.org/download/one/one.mp4",
         source: "archive",
         sourceLabel: "Internet Archive",
         sourceUrl: "https://archive.org/details/one",
-        playback: "iframe",
+         playback: "video",
         licenseLabel: "Public Domain",
       },
       {
@@ -151,6 +173,7 @@ test("merges healthy archive and Wikimedia items while ignoring duplicate source
         creator: null,
         posterUrl: "https://upload.wikimedia.org/commons/commons-film.jpg",
         embedUrl: "https://upload.wikimedia.org/commons/commons-film.webm",
+        mediaUrl: "https://upload.wikimedia.org/commons/commons-film.webm",
         source: "wikimedia",
         sourceLabel: "Wikimedia Commons",
         sourceUrl: "https://commons.wikimedia.org/wiki/File:Commons_Film.webm",
@@ -159,6 +182,9 @@ test("merges healthy archive and Wikimedia items while ignoring duplicate source
       },
     ],
     fetchedAt: "1970-01-01T00:00:01.000Z",
+    page: 1,
+    totalPages: 1,
+    totalResults: 2,
   });
 });
 
@@ -205,9 +231,11 @@ test("serves normalized items and caches the upstream response for six hours", a
     enableWikimedia: false,
     enableYoutube: false,
     now: () => now,
-    fetchFn: async () => {
+    fetchFn: async (input) => {
       calls += 1;
-      return response({ response: { docs: [{ identifier: "one", title: "One" }] } });
+      return String(input).includes("archive.org/metadata/")
+        ? response({ files: [{ name: "one.webm", format: "WebM" }] })
+        : response({ response: { docs: [{ identifier: "one", title: "One" }] } });
     },
   });
 
@@ -215,13 +243,56 @@ test("serves normalized items and caches the upstream response for six hours", a
   const second = await request(router);
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
 
   now += FREE_CLASSICS_CACHE_TTL_MS + 1;
   const third = await request(router);
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(third.status, 200);
-  assert.equal(calls, 2);
+  assert.equal(calls, 4);
+});
+
+test("paginates and filters the cached Free Classics catalog", async () => {
+  const router = createFreeClassicsRouter({
+    enableWikimedia: false,
+    enableYoutube: false,
+    now: () => 0,
+    fetchFn: async (input) => String(input).includes("archive.org/metadata/")
+      ? response({ files: [{ name: "one.mp4" }] })
+      : response({
+          response: {
+            docs: [
+              { identifier: "one", title: "One" },
+              { identifier: "two", title: "Two" },
+              { identifier: "three", title: "Three" },
+            ],
+          },
+        }),
+  });
+
+  const result = await request(router, "?page=2&limit=1&source=archive");
+  assert.equal(result.status, 200);
+  assert.deepEqual(await result.json(), {
+    items: [{
+      identifier: "three",
+      title: "Three",
+      description: null,
+      year: null,
+      creator: null,
+      posterUrl: "https://archive.org/services/img/three",
+      embedUrl: "https://archive.org/embed/three",
+      mediaUrl: "https://archive.org/download/three/one.mp4",
+      source: "archive",
+      sourceLabel: "Internet Archive",
+      sourceUrl: "https://archive.org/details/three",
+      playback: "video",
+      licenseLabel: "Public Domain",
+    }],
+    fetchedAt: "1970-01-01T00:00:00.000Z",
+    page: 2,
+    totalPages: 3,
+    totalResults: 3,
+  });
 });
 
 test("serves the last good catalog when an expired refresh fails", async () => {

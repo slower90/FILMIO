@@ -9,7 +9,8 @@ const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 export const FREE_CLASSICS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_ITEMS = 50;
 const MAX_ITEMS_PER_SOURCE = 20;
-const VIDEO_EXTENSIONS = /\.(mp4|webm)(?:[?#]|$)/i;
+const VIDEO_EXTENSIONS = /\.(mp4|webm|ogv)(?:[?#]|$)/i;
+const DEFAULT_PAGE_SIZE = 20;
 
 export type FreeClassicSource = "archive" | "youtube" | "wikimedia";
 export type FreeClassicPlayback = "iframe" | "video";
@@ -26,6 +27,7 @@ export type FreeClassic = {
   creator: string | null;
   posterUrl: string;
   embedUrl: string;
+  mediaUrl: string | null;
   source: FreeClassicSource;
   sourceLabel: string;
   sourceUrl: string;
@@ -116,6 +118,25 @@ function uniqueItems(items: FreeClassic[]): FreeClassic[] {
     .slice(0, MAX_ITEMS);
 }
 
+export function buildArchiveMetadataUrl(identifier: string): string {
+  return `https://archive.org/metadata/${encodeURIComponent(identifier)}`;
+}
+
+export function selectArchiveMediaUrl(identifier: string, files: unknown): string | null {
+  if (!Array.isArray(files)) return null;
+  const playable = files.find((file) => {
+    if (!file || typeof file !== "object") return false;
+    const record = file as Record<string, unknown>;
+    const name = firstText(record.name);
+    if (!name || !VIDEO_EXTENSIONS.test(name)) return false;
+    return record.private !== "true" && record.private !== true;
+  }) as Record<string, unknown> | undefined;
+  const name = firstText(playable?.name);
+  return name
+    ? `https://archive.org/download/${encodeURIComponent(identifier)}/${encodeURIComponent(name)}`
+    : null;
+}
+
 export function normalizeFreeClassicDoc(doc: ArchiveDoc): FreeClassic | null {
   const identifier = firstText(doc.identifier);
   const title = firstText(doc.title);
@@ -130,6 +151,7 @@ export function normalizeFreeClassicDoc(doc: ArchiveDoc): FreeClassic | null {
     creator: firstText(doc.creator),
     posterUrl: `https://archive.org/services/img/${encodedIdentifier}`,
     embedUrl: `https://archive.org/embed/${encodedIdentifier}`,
+    mediaUrl: null,
     source: "archive",
     sourceLabel: "Internet Archive",
     sourceUrl: `https://archive.org/details/${encodedIdentifier}`,
@@ -199,6 +221,7 @@ function normalizeYoutubeDoc(doc: YoutubeDoc, licenseLabel = "Verified free-to-w
     creator: channelTitle,
     posterUrl: firstText(doc.posterUrl) ?? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`,
     embedUrl: `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?rel=0`,
+    mediaUrl: null,
     source: "youtube",
     sourceLabel: channelTitle ? `YouTube · ${channelTitle}` : "YouTube",
     sourceUrl,
@@ -265,6 +288,7 @@ function normalizeWikimediaPage(page: WikimediaPage): FreeClassic | null {
     creator: stripHtml(metadataText(metadata, "Artist") ?? metadataText(metadata, "Creator")),
     posterUrl: firstText(info.thumburl) ?? mediaUrl,
     embedUrl: mediaUrl,
+    mediaUrl,
     source: "wikimedia",
     sourceLabel: "Wikimedia Commons",
     sourceUrl,
@@ -282,10 +306,25 @@ async function fetchArchiveClassics(fetchFn: typeof fetch, now: () => number): P
 
   const payload = (await response.json()) as { response?: { docs?: unknown } };
   const docs = Array.isArray(payload?.response?.docs) ? payload.response.docs : [];
-  const items = docs
+  const normalizedItems = docs
     .filter((doc): doc is ArchiveDoc => Boolean(doc && typeof doc === "object"))
     .map(normalizeFreeClassicDoc)
-    .filter((item): item is FreeClassic => Boolean(item));
+    .filter((item): item is FreeClassic => Boolean(item))
+    .slice(0, MAX_ITEMS_PER_SOURCE);
+  const items = await Promise.all(normalizedItems.map(async (item) => {
+    try {
+      const metadataResponse = await fetchFn(buildArchiveMetadataUrl(item.identifier), {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!metadataResponse.ok) return item;
+      const metadata = await metadataResponse.json() as { files?: unknown };
+      const mediaUrl = selectArchiveMediaUrl(item.identifier, metadata.files);
+      return mediaUrl ? { ...item, mediaUrl, playback: "video" as const } : item;
+    } catch {
+      return item;
+    }
+  }));
   void now;
   return { source: "archive", items };
 }
@@ -399,9 +438,27 @@ export function createFreeClassicsRouter(options: FreeClassicsRouteOptions = {})
       }
 
       if (!cache) throw new Error("Free Classics cache is unavailable");
+      const source = firstText(req.query.source);
+      const sourceFilter = source === "archive" || source === "youtube" || source === "wikimedia" ? source : null;
+      const requestedPage = Number(req.query.page);
+      const requestedLimit = Number(req.query.limit);
+      const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+      const limit = Number.isInteger(requestedLimit) && requestedLimit > 0
+        ? Math.min(requestedLimit, MAX_ITEMS)
+        : DEFAULT_PAGE_SIZE;
+      const filteredItems = sourceFilter
+        ? cache.items.filter((item) => item.source === sourceFilter)
+        : cache.items;
+      const totalResults = filteredItems.length;
+      const totalPages = Math.max(1, Math.ceil(totalResults / limit));
+      const items = filteredItems.slice((page - 1) * limit, page * limit);
+
       res.json(
         GetFreeClassicsResponse.parse({
-          items: cache.items,
+          items,
+          page,
+          totalPages,
+          totalResults,
           fetchedAt: new Date(cache.fetchedAt).toISOString(),
         }),
       );
