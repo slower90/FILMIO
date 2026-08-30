@@ -210,20 +210,21 @@ export function FreeClassicsSection({ fullPage = false }: { fullPage?: boolean }
     return true;
   });
   const items = fullPage ? uniqueItems : uniqueItems.slice(0, 10);
+  const HeadingTag = fullPage ? "h1" : "h2";
 
   return (
-    <section className={fullPage ? "border-t border-border/30 pb-20" : "border-y border-border/30 py-10"} data-testid="free-classics-section">
+    <section className={fullPage ? "pb-20 pt-8" : "border-y border-border/30 py-10"} data-testid="free-classics-section">
       <div className="container mx-auto px-4">
         <div className="mb-5 flex items-end justify-between border-l-2 border-primary pl-3">
           <div>
             <p className="cinema-kicker">The free screening room</p>
-            <h2 className="mt-2 text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">Free Classics</h2>
+            <HeadingTag className="mt-2 text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">Free Classics</HeadingTag>
           </div>
           {!fullPage && <Link href="/free-classics" className="inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-wider text-primary hover:text-foreground" data-testid="link-see-all-free-classic">
             See All <span aria-hidden="true" className="ml-2">→</span>
           </Link>}
         </div>
-        <p className="mb-6 max-w-2xl text-sm leading-relaxed text-muted-foreground">Enduring films from the Internet Archive, verified free-to-watch YouTube channels, and Wikimedia Commons. Every title carries its source and license label.</p>
+        {!fullPage && <p className="mb-6 text-xs uppercase tracking-[0.14em] text-muted-foreground">Legal cinema · source-labelled</p>}
         {fullPage && (
           <div className="mb-7 flex flex-wrap gap-2" role="group" aria-label="Filter Free Classics by source" data-testid="free-classics-source-filters">
             {SOURCE_FILTERS.map((filter) => (

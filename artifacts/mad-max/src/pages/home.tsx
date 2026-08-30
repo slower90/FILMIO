@@ -19,6 +19,7 @@ import { useActiveProfile } from "@/lib/profile-context";
 import { SurpriseMe } from "@/components/surprise-me";
 import { apiFetch } from "@/lib/api-url";
 import { FreeClassicsSection } from "@/components/free-classics";
+import { IndianPosterFeature } from "@/components/indian-poster-feature";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -232,19 +233,16 @@ function DiscoveryMenu({
 function DiscoveryHeading({
   eyebrow,
   title,
-  description,
   centered = true,
 }: {
   eyebrow: string;
   title: string;
-  description: string;
   centered?: boolean;
 }) {
   return (
-    <div className={`container mx-auto px-4 pb-1 pt-12 md:pt-16 ${centered ? "text-center" : ""}`}>
-      <p className="editorial-kicker">{eyebrow}</p>
-      <h2 className={`editorial-heading mt-4 ${centered ? "mx-auto" : ""}`}>{title}</h2>
-      <p className={`mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground ${centered ? "mx-auto" : ""}`}>{description}</p>
+    <div className={`container mx-auto px-4 pb-1 pt-5 md:pt-7 ${centered ? "text-center" : ""}`}>
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
+      <h2 className={`mt-1 font-display text-lg font-bold uppercase tracking-[0.1em] ${centered ? "mx-auto" : ""}`}>{title}</h2>
     </div>
   );
 }
@@ -447,6 +445,7 @@ export default function Home() {
         isUpcomingLoading={loadingUpcoming}
       />
       <FreeClassicsSection />
+      <IndianPosterFeature />
       <section className="container mx-auto px-4 py-5" aria-label="One-film discovery">
         <div className="flex flex-col gap-4 border-y border-primary/20 bg-primary/[0.035] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
@@ -465,11 +464,6 @@ export default function Home() {
 
         {activeTab === "for-you" && (
           <>
-            <DiscoveryHeading
-              eyebrow="Your orbit"
-              title="A place to begin"
-              description="Your current signals are not a verdict. They are a point of entry into a larger world of stories."
-            />
             <StoryConstellation
               anchor={personalizedMovies[0] ?? trendingMovies?.[0]}
               threads={uniqueMovies(personalizedMovies.slice(1), trendingMovies, theaterMovies)}
@@ -519,7 +513,6 @@ export default function Home() {
 
         {activeTab === "trending" && (
           <>
-            <DiscoveryHeading eyebrow="The shared atmosphere" title="What is moving through cinema" description="Not a chart. A live cross-section of the stories currently finding their way to people." centered />
             <StoryConstellation anchor={trendingMovies?.[0]} threads={uniqueMovies(trendingMovies?.slice(1), animeMovies, theaterMovies)} isLoading={loadingTrending} />
             <MovieRow title="More from the live signal" movies={trendingMovies ?? []} isLoading={loadingTrending} className="border-b border-border/30" seeAllHref="/browse?collection=trending" />
             <MoodAgentRow heading="What people felt" />
@@ -528,21 +521,21 @@ export default function Home() {
 
         {activeTab === "genres" && (
           <>
-            <DiscoveryHeading eyebrow="Choose a feeling" title="Find your frequency" description="Start with the kind of story you want right now." />
+            <DiscoveryHeading eyebrow="Choose a feeling" title="Find your frequency" />
             {genreRows.map((g) => <GenreRow key={g.id} id={g.id} name={g.name} />)}
           </>
         )}
 
         {activeTab === "india" && (
           <>
-            <DiscoveryHeading eyebrow="Made for India" title="The Indian cinema universe" description="Explore the latest favorites across Hindi, Tamil, Telugu, Malayalam, and beyond." />
+            <DiscoveryHeading eyebrow="Made for India" title="The Indian cinema universe" />
             {INDIAN_ROWS.map((r) => <IndianRow key={r.language} language={r.language} name={r.name} />)}
           </>
         )}
 
         {activeTab === "watch-next" && (
           <>
-            <DiscoveryHeading eyebrow="Plan your next screen" title="Your next screen" description="Movies, series, and cinema releases worth keeping an eye on." />
+            <DiscoveryHeading eyebrow="Plan your next screen" title="Your next screen" />
             <MovieRow title="Series with momentum" movies={tvTopRated ?? []} isLoading={!belowFoldReady || loadingTvTopRated} className="border-b border-border/30" seeAllHref="/browse?collection=tv-top-rated" />
             <MovieRow title="Next transmissions" movies={tvUpcoming ?? []} isLoading={!belowFoldReady || loadingTvUpcoming} className="border-b border-border/30" seeAllHref="/browse?collection=tv-upcoming" />
             <MovieRow title="India, right now" movies={theaterMovies ?? []} isLoading={!belowFoldReady || loadingTheaters} className="border-b border-border/30" seeAllHref="/browse?collection=in-theaters" />
