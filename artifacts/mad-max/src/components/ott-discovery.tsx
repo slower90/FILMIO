@@ -59,14 +59,14 @@ export function OttDiscovery() {
               className={`flex h-10 min-w-max items-center gap-2 rounded-full border px-3.5 pr-4 font-sans text-[12px] font-semibold tracking-normal transition-all duration-200 ${
                 selected.id === provider.id
                   ? "border-primary bg-primary text-primary-foreground shadow-[0_6px_20px_-8px_rgba(245,158,11,0.9)]"
-                  : "border-[#26262c] bg-[#141416] text-[#a8a8b0] hover:border-[#45454d] hover:bg-[#1b1b1f] hover:text-white"
+                   : "border-border bg-card text-muted-foreground hover:border-primary/60 hover:bg-muted hover:text-foreground"
               }`}
             >
               <span
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
                   selected.id === provider.id
-                    ? "bg-[#a96d05] text-[#201500]"
-                    : "bg-[#2b2413] text-[#e3a51c]"
+                     ? "bg-primary/80 text-primary-foreground"
+                     : "bg-primary/15 text-primary"
                 }`}
               >
                 {provider.mark}

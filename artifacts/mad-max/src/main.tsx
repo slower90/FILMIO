@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { ThemeProvider } from 'next-themes';
 
 import { setBaseUrl } from '@workspace/api-client-react';
 import App from './App';
@@ -36,14 +37,14 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, RootErrorBoun
   render() {
     if (this.state.hasError) {
       return (
-        <main className="flex min-h-screen items-center justify-center bg-[#0A0A0F] px-6 text-white">
-          <section className="w-full max-w-xl rounded-md border border-[#2A2A36] bg-[#12121A] p-8 shadow-2xl">
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#F59E0B]">FILMIO startup error</p>
+        <main className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+          <section className="w-full max-w-xl rounded-md border border-border bg-card p-8 shadow-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-primary">FILMIO startup error</p>
             <h1 className="mt-3 text-2xl font-semibold">The app could not start.</h1>
-            <p className="mt-3 text-sm leading-6 text-[#A1A1AA]">
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Check the Clerk production configuration and browser console, then reload this page.
             </p>
-            <p className="mt-4 break-words rounded-sm bg-black/30 p-3 font-mono text-xs text-[#D4D4D8]">
+            <p className="mt-4 break-words rounded-sm bg-muted p-3 font-mono text-xs text-muted-foreground">
               {this.state.message}
             </p>
           </section>
@@ -56,7 +57,9 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, RootErrorBoun
 }
 
 createRoot(document.getElementById('root')!).render(
-  <RootErrorBoundary>
-    <App />
-  </RootErrorBoundary>,
+  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="filmio-theme" disableTransitionOnChange>
+    <RootErrorBoundary>
+      <App />
+    </RootErrorBoundary>
+  </ThemeProvider>,
 );

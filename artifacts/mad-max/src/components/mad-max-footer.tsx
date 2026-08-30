@@ -78,18 +78,18 @@ export default function PrismFooter() {
         )}
 
         <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-neutral-700 p-6 text-center">
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card/40 p-6 text-center">
             <Mail className="h-5 w-5 text-primary" aria-hidden="true" />
             <p className="text-sm font-bold tracking-wide">Need to reach FILMIO?</p>
-            <Link href="/help#contact-form" className="text-sm text-neutral-300 underline underline-offset-4 transition-colors hover:text-primary">
+            <Link href="/help#contact-form" className="text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-primary">
               Open the contact form
             </Link>
           </div>
 
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-700 p-6">
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card/40 p-6">
             <div>
               <p className="text-sm font-bold">Get the FILMIO app</p>
-              <p className="text-sm text-neutral-400">For Android and iOS</p>
+              <p className="text-sm text-muted-foreground">For Android and iOS</p>
               <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold uppercase tracking-wider">
                 {appStoreLinks.map(({ href, label }) => (
                   <a
@@ -97,7 +97,7 @@ export default function PrismFooter() {
                     href={href}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-neutral-300 underline underline-offset-4 transition-colors hover:text-primary"
+                    className="inline-flex items-center gap-1 text-muted-foreground underline underline-offset-4 transition-colors hover:text-primary"
                   >
                     {label} <ExternalLink className="h-3 w-3" aria-hidden="true" />
                   </a>
@@ -120,16 +120,16 @@ export default function PrismFooter() {
           </div>
         </div>
 
-        <nav aria-label="Footer navigation" className="mb-2 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-neutral-300">
+        <nav aria-label="Footer navigation" className="mb-2 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
           {footerLinks.slice(0, 5).map(({ href, label }) => (
-            <Link key={href} href={href} className="hover:text-white hover:underline">
+            <Link key={href} href={href} className="hover:text-foreground hover:underline">
               {label}
             </Link>
           ))}
         </nav>
-        <nav aria-label="Footer legal navigation" className="mb-10 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-neutral-300">
+        <nav aria-label="Footer legal navigation" className="mb-10 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
           {footerLinks.slice(5).map(({ href, label }) => (
-            <Link key={href} href={href} className="hover:text-white hover:underline">
+            <Link key={href} href={href} className="hover:text-foreground hover:underline">
               {label}
             </Link>
           ))}
@@ -139,9 +139,9 @@ export default function PrismFooter() {
           </Link>
         </nav>
 
-        <div className="flex flex-col items-center gap-1 text-xs text-neutral-500">
-          <p className="text-sm text-neutral-300">
-            part of the <span className="font-bold text-white">Vishnuva</span> group
+        <div className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
+            part of the <span className="font-bold text-foreground">Vishnuva</span> group
           </p>
           <p>© 1990-2026 by FILMIO, Inc.</p>
         </div>
