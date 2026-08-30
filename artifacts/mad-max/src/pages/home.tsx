@@ -18,6 +18,7 @@ import { CatalogStatusNotice, type CatalogMetadata } from "@/components/catalog-
 import { useActiveProfile } from "@/lib/profile-context";
 import { SurpriseMe } from "@/components/surprise-me";
 import { apiFetch } from "@/lib/api-url";
+import { FreeClassicsSection } from "@/components/free-classics";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -443,6 +444,7 @@ export default function Home() {
         isLoading={loadingTrending}
         isUpcomingLoading={loadingUpcoming}
       />
+      <FreeClassicsSection />
       <section className="container mx-auto px-4 py-5" aria-label="One-film discovery">
         <div className="flex flex-col gap-4 border-y border-primary/20 bg-primary/[0.035] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
