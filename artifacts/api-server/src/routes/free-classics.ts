@@ -2,13 +2,30 @@ import { Router, type IRouter } from "express";
 import { GetFreeClassicsResponse } from "@workspace/api-zod";
 
 const INTERNET_ARCHIVE_SEARCH_URL = "https://archive.org/advancedsearch.php";
-const INTERNET_ARCHIVE_QUERY = "mediatype:movies AND collection:feature_films";
+const ARCHIVE_COLLECTION_QUERIES = {
+  feature_films: "mediatype:movies AND collection:feature_films",
+  classic_tv: "mediatype:movies AND collection:classic_tv",
+  documentary: "mediatype:movies AND collection:documentary",
+  animationandcartoons: "mediatype:movies AND collection:animationandcartoons",
+} as const;
+type ArchiveCollection = keyof typeof ARCHIVE_COLLECTION_QUERIES;
+const ARCHIVE_COLLECTIONS = Object.keys(ARCHIVE_COLLECTION_QUERIES) as ArchiveCollection[];
+const ARCHIVE_ROWS = 200;
+const ARCHIVE_ITEMS_PER_COLLECTION = 150;
+const ARCHIVE_METADATA_CONCURRENCY = 12;
+const WIKIMEDIA_ROWS = 500;
+const WIKIMEDIA_SEARCHES = [
+  "filetype:video public domain film",
+  "filetype:video documentary public domain",
+  "filetype:video animation public domain",
+  "filetype:video CC BY film",
+] as const;
 const WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php";
 const WIKIMEDIA_USER_AGENT = "FILMIO-Free-Classics/1.0 (https://vishnuva.in)";
 const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 export const FREE_CLASSICS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-const MAX_ITEMS = 50;
-const MAX_ITEMS_PER_SOURCE = 20;
+const MAX_ITEMS = 200;
+const MAX_ITEMS_PER_SOURCE = 150;
 const VIDEO_EXTENSIONS = /\.(mp4|webm|ogv)(?:[?#]|$)/i;
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -118,6 +135,25 @@ function uniqueItems(items: FreeClassic[]): FreeClassic[] {
     .slice(0, MAX_ITEMS);
 }
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const worker = async (): Promise<void> => {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await mapper(items[index]);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+  return results;
+}
+
 export function buildArchiveMetadataUrl(identifier: string): string {
   return `https://archive.org/metadata/${encodeURIComponent(identifier)}`;
 }
@@ -160,29 +196,29 @@ export function normalizeFreeClassicDoc(doc: ArchiveDoc): FreeClassic | null {
   };
 }
 
-export function buildFreeClassicsSearchUrl(): string {
+export function buildFreeClassicsSearchUrl(collection: ArchiveCollection = "feature_films"): string {
   const url = new URL(INTERNET_ARCHIVE_SEARCH_URL);
-  url.searchParams.set("q", INTERNET_ARCHIVE_QUERY);
+  url.searchParams.set("q", ARCHIVE_COLLECTION_QUERIES[collection]);
   url.searchParams.append("fl[]", "identifier");
   url.searchParams.append("fl[]", "title");
   url.searchParams.append("fl[]", "description");
   url.searchParams.append("fl[]", "year");
   url.searchParams.append("fl[]", "creator");
-  url.searchParams.set("rows", String(MAX_ITEMS));
+  url.searchParams.set("rows", String(ARCHIVE_ROWS));
   url.searchParams.set("page", "1");
   url.searchParams.set("output", "json");
   return url.toString();
 }
 
-export function buildWikimediaSearchUrl(): string {
+export function buildWikimediaSearchUrl(search: string = WIKIMEDIA_SEARCHES[0]): string {
   const url = new URL(WIKIMEDIA_API_URL);
   url.searchParams.set("action", "query");
   url.searchParams.set("format", "json");
   url.searchParams.set("formatversion", "2");
   url.searchParams.set("generator", "search");
-  url.searchParams.set("gsrsearch", "filetype:video public domain film");
+  url.searchParams.set("gsrsearch", search);
   url.searchParams.set("gsrnamespace", "6");
-  url.searchParams.set("gsrlimit", String(MAX_ITEMS));
+  url.searchParams.set("gsrlimit", String(WIKIMEDIA_ROWS));
   url.searchParams.set("prop", "info|imageinfo");
   url.searchParams.set("inprop", "url");
   url.searchParams.set("iiprop", "url|mime|extmetadata");
@@ -297,8 +333,8 @@ function normalizeWikimediaPage(page: WikimediaPage): FreeClassic | null {
   };
 }
 
-async function fetchArchiveClassics(fetchFn: typeof fetch, now: () => number): Promise<SourceResult> {
-  const response = await fetchFn(buildFreeClassicsSearchUrl(), {
+async function fetchArchiveCollection(fetchFn: typeof fetch, collection: ArchiveCollection): Promise<FreeClassic[]> {
+  const response = await fetchFn(buildFreeClassicsSearchUrl(collection), {
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(10_000),
   });
@@ -310,8 +346,32 @@ async function fetchArchiveClassics(fetchFn: typeof fetch, now: () => number): P
     .filter((doc): doc is ArchiveDoc => Boolean(doc && typeof doc === "object"))
     .map(normalizeFreeClassicDoc)
     .filter((item): item is FreeClassic => Boolean(item))
-    .slice(0, MAX_ITEMS_PER_SOURCE);
-  const items = await Promise.all(normalizedItems.map(async (item) => {
+    .slice(0, ARCHIVE_ITEMS_PER_COLLECTION);
+  return normalizedItems;
+}
+
+async function fetchArchiveClassics(fetchFn: typeof fetch): Promise<SourceResult> {
+  const healthyCollections: FreeClassic[] = [];
+  let healthyCollectionCount = 0;
+  for (const collection of ARCHIVE_COLLECTIONS) {
+    try {
+      healthyCollections.push(...await fetchArchiveCollection(fetchFn, collection));
+      healthyCollectionCount += 1;
+    } catch {
+      // Keep the other curated collections available when one request fails.
+    }
+  }
+  if (healthyCollectionCount === 0) {
+    throw new Error("All Internet Archive collection requests failed");
+  }
+
+  const normalizedItems = Array.from(
+    healthyCollections.reduce((items, item) => {
+      if (!items.has(item.identifier)) items.set(item.identifier, item);
+      return items;
+    }, new Map<string, FreeClassic>()).values(),
+  ).slice(0, MAX_ITEMS_PER_SOURCE);
+  const items = await mapWithConcurrency(normalizedItems, ARCHIVE_METADATA_CONCURRENCY, async (item) => {
     try {
       const metadataResponse = await fetchFn(buildArchiveMetadataUrl(item.identifier), {
         headers: { Accept: "application/json" },
@@ -324,13 +384,12 @@ async function fetchArchiveClassics(fetchFn: typeof fetch, now: () => number): P
     } catch {
       return item;
     }
-  }));
-  void now;
+  });
   return { source: "archive", items };
 }
 
-async function fetchWikimediaClassics(fetchFn: typeof fetch): Promise<SourceResult> {
-  const response = await fetchFn(buildWikimediaSearchUrl(), {
+async function fetchWikimediaSearch(fetchFn: typeof fetch, search: string): Promise<FreeClassic[]> {
+  const response = await fetchFn(buildWikimediaSearchUrl(search), {
     headers: {
       Accept: "application/json",
       "User-Agent": WIKIMEDIA_USER_AGENT,
@@ -349,7 +408,33 @@ async function fetchWikimediaClassics(fetchFn: typeof fetch): Promise<SourceResu
     .filter((page): page is WikimediaPage => Boolean(page && typeof page === "object"))
     .map(normalizeWikimediaPage)
     .filter((item): item is FreeClassic => Boolean(item));
-  return { source: "wikimedia", items };
+  return items;
+}
+
+async function fetchWikimediaClassics(fetchFn: typeof fetch): Promise<SourceResult> {
+  const items: FreeClassic[] = [];
+  let healthySearchCount = 0;
+  for (const search of WIKIMEDIA_SEARCHES) {
+    try {
+      items.push(...await fetchWikimediaSearch(fetchFn, search));
+      healthySearchCount += 1;
+    } catch {
+      // Keep the other curated legal searches available when one request fails.
+    }
+  }
+  if (healthySearchCount === 0) {
+    throw new Error("All Wikimedia Commons searches failed");
+  }
+
+  return {
+    source: "wikimedia",
+    items: Array.from(
+      items.reduce((deduplicated, item) => {
+        if (!deduplicated.has(item.identifier)) deduplicated.set(item.identifier, item);
+        return deduplicated;
+      }, new Map<string, FreeClassic>()).values(),
+    ).slice(0, MAX_ITEMS_PER_SOURCE),
+  };
 }
 
 async function fetchYoutubeClassics(
@@ -389,7 +474,7 @@ async function fetchFreeClassics(
   options: FreeClassicsRouteOptions,
 ): Promise<FreeClassicsCache> {
   const requests: Promise<SourceResult | null>[] = [];
-  if (options.enableArchive !== false) requests.push(fetchArchiveClassics(fetchFn, now));
+  if (options.enableArchive !== false) requests.push(fetchArchiveClassics(fetchFn));
   if (options.enableWikimedia !== false) requests.push(fetchWikimediaClassics(fetchFn));
   if (options.enableYoutube !== false) requests.push(fetchYoutubeClassics(fetchFn, options));
 

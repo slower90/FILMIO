@@ -77,24 +77,42 @@ test("selects a public Archive video file and safely encodes its path", () => {
   assert.equal(selectArchiveMediaUrl("no-video", [{ name: "captions.srt" }]), null);
 });
 
-test("uses the curated feature-films search instead of an unrestricted archive query", () => {
-  const url = new URL(buildFreeClassicsSearchUrl());
-  assert.equal(url.searchParams.get("q"), "mediatype:movies AND collection:feature_films");
-  assert.equal(url.searchParams.get("rows"), "50");
-  assert.deepEqual(url.searchParams.getAll("fl[]"), [
-    "identifier",
-    "title",
-    "description",
-    "year",
-    "creator",
-  ]);
+test("uses bounded curated Archive collections instead of an unrestricted query", () => {
+  const collections = [
+    ["feature_films", "mediatype:movies AND collection:feature_films"],
+    ["classic_tv", "mediatype:movies AND collection:classic_tv"],
+    ["documentary", "mediatype:movies AND collection:documentary"],
+    ["animationandcartoons", "mediatype:movies AND collection:animationandcartoons"],
+  ] as const;
+
+  for (const [collection, query] of collections) {
+    const url = new URL(buildFreeClassicsSearchUrl(collection));
+    assert.equal(url.searchParams.get("q"), query);
+    assert.equal(url.searchParams.get("rows"), "200");
+    assert.deepEqual(url.searchParams.getAll("fl[]"), [
+      "identifier",
+      "title",
+      "description",
+      "year",
+      "creator",
+    ]);
+  }
 });
 
 test("builds restricted Wikimedia and YouTube source queries", () => {
-  const commons = new URL(buildWikimediaSearchUrl());
-  assert.match(commons.searchParams.get("gsrsearch") ?? "", /filetype:video public domain film/);
-  assert.equal(commons.searchParams.get("gsrnamespace"), "6");
-  assert.equal(commons.searchParams.get("iiprop"), "url|mime|extmetadata");
+  const commonsSearches = [
+    "filetype:video public domain film",
+    "filetype:video documentary public domain",
+    "filetype:video animation public domain",
+    "filetype:video CC BY film",
+  ];
+  for (const search of commonsSearches) {
+    const commons = new URL(buildWikimediaSearchUrl(search));
+    assert.equal(commons.searchParams.get("gsrsearch"), search);
+    assert.equal(commons.searchParams.get("gsrnamespace"), "6");
+    assert.equal(commons.searchParams.get("gsrlimit"), "500");
+    assert.equal(commons.searchParams.get("iiprop"), "url|mime|extmetadata");
+  }
 
   const youtube = new URL(buildYoutubeSearchUrl("channel-123", "secret"));
   assert.equal(youtube.searchParams.get("channelId"), "channel-123");
@@ -147,7 +165,7 @@ test("merges healthy archive and Wikimedia items while ignoring duplicate source
 
   const result = await request(router);
   assert.equal(result.status, 200);
-  assert.equal(calls, 4);
+  assert.equal(calls, 9);
   assert.deepEqual(await result.json(), {
     items: [
       {
@@ -158,11 +176,11 @@ test("merges healthy archive and Wikimedia items while ignoring duplicate source
         creator: null,
         posterUrl: "https://archive.org/services/img/one",
         embedUrl: "https://archive.org/embed/one",
-         mediaUrl: "https://archive.org/download/one/one.mp4",
+        mediaUrl: "https://archive.org/download/one/one.mp4",
         source: "archive",
         sourceLabel: "Internet Archive",
         sourceUrl: "https://archive.org/details/one",
-         playback: "video",
+        playback: "video",
         licenseLabel: "Public Domain",
       },
       {
@@ -186,6 +204,38 @@ test("merges healthy archive and Wikimedia items while ignoring duplicate source
     totalPages: 1,
     totalResults: 2,
   });
+});
+
+test("aggregates at least 100 unique items across curated Archive collections", async () => {
+  const collections = ["feature_films", "classic_tv", "documentary", "animationandcartoons"];
+  const router = createFreeClassicsRouter({
+    enableWikimedia: false,
+    enableYoutube: false,
+    fetchFn: async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.startsWith("/metadata/")) return response({ files: [] });
+
+      const collection = collections.find((candidate) => url.searchParams.get("q")?.includes(`collection:${candidate}`));
+      if (!collection) throw new Error(`Unexpected Archive request: ${url}`);
+
+      return response({
+        response: {
+          docs: Array.from({ length: 30 }, (_, index) => ({
+            identifier: `${collection}-${index}`,
+            title: `${collection} title ${index}`,
+            year: 1930 + index,
+          })),
+        },
+      });
+    },
+  });
+
+  const result = await request(router, "?limit=20");
+  assert.equal(result.status, 200);
+  const payload = (await result.json()) as { items: unknown[]; totalResults: number; totalPages: number };
+  assert.equal(payload.items.length, 20);
+  assert.equal(payload.totalResults, 120);
+  assert.equal(payload.totalPages, 6);
 });
 
 test("uses curated YouTube items without accepting entries with no legal label", async () => {
@@ -243,13 +293,13 @@ test("serves normalized items and caches the upstream response for six hours", a
   const second = await request(router);
   assert.equal(first.status, 200);
   assert.equal(second.status, 200);
-  assert.equal(calls, 2);
+   assert.equal(calls, 5);
 
   now += FREE_CLASSICS_CACHE_TTL_MS + 1;
   const third = await request(router);
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(third.status, 200);
-  assert.equal(calls, 4);
+   assert.equal(calls, 10);
 });
 
 test("paginates and filters the cached Free Classics catalog", async () => {

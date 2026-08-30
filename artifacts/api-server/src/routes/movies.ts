@@ -768,7 +768,10 @@ router.get("/movies/catalog", async (req, res): Promise<void> => {
       total_results?: number;
       results?: unknown;
     };
-    const mapped = (Array.isArray(data.results) ? data.results : [])
+    const mapped = mergeCatalogItems(
+      [Array.isArray(data.results) ? data.results : []],
+      catalogIdentity,
+    )
       .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
       .map(mapMovie)
       .filter((movie) => config.includeUnreleased || hasReleased(movie));
