@@ -1136,6 +1136,24 @@ export interface ChatMessageInput {
   content: string;
 }
 
+export interface FreeClassic {
+  identifier: string;
+  title: string;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  year: number | null;
+  /** @nullable */
+  creator: string | null;
+  posterUrl: string;
+  embedUrl: string;
+}
+
+export interface FreeClassicsResponse {
+  items: FreeClassic[];
+  fetchedAt: string;
+}
+
 export type ProfileIdQueryParameter = number;
 
 export type SearchMoviesParams = {
