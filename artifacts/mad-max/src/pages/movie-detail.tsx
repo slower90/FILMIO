@@ -358,9 +358,7 @@ export default function MovieDetail() {
     ? new Date(movie.releaseDate).getFullYear()
     : undefined;
   const mediaLabel = mediaType === "tv" ? "TV series" : "movie";
-  const pageTitle = releaseYear
-    ? `${movie.title} (${releaseYear}) Ratings & Reviews | FILMIO`
-    : `${movie.title} Ratings & Reviews | FILMIO`;
+  const pageTitle = `${movie.title} - Ratings, Reviews & Where to Watch | FILMIO`;
   const movieDescription = [
     `${movie.title}${releaseYear ? ` (${releaseYear})` : ""} ${mediaLabel} ratings, reviews, cast, trailer, story, and where to watch in India.`,
     movie.overview,
@@ -523,7 +521,7 @@ export default function MovieDetail() {
                  src={tmdbBackdropUrl(movie.backdropPath || movie.posterPath)}
                  placeholderSrc={tmdbBackdropUrl(movie.backdropPath || movie.posterPath, "w780")}
                  sizes="100vw"
-                 alt={movie.title}
+             alt={`${movie.title} movie poster`}
                  width={1280}
                  height={720}
                  className="h-full w-full object-cover object-top"
@@ -764,16 +762,19 @@ export default function MovieDetail() {
                 Cast &amp; Crew
               </h2>
               <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-thin snap-x">
-                {cast.map((person) => (
-                  <div
+                  {cast.map((person) => (
+                  <Link
+                    href={`/actors/${person.id}`}
                     key={person.id}
                     className="group cursor-pointer shrink-0 w-24 md:w-28 snap-start"
+                    aria-label={`View ${person.name}'s filmography`}
                   >
                     <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden mb-2 bg-muted border border-border/50 group-hover:border-primary transition-colors">
                       {person.profilePath ? (
                         <img
                           src={tmdbPosterUrl(person.profilePath)}
-                          alt={person.name}
+                          alt={`${person.name} portrait`}
+                          loading="lazy"
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
@@ -788,7 +789,7 @@ export default function MovieDetail() {
                     <p className="text-[11px] text-muted-foreground text-center line-clamp-2">
                       {person.character}
                     </p>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </section>
