@@ -347,7 +347,12 @@ function FavoritePeoplePicker({
               {person.profilePath ? <img src={tmdbPosterUrl(person.profilePath, "w185")} alt="" className="h-9 w-7 rounded-sm object-cover" /> : <span className="grid h-9 w-7 place-items-center rounded-sm bg-muted text-[10px] text-muted-foreground">?</span>}
               <span>{person.name}</span>
             </button>
-          )) : !loading && <p className="px-3 py-3 text-xs text-muted-foreground">No matching {label} found.</p>}
+          )) : !loading && (
+            <div className="px-3 py-3">
+              <p className="font-display text-[0.65rem] font-bold uppercase tracking-[0.12em]">THE CAMERA FOUND NOTHING HERE.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Nothing matches exactly. Try a different spelling.</p>
+            </div>
+          )}
         </div>
       )}
       <span className="mt-2 block text-[11px] normal-case tracking-normal text-muted-foreground">{selected.length}/12 selected. These choices shape your recommendations.</span>
