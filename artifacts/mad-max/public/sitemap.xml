@@ -7,6 +7,18 @@
   <url><loc>https://vishnuva.in/genres</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://vishnuva.in/news</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
   <url><loc>https://vishnuva.in/free-movies</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://vishnuva.in/free-classics</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://vishnuva.in/browse</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://vishnuva.in/events</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://vishnuva.in/pricing</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://vishnuva.in/help</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
+  <url><loc>https://vishnuva.in/site-index</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://vishnuva.in/actor-directory</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://vishnuva.in/plans</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://vishnuva.in/advertising</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
+  <url><loc>https://vishnuva.in/data-license</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
+  <url><loc>https://vishnuva.in/press</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
+  <url><loc>https://vishnuva.in/jobs</loc><changefreq>monthly</changefreq><priority>0.2</priority></url>
   <url><loc>https://vishnuva.in/privacy</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
   <url><loc>https://vishnuva.in/terms</loc><changefreq>yearly</changefreq><priority>0.2</priority></url>
 </urlset>

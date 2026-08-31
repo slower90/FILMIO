@@ -8,6 +8,7 @@ import type { FreeClassic, FreeClassicSource, FreeClassicsResponse } from "@work
 import { apiFetch } from "@/lib/api-url";
 import { LazyBlurImage } from "@/components/lazy-blur-image";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -29,6 +30,10 @@ const SOURCE_FILTERS: { value: SourceFilter; label: string }[] = [
   { value: "wikimedia", label: "Wikimedia Commons" },
   { value: "nfb", label: "NFB.ca" },
 ];
+
+export function freeClassicDetailPath(item: Pick<FreeClassic, "source" | "identifier">): string {
+  return `/free-classics/${item.source}/${encodeURIComponent(item.identifier)}`;
+}
 
 async function fetchFreeClassics(page: number, source: SourceFilter): Promise<FreeClassicsResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
@@ -52,7 +57,7 @@ function sourceMimeType(item: FreeClassic): string {
   return "video/mp4";
 }
 
-function FreeClassicsVideoPlayer({ item }: { item: FreeClassic }) {
+export function FreeClassicsVideoPlayer({ item }: { item: FreeClassic }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<ReturnType<typeof videojs> | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -140,11 +145,12 @@ export function FreeClassicsCard({ item }: { item: FreeClassic }) {
   const sourceName = item.sourceLabel || SOURCE_FILTERS.find((filter) => filter.value === item.source)?.label || "Free source";
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className="group w-[9.2rem] flex-none text-left sm:w-40 md:w-44"
+    <div className="w-[9.2rem] flex-none sm:w-40 md:w-44">
+      <Dialog>
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            className="group w-full text-left"
           data-testid={`card-free-classic-${item.source}-${item.identifier}`}
           aria-label={`Play ${item.title}, ${item.year ?? "classic film"}, from ${sourceName}`}
         >
@@ -176,9 +182,9 @@ export function FreeClassicsCard({ item }: { item: FreeClassic }) {
           </div>
           <p className="mt-2 line-clamp-2 text-xs font-display font-semibold uppercase leading-tight tracking-[0.08em] transition-colors group-hover:text-primary">{item.title}</p>
           <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.year ?? "Classic"} · {sourceName}</p>
-        </button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl border-primary/25 bg-background p-4 sm:p-6" data-testid={`dialog-free-classic-${item.source}-${item.identifier}`}>
+          </button>
+        </DialogTrigger>
+        <DialogContent className="max-w-4xl border-primary/25 bg-background p-4 sm:p-6" data-testid={`dialog-free-classic-${item.source}-${item.identifier}`}>
         <DialogHeader className="pr-8">
           <DialogTitle className="text-xl uppercase tracking-wider">{item.title}</DialogTitle>
           <DialogDescription>
@@ -213,8 +219,15 @@ export function FreeClassicsCard({ item }: { item: FreeClassic }) {
             </button>
           </DialogClose>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      <Link
+        href={freeClassicDetailPath(item)}
+        className="mt-2 inline-flex min-h-9 items-center text-[9px] font-bold uppercase tracking-[0.14em] text-primary hover:text-foreground"
+      >
+        View film page →
+      </Link>
+    </div>
   );
 }
 
@@ -241,16 +254,23 @@ export function FreeClassicsSection({ fullPage = false }: { fullPage?: boolean }
   return (
     <section className={fullPage ? "pb-20 pt-8" : "border-y border-border/30 py-10"} data-testid="free-classics-section">
       <div className="container mx-auto px-4">
-        <div className="mb-5 flex items-end justify-between border-l-2 border-primary pl-3">
+          <div className="mb-5 flex items-end justify-between border-l-2 border-primary pl-3">
           <div>
             <p className="cinema-kicker">The free screening room</p>
-            <HeadingTag className="mt-2 text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">Free Classics</HeadingTag>
+              <HeadingTag className="mt-2 text-2xl font-display font-bold uppercase tracking-[0.09em] md:text-3xl">
+                {fullPage ? "Watch Free Classic Movies Online" : "Free Classics"}
+              </HeadingTag>
           </div>
           {!fullPage && <Link href="/free-classics" className="inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-wider text-primary hover:text-foreground" data-testid="link-see-all-free-classic">
             See All <span aria-hidden="true" className="ml-2">→</span>
           </Link>}
         </div>
-        {!fullPage && <p className="mb-6 text-xs uppercase tracking-[0.14em] text-muted-foreground">Legal cinema · source-labelled</p>}
+         {!fullPage && <p className="mb-6 text-xs uppercase tracking-[0.14em] text-muted-foreground">Legal cinema · source-labelled</p>}
+         {fullPage && (
+           <p className="mb-7 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+             Watch free classic movies online from public-domain and official free-to-watch sources. Explore historic cinema with clear source labels, descriptions, and legal viewing links.
+           </p>
+         )}
         {fullPage && (
           <div className="mb-7 flex flex-wrap gap-2" role="group" aria-label="Filter Free Classics by source" data-testid="free-classics-source-filters">
             {SOURCE_FILTERS.map((filter) => (
@@ -280,7 +300,14 @@ export function FreeClassicsSection({ fullPage = false }: { fullPage?: boolean }
         ) : query.isError ? (
           <div className="flex items-center gap-3 border border-dashed border-border p-6 text-sm text-muted-foreground" data-testid="free-classics-error"><p>Free Classics are temporarily unavailable.</p><button type="button" onClick={() => query.refetch()} className="inline-flex min-h-11 items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary hover:text-foreground" data-testid="button-retry-free-classics"><RotateCcw className="h-3.5 w-3.5" /> Retry</button></div>
         ) : items.length === 0 ? (
-          <p className="border border-dashed border-border p-6 text-sm text-muted-foreground" data-testid="free-classics-empty">{sourceFilter === "all" ? "No Free Classics are available right now." : "No films are available from this source right now."}</p>
+           <CinemaEmptyState
+             className="text-left sm:text-center"
+             description={sourceFilter === "all" ? "Nothing matches exactly. Try a source filter or browse the wider open screening room." : "Nothing matches exactly from this source. Try All sources or choose another legal screening room."}
+             actions={[
+               ...(sourceFilter !== "all" ? [{ label: "Try all sources", onClick: () => setSourceFilter("all"), testId: "button-empty-free-classics-all" }] : []),
+               { label: "Browse free films", href: "/browse?collection=free", testId: "link-empty-free-classics-browse" },
+             ]}
+           />
         ) : (
            <div className={fullPage ? "grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 lg:grid-cols-6" : "flex gap-3 overflow-x-auto pb-4 [scrollbar-width:none]"} aria-label="Free Classics films" data-testid="free-classics-grid">
             {items.map((item) => <FreeClassicsCard key={`${item.source}:${item.identifier}`} item={item} />)}

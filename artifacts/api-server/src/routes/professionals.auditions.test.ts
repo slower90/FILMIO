@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   auditionFileAccessError,
+  normalizeProfessionalRoles,
   ownsProfessionalResource,
 } from "./professionals";
 
@@ -26,4 +27,13 @@ test("keeps public audition files available without an account", () => {
 test("limits professional resource mutations to the owning account", () => {
   assert.equal(ownsProfessionalResource("owner", "owner"), true);
   assert.equal(ownsProfessionalResource("viewer", "owner"), false);
+});
+
+test("normalizes supported professional roles without allowing duplicates or oversized labels", () => {
+  assert.deepEqual(
+    normalizeProfessionalRoles([" director ", "DOP", "director of photography", "Sound Designer", "director"]),
+    ["Director", "DOP", "Sound Designer"],
+  );
+  assert.deepEqual(normalizeProfessionalRoles([""]), []);
+  assert.deepEqual(normalizeProfessionalRoles("Director"), []);
 });

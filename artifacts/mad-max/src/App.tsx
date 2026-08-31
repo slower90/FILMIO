@@ -41,6 +41,7 @@ const FooterPage = lazy(() => import('@/pages/footer-page'));
 const Pricing = lazy(() => import('@/pages/pricing'));
 const FreeMovies = lazy(() => import('@/pages/free-movies'));
 const FreeClassics = lazy(() => import('@/pages/free-classics'));
+const FreeClassicDetail = lazy(() => import('@/pages/free-classic-detail'));
 const Browse = lazy(() => import('@/pages/browse'));
 const MovieStory = lazy(() => import('@/pages/movie-story'));
 const Friends = lazy(() => import('@/pages/friends'));
@@ -412,10 +413,10 @@ function ProtectedProfessionals() {
   return isSignedIn ? <Professionals /> : <AuthRequiredPage />;
 }
 
-function ProtectedProfessionalDetail() {
-  const { isLoaded, isSignedIn } = useUser();
+function PublicProfessionalDetail() {
+  const { isLoaded } = useUser();
   if (!isLoaded) return <div className="min-h-screen bg-background" />;
-  return isSignedIn ? <ProfessionalDetail /> : <AuthRequiredPage />;
+  return <ProfessionalDetail />;
 }
 
 function ProtectedProfessionalDashboard() {
@@ -492,10 +493,11 @@ function ClerkProviderWithRoutes() {
           <Route path="/professionals" component={ProtectedProfessionals} />
           <Route path="/professionals/dashboard" component={ProtectedProfessionalDashboard} />
           <Route path="/professionals/community" component={IndustryCommunity} />
-          <Route path="/professionals/:id" component={ProtectedProfessionalDetail} />
+          <Route path="/professionals/:id" component={PublicProfessionalDetail} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/free-movies" component={FreeMovies} />
           <Route path="/free-classics" component={FreeClassics} />
+          <Route path="/free-classics/:source/:identifier" component={FreeClassicDetail} />
           <Route path="/browse" component={Browse} />
           <Route path="/chat" component={Chat} />
           <Route path="/genres" component={Genres} />
@@ -505,6 +507,9 @@ function ClerkProviderWithRoutes() {
           <Route path="/signals" component={Signals} />
           <Route path="/events" component={Events} />
           <Route path="/help" component={FooterPage} />
+          <Route path="/site-index" component={FooterPage} />
+          <Route path="/actor-directory" component={FooterPage} />
+          <Route path="/plans" component={FooterPage} />
           <Route path="/advertising" component={FooterPage} />
           <Route path="/data-license" component={FooterPage} />
           <Route path="/press" component={FooterPage} />

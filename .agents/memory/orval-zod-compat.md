@@ -15,8 +15,8 @@ The api-zod public barrel should export generated validators from `generated/api
 
 **How to apply:** If regeneration recreates a duplicate-export error, preserve direct generated type files but remove the overlapping type barrel export from `lib/api-zod/src/index.ts`, then run the shared library typecheck.
 
-The codegen command can recreate that barrel export, so apply the workaround after the final regeneration rather than before it.
+The codegen command can recreate that barrel export, so the workspace runs a small post-generation normalizer that removes only the conflicting root export before typechecking.
 
 **Why:** A clean fix can appear to have no effect when the next Orval run restores the conflicting export.
 
-**How to apply:** Regenerate first, then remove only the duplicate barrel export and verify without regenerating again.
+**How to apply:** Keep the normalizer in the API spec codegen path; do not rely on a manual cleanup after regeneration.

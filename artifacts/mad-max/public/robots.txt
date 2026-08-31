@@ -11,3 +11,4 @@ Disallow: /profile
 Allow: /api/sitemap.xml
 Disallow: /api/
 Sitemap: https://vishnuva.in/api/sitemap.xml
+Sitemap: https://vishnuva.in/sitemap.xml

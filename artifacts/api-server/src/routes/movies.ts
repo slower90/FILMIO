@@ -19,6 +19,7 @@ import {
   upsertSearchCatalog,
 } from "../lib/smart-search";
 import { searchMeilisearch } from "../lib/meilisearch";
+import { freeClassicPath, getFreeClassicsForSitemap } from "./free-classics";
 
 const router: IRouter = Router();
 
@@ -96,6 +97,18 @@ async function buildSitemapXml(): Promise<string> {
     ["/genres", "weekly", "0.7"],
     ["/news", "daily", "0.7"],
     ["/free-movies", "weekly", "0.7"],
+    ["/free-classics", "daily", "0.8"],
+    ["/browse", "weekly", "0.7"],
+    ["/events", "weekly", "0.5"],
+    ["/pricing", "monthly", "0.3"],
+    ["/help", "yearly", "0.2"],
+    ["/site-index", "monthly", "0.3"],
+    ["/actor-directory", "weekly", "0.5"],
+    ["/plans", "monthly", "0.3"],
+    ["/advertising", "yearly", "0.2"],
+    ["/data-license", "yearly", "0.2"],
+    ["/press", "yearly", "0.2"],
+    ["/jobs", "monthly", "0.2"],
     ["/privacy", "yearly", "0.2"],
     ["/terms", "yearly", "0.2"],
   ] as const;
@@ -107,10 +120,11 @@ async function buildSitemapXml(): Promise<string> {
     ["/tv/top_rated", "tv"],
   ] as const;
 
-  const [catalogResults, actorData, genreData] = await Promise.all([
+  const [catalogResults, actorData, genreData, freeClassics] = await Promise.all([
     Promise.allSettled(catalogRequests.map(([path]) => tmdbFetch(path, { page: 1 }))),
     tmdbFetch("/person/popular", { page: 1 }).catch(() => ({ results: [] })),
     tmdbFetch("/genre/movie/list").catch(() => ({ genres: [] })),
+    getFreeClassicsForSitemap().catch(() => []),
   ]);
 
   const dynamicPaths = new Map<string, { changefreq: string; priority: string }>();
@@ -134,6 +148,9 @@ async function buildSitemapXml(): Promise<string> {
   for (const genre of (genreData as any).genres ?? []) {
     if (!Number.isInteger(Number(genre.id)) || Number(genre.id) <= 0 || !String(genre.name ?? "").trim()) continue;
     dynamicPaths.set(`/genre/${Number(genre.id)}`, { changefreq: "weekly", priority: "0.5" });
+  }
+  for (const item of freeClassics) {
+    dynamicPaths.set(freeClassicPath(item), { changefreq: "daily", priority: "0.6" });
   }
 
   const urls = [

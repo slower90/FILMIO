@@ -5,13 +5,17 @@ import {
   professionalsTable,
   usersTable,
   professionalWorkEntriesTable,
+  professionalInfluencesTable,
+  professionalAwardsTable,
+  professionalInterviewsTable,
   professionalAuditionsTable,
   professionalProfileMediaTable,
   professionalPostsTable,
   professionalPostLikesTable,
   professionalPostCommentsTable,
+  professionalQuestionsTable,
 } from "@workspace/db";
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import { requireAuth } from "../middlewares/auth";
 import {
@@ -19,11 +23,49 @@ import {
   UpdateProfessionalProfileBody,
 } from "@workspace/api-zod";
 import { deletePrivateObject } from "../lib/objectStorage";
+import { z } from "zod";
 
 const router: IRouter = Router();
 const SIDECAR = "http://127.0.0.1:1106";
 export const COMMUNITY_MAX_UPLOAD = 100 * 1024 * 1024;
 export const PROFILE_MEDIA_MAX_UPLOAD = 100 * 1024 * 1024;
+export const SUPPORTED_PROFESSIONAL_ROLES = [
+  "Director",
+  "Writer",
+  "Actor",
+  "Editor",
+  "Cinematographer",
+  "Composer",
+  "Designer",
+  "Producer",
+  "DOP",
+  "Sound Designer",
+] as const;
+
+const ROLE_ALIASES: Record<string, string> = {
+  director: "Director",
+  writer: "Writer",
+  actor: "Actor",
+  editor: "Editor",
+  cinematographer: "Cinematographer",
+  composer: "Composer",
+  designer: "Designer",
+  producer: "Producer",
+  dop: "DOP",
+  "director of photography": "DOP",
+  "sound designer": "Sound Designer",
+};
+
+export function normalizeProfessionalRoles(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return [...new Set(values
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => ROLE_ALIASES[value.toLowerCase()] ?? value)
+    .filter((value) => value.length <= 60))]
+    .slice(0, 10);
+}
 
 export type AuditionFileAccessError = "unauthorized" | "forbidden" | null;
 
@@ -112,6 +154,56 @@ const enrichProfile = async (prof: any) => {
   return { ...prof, displayName: prof.displayName ?? user?.displayName ?? null };
 };
 
+const influenceInputSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  note: z.string().trim().max(1000).nullable().optional(),
+});
+const awardInputSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  organization: z.string().trim().max(160).nullable().optional(),
+  category: z.string().trim().max(160).nullable().optional(),
+  year: z.number().int().min(1880).max(2200).nullable().optional(),
+  link: z.string().url().max(500).nullable().optional(),
+});
+const interviewInputSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  publication: z.string().trim().min(1).max(160),
+  url: z.string().url().max(500),
+  year: z.number().int().min(1880).max(2200).nullable().optional(),
+});
+const questionInputSchema = z.object({
+  question: z.string().trim().min(10).max(1000),
+});
+const questionUpdateSchema = z.object({
+  answer: z.string().trim().max(2000).nullable().optional(),
+  status: z.enum(["pending", "published", "hidden"]).optional(),
+});
+
+async function professionalForUser(userId: string) {
+  const [professional] = await db
+    .select({ id: professionalsTable.id })
+    .from(professionalsTable)
+    .where(eq(professionalsTable.userId, userId));
+  return professional;
+}
+
+function questionResponse(question: any, user: any) {
+  return {
+    id: question.id,
+    professionalId: question.professionalId,
+    question: question.question,
+    answer: question.answer,
+    status: question.status,
+    answeredAt: question.answeredAt,
+    createdAt: question.createdAt,
+    asker: {
+      id: question.askerUserId,
+      displayName: user?.displayName ?? "FILMIO member",
+      avatarUrl: user?.avatarUrl ?? null,
+    },
+  };
+}
+
 // GET /professionals/me
 router.get("/professionals/me", requireAuth as any, async (req: any, res): Promise<void> => {
   const [prof] = await db
@@ -132,6 +224,11 @@ router.post("/professionals/me", requireAuth as any, async (req: any, res): Prom
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const roles = normalizeProfessionalRoles(parsed.data.roles);
+  if (!roles.length) {
+    res.status(400).json({ error: `Choose at least one professional role: ${SUPPORTED_PROFESSIONAL_ROLES.join(", ")}.` });
+    return;
+  }
 
   const [existing] = await db
     .select()
@@ -144,7 +241,7 @@ router.post("/professionals/me", requireAuth as any, async (req: any, res): Prom
 
   const [prof] = await db
     .insert(professionalsTable)
-    .values({ userId: req.userId, ...parsed.data })
+    .values({ userId: req.userId, ...parsed.data, roles })
     .returning();
 
   // Mark user as professional
@@ -163,9 +260,18 @@ router.patch("/professionals/me", requireAuth as any, async (req: any, res): Pro
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const updates = { ...parsed.data, updatedAt: new Date() };
+  if (parsed.data.roles) {
+    const roles = normalizeProfessionalRoles(parsed.data.roles);
+    if (!roles.length) {
+      res.status(400).json({ error: `Choose at least one professional role: ${SUPPORTED_PROFESSIONAL_ROLES.join(", ")}.` });
+      return;
+    }
+    updates.roles = roles;
+  }
   const [prof] = await db
     .update(professionalsTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set(updates)
     .where(eq(professionalsTable.userId, req.userId))
     .returning();
   if (!prof) {
@@ -178,14 +284,38 @@ router.patch("/professionals/me", requireAuth as any, async (req: any, res): Pro
 router.get("/professionals/me/portfolio", requireAuth as any, async (req: any, res): Promise<void> => {
   const [prof] = await db.select({ id: professionalsTable.id }).from(professionalsTable).where(eq(professionalsTable.userId, req.userId));
   if (!prof) { res.status(404).json({ error: "Profile not found" }); return; }
-  const [work, auditions, media] = await Promise.all([
+  const [work, auditions, media, influences, awards, interviews, questions] = await Promise.all([
     db.select().from(professionalWorkEntriesTable).where(eq(professionalWorkEntriesTable.professionalId, prof.id)),
     db.select().from(professionalAuditionsTable).where(eq(professionalAuditionsTable.professionalId, prof.id)),
     db.select().from(professionalProfileMediaTable)
       .where(eq(professionalProfileMediaTable.professionalId, prof.id))
       .orderBy(desc(professionalProfileMediaTable.createdAt)),
+    db.select().from(professionalInfluencesTable)
+      .where(eq(professionalInfluencesTable.professionalId, prof.id))
+      .orderBy(desc(professionalInfluencesTable.createdAt)),
+    db.select().from(professionalAwardsTable)
+      .where(eq(professionalAwardsTable.professionalId, prof.id))
+      .orderBy(desc(professionalAwardsTable.year), desc(professionalAwardsTable.createdAt)),
+    db.select().from(professionalInterviewsTable)
+      .where(eq(professionalInterviewsTable.professionalId, prof.id))
+      .orderBy(desc(professionalInterviewsTable.year), desc(professionalInterviewsTable.createdAt)),
+    db.select({
+      question: professionalQuestionsTable,
+      user: { displayName: usersTable.displayName, avatarUrl: usersTable.avatarUrl },
+    }).from(professionalQuestionsTable)
+      .leftJoin(usersTable, eq(professionalQuestionsTable.askerUserId, usersTable.clerkId))
+      .where(eq(professionalQuestionsTable.professionalId, prof.id))
+      .orderBy(desc(professionalQuestionsTable.createdAt)),
   ]);
-  res.json({ work, auditions, media: media.map((item) => profileMediaResponse(item, prof.id)) });
+  res.json({
+    work,
+    auditions,
+    media: media.map((item) => profileMediaResponse(item, prof.id)),
+    influences,
+    awards,
+    interviews,
+    questions: questions.map(({ question, user }) => questionResponse(question, user)),
+  });
 });
 
 router.post("/professionals/me/media/request-upload", requireAuth as any, async (req: any, res): Promise<void> => {
@@ -334,11 +464,12 @@ router.get("/professionals/:id/media/:mediaId/file", async (req: any, res): Prom
 router.post("/professionals/me/work", requireAuth as any, async (req: any, res): Promise<void> => {
   const [prof] = await db.select({ id: professionalsTable.id }).from(professionalsTable).where(eq(professionalsTable.userId, req.userId));
   if (!prof) { res.status(404).json({ error: "Create your professional profile first" }); return; }
-  const { projectName, role, year, collaborators, description } = req.body || {};
+  const { projectName, role, year, movieId, collaborators, description } = req.body || {};
   if (!String(projectName || "").trim() || !String(role || "").trim()) { res.status(400).json({ error: "Project name and role are required" }); return; }
   const [entry] = await db.insert(professionalWorkEntriesTable).values({
     professionalId: prof.id, projectName: String(projectName).trim(), role: String(role).trim(),
-    year: year ? Number(year) : null, collaborators: Array.isArray(collaborators) ? collaborators.map(String).filter(Boolean) : [],
+    year: year ? Number(year) : null, movieId: movieId ? Number(movieId) : null,
+    collaborators: Array.isArray(collaborators) ? collaborators.map(String).filter(Boolean) : [],
     description: description ? String(description).trim() : null,
   }).returning();
   res.status(201).json(entry);
@@ -361,6 +492,7 @@ router.patch("/professionals/me/work/:id", requireAuth as any, async (req: any, 
     projectName,
     role,
     year: body.year === undefined ? entry.entry.year : (body.year ? Number(body.year) : null),
+    movieId: body.movieId === undefined ? entry.entry.movieId : (body.movieId ? Number(body.movieId) : null),
     collaborators: Array.isArray(body.collaborators) ? body.collaborators.map(String).filter(Boolean) : entry.entry.collaborators,
     description: body.description === undefined ? entry.entry.description : (body.description ? String(body.description).trim() : null),
     updatedAt: new Date(),
@@ -376,6 +508,230 @@ router.delete("/professionals/me/work/:id", requireAuth as any, async (req: any,
   )).returning({ id: professionalWorkEntriesTable.id });
   if (!deleted.length) { res.status(404).json({ error: "Work entry not found" }); return; }
   res.status(204).end();
+});
+
+router.post("/professionals/me/influences", requireAuth as any, async (req: any, res): Promise<void> => {
+  const professional = await professionalForUser(req.userId);
+  if (!professional) { res.status(404).json({ error: "Create your professional profile first." }); return; }
+  const parsed = influenceInputSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Add an influence name and keep the note under 1,000 characters." }); return; }
+  const [influence] = await db.insert(professionalInfluencesTable).values({
+    professionalId: professional.id,
+    name: parsed.data.name,
+    note: parsed.data.note || null,
+  }).returning();
+  res.status(201).json(influence);
+});
+
+router.patch("/professionals/me/influences/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const professional = await professionalForUser(req.userId);
+  if (!professional || !Number.isSafeInteger(id)) { res.status(404).json({ error: "Influence not found." }); return; }
+  const [existing] = await db.select().from(professionalInfluencesTable).where(and(
+    eq(professionalInfluencesTable.id, id),
+    eq(professionalInfluencesTable.professionalId, professional.id),
+  ));
+  if (!existing) { res.status(404).json({ error: "Influence not found." }); return; }
+  const parsed = influenceInputSchema.partial().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Check the influence details and try again." }); return; }
+  const [updated] = await db.update(professionalInfluencesTable).set({
+    ...parsed.data,
+    note: parsed.data.note === undefined ? existing.note : parsed.data.note || null,
+    updatedAt: new Date(),
+  }).where(eq(professionalInfluencesTable.id, id)).returning();
+  res.json(updated);
+});
+
+router.delete("/professionals/me/influences/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const professional = await professionalForUser(req.userId);
+  if (!professional || !Number.isSafeInteger(id)) { res.status(404).json({ error: "Influence not found." }); return; }
+  const deleted = await db.delete(professionalInfluencesTable).where(and(
+    eq(professionalInfluencesTable.id, id),
+    eq(professionalInfluencesTable.professionalId, professional.id),
+  )).returning({ id: professionalInfluencesTable.id });
+  if (!deleted.length) { res.status(404).json({ error: "Influence not found." }); return; }
+  res.status(204).end();
+});
+
+router.post("/professionals/me/awards", requireAuth as any, async (req: any, res): Promise<void> => {
+  const professional = await professionalForUser(req.userId);
+  if (!professional) { res.status(404).json({ error: "Create your professional profile first." }); return; }
+  const parsed = awardInputSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Add an award title and check the optional details." }); return; }
+  const [award] = await db.insert(professionalAwardsTable).values({
+    professionalId: professional.id,
+    ...parsed.data,
+    organization: parsed.data.organization || null,
+    category: parsed.data.category || null,
+    year: parsed.data.year || null,
+    link: parsed.data.link || null,
+  }).returning();
+  res.status(201).json(award);
+});
+
+router.patch("/professionals/me/awards/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const professional = await professionalForUser(req.userId);
+  if (!professional || !Number.isSafeInteger(id)) { res.status(404).json({ error: "Award not found." }); return; }
+  const [existing] = await db.select().from(professionalAwardsTable).where(and(
+    eq(professionalAwardsTable.id, id),
+    eq(professionalAwardsTable.professionalId, professional.id),
+  ));
+  if (!existing) { res.status(404).json({ error: "Award not found." }); return; }
+  const parsed = awardInputSchema.partial().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Check the award details and try again." }); return; }
+  const [updated] = await db.update(professionalAwardsTable).set({
+    ...parsed.data,
+    organization: parsed.data.organization === undefined ? existing.organization : parsed.data.organization || null,
+    category: parsed.data.category === undefined ? existing.category : parsed.data.category || null,
+    year: parsed.data.year === undefined ? existing.year : parsed.data.year || null,
+    link: parsed.data.link === undefined ? existing.link : parsed.data.link || null,
+    updatedAt: new Date(),
+  }).where(eq(professionalAwardsTable.id, id)).returning();
+  res.json(updated);
+});
+
+router.delete("/professionals/me/awards/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const professional = await professionalForUser(req.userId);
+  if (!professional || !Number.isSafeInteger(id)) { res.status(404).json({ error: "Award not found." }); return; }
+  const deleted = await db.delete(professionalAwardsTable).where(and(
+    eq(professionalAwardsTable.id, id),
+    eq(professionalAwardsTable.professionalId, professional.id),
+  )).returning({ id: professionalAwardsTable.id });
+  if (!deleted.length) { res.status(404).json({ error: "Award not found." }); return; }
+  res.status(204).end();
+});
+
+router.post("/professionals/me/interviews", requireAuth as any, async (req: any, res): Promise<void> => {
+  const professional = await professionalForUser(req.userId);
+  if (!professional) { res.status(404).json({ error: "Create your professional profile first." }); return; }
+  const parsed = interviewInputSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Add a title, publication, and valid interview link." }); return; }
+  const [interview] = await db.insert(professionalInterviewsTable).values({
+    professionalId: professional.id,
+    ...parsed.data,
+    year: parsed.data.year || null,
+  }).returning();
+  res.status(201).json(interview);
+});
+
+router.patch("/professionals/me/interviews/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const professional = await professionalForUser(req.userId);
+  if (!professional || !Number.isSafeInteger(id)) { res.status(404).json({ error: "Interview not found." }); return; }
+  const [existing] = await db.select().from(professionalInterviewsTable).where(and(
+    eq(professionalInterviewsTable.id, id),
+    eq(professionalInterviewsTable.professionalId, professional.id),
+  ));
+  if (!existing) { res.status(404).json({ error: "Interview not found." }); return; }
+  const parsed = interviewInputSchema.partial().safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Check the interview details and try again." }); return; }
+  const [updated] = await db.update(professionalInterviewsTable).set({
+    ...parsed.data,
+    year: parsed.data.year === undefined ? existing.year : parsed.data.year || null,
+    updatedAt: new Date(),
+  }).where(eq(professionalInterviewsTable.id, id)).returning();
+  res.json(updated);
+});
+
+router.delete("/professionals/me/interviews/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const professional = await professionalForUser(req.userId);
+  if (!professional || !Number.isSafeInteger(id)) { res.status(404).json({ error: "Interview not found." }); return; }
+  const deleted = await db.delete(professionalInterviewsTable).where(and(
+    eq(professionalInterviewsTable.id, id),
+    eq(professionalInterviewsTable.professionalId, professional.id),
+  )).returning({ id: professionalInterviewsTable.id });
+  if (!deleted.length) { res.status(404).json({ error: "Interview not found." }); return; }
+  res.status(204).end();
+});
+
+router.get("/professionals/:id/questions", async (req: any, res): Promise<void> => {
+  const professionalId = Number(req.params.id);
+  if (!Number.isSafeInteger(professionalId)) { res.status(400).json({ error: "Invalid professional id." }); return; }
+  const [professional] = await db.select({ id: professionalsTable.id })
+    .from(professionalsTable)
+    .where(eq(professionalsTable.id, professionalId));
+  if (!professional) { res.status(404).json({ error: "Professional not found." }); return; }
+  const rows = await db.select({
+    question: professionalQuestionsTable,
+    user: { displayName: usersTable.displayName, avatarUrl: usersTable.avatarUrl },
+  }).from(professionalQuestionsTable)
+    .leftJoin(usersTable, eq(professionalQuestionsTable.askerUserId, usersTable.clerkId))
+    .where(and(
+      eq(professionalQuestionsTable.professionalId, professionalId),
+      eq(professionalQuestionsTable.status, "published"),
+    ))
+    .orderBy(desc(professionalQuestionsTable.createdAt));
+  res.json({ questions: rows.map(({ question, user }) => questionResponse(question, user)) });
+});
+
+router.post("/professionals/:id/questions", requireAuth as any, async (req: any, res): Promise<void> => {
+  const professionalId = Number(req.params.id);
+  if (!Number.isSafeInteger(professionalId)) { res.status(400).json({ error: "Invalid professional id." }); return; }
+  const [professional] = await db.select({ id: professionalsTable.id })
+    .from(professionalsTable)
+    .where(eq(professionalsTable.id, professionalId));
+  if (!professional) { res.status(404).json({ error: "Professional not found." }); return; }
+  const parsed = questionInputSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Write a thoughtful question between 10 and 1,000 characters." }); return; }
+
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` })
+    .from(professionalQuestionsTable)
+    .where(and(
+      eq(professionalQuestionsTable.professionalId, professionalId),
+      eq(professionalQuestionsTable.askerUserId, req.userId),
+      gte(professionalQuestionsTable.createdAt, since),
+    ));
+  if (Number(count) >= 3) {
+    res.status(429).json({ error: "You have reached today's question limit for this professional." });
+    return;
+  }
+
+  const [question] = await db.insert(professionalQuestionsTable).values({
+    professionalId,
+    askerUserId: req.userId,
+    question: parsed.data.question,
+    status: "pending",
+  }).returning();
+  const [user] = await db.select({ displayName: usersTable.displayName, avatarUrl: usersTable.avatarUrl })
+    .from(usersTable)
+    .where(eq(usersTable.clerkId, req.userId));
+  res.status(201).json(questionResponse(question, user));
+});
+
+router.patch("/professionals/me/questions/:id", requireAuth as any, async (req: any, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id)) { res.status(400).json({ error: "Invalid question id." }); return; }
+  const [found] = await db.select({ question: professionalQuestionsTable })
+    .from(professionalQuestionsTable)
+    .innerJoin(professionalsTable, eq(professionalQuestionsTable.professionalId, professionalsTable.id))
+    .where(and(
+      eq(professionalQuestionsTable.id, id),
+      eq(professionalsTable.userId, req.userId),
+    ));
+  if (!found) { res.status(404).json({ error: "Question not found." }); return; }
+  const parsed = questionUpdateSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Check the answer and question status." }); return; }
+  const status = parsed.data.status ?? found.question.status;
+  const answer = parsed.data.answer === undefined ? found.question.answer : parsed.data.answer;
+  if (status === "published" && !answer?.trim()) {
+    res.status(400).json({ error: "Add an answer before publishing this question." });
+    return;
+  }
+  const [updated] = await db.update(professionalQuestionsTable).set({
+    answer: answer?.trim() || null,
+    status,
+    answeredAt: status === "published" && answer?.trim() ? new Date() : null,
+    updatedAt: new Date(),
+  }).where(eq(professionalQuestionsTable.id, id)).returning();
+  const [user] = await db.select({ displayName: usersTable.displayName, avatarUrl: usersTable.avatarUrl })
+    .from(usersTable)
+    .where(eq(usersTable.clerkId, updated.askerUserId));
+  res.json(questionResponse(updated, user));
 });
 
 router.post("/professionals/me/auditions/request-upload", requireAuth as any, async (req: any, res): Promise<void> => {
@@ -815,9 +1171,30 @@ router.get("/professionals/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Professional not found" });
     return;
   }
-  const [work, auditions] = await Promise.all([
-    db.select().from(professionalWorkEntriesTable).where(eq(professionalWorkEntriesTable.professionalId, prof.id)),
+  const [work, auditions, influences, awards, interviews, questions] = await Promise.all([
+    db.select().from(professionalWorkEntriesTable)
+      .where(eq(professionalWorkEntriesTable.professionalId, prof.id))
+      .orderBy(desc(professionalWorkEntriesTable.year), desc(professionalWorkEntriesTable.createdAt)),
     db.select().from(professionalAuditionsTable).where(and(eq(professionalAuditionsTable.professionalId, prof.id), eq(professionalAuditionsTable.isPublic, true))),
+    db.select().from(professionalInfluencesTable)
+      .where(eq(professionalInfluencesTable.professionalId, prof.id))
+      .orderBy(desc(professionalInfluencesTable.createdAt)),
+    db.select().from(professionalAwardsTable)
+      .where(eq(professionalAwardsTable.professionalId, prof.id))
+      .orderBy(desc(professionalAwardsTable.year), desc(professionalAwardsTable.createdAt)),
+    db.select().from(professionalInterviewsTable)
+      .where(eq(professionalInterviewsTable.professionalId, prof.id))
+      .orderBy(desc(professionalInterviewsTable.year), desc(professionalInterviewsTable.createdAt)),
+    db.select({
+      question: professionalQuestionsTable,
+      user: { displayName: usersTable.displayName, avatarUrl: usersTable.avatarUrl },
+    }).from(professionalQuestionsTable)
+      .leftJoin(usersTable, eq(professionalQuestionsTable.askerUserId, usersTable.clerkId))
+      .where(and(
+        eq(professionalQuestionsTable.professionalId, prof.id),
+        eq(professionalQuestionsTable.status, "published"),
+      ))
+      .orderBy(desc(professionalQuestionsTable.createdAt)),
   ]);
   const media = await db.select().from(professionalProfileMediaTable)
     .where(eq(professionalProfileMediaTable.professionalId, prof.id))
@@ -827,6 +1204,10 @@ router.get("/professionals/:id", async (req, res): Promise<void> => {
     workHistory: work,
     publicAuditions: auditions.map(({ objectPath: _objectPath, ...audition }) => audition),
     media: media.map((item) => profileMediaResponse(item, prof.id)),
+    influences,
+    awards,
+    interviews,
+    questions: questions.map(({ question, user }) => questionResponse(question, user)),
   });
 });
 

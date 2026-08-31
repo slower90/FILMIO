@@ -41,6 +41,86 @@ from = "/anime"
 to = "/anime/index.html"
 
 [[services.production.rewrites]]
+from = "/free-classics"
+to = "/free-classics/index.html"
+
+[[services.production.rewrites]]
+from = "/free-classics/*"
+to = "/free-classics/*/index.html"
+
+[[services.production.rewrites]]
+from = "/discover"
+to = "/discover/index.html"
+
+[[services.production.rewrites]]
+from = "/actors"
+to = "/actors/index.html"
+
+[[services.production.rewrites]]
+from = "/genres"
+to = "/genres/index.html"
+
+[[services.production.rewrites]]
+from = "/news"
+to = "/news/index.html"
+
+[[services.production.rewrites]]
+from = "/free-movies"
+to = "/free-movies/index.html"
+
+[[services.production.rewrites]]
+from = "/browse"
+to = "/browse/index.html"
+
+[[services.production.rewrites]]
+from = "/events"
+to = "/events/index.html"
+
+[[services.production.rewrites]]
+from = "/pricing"
+to = "/pricing/index.html"
+
+[[services.production.rewrites]]
+from = "/help"
+to = "/help/index.html"
+
+[[services.production.rewrites]]
+from = "/site-index"
+to = "/site-index/index.html"
+
+[[services.production.rewrites]]
+from = "/actor-directory"
+to = "/actor-directory/index.html"
+
+[[services.production.rewrites]]
+from = "/plans"
+to = "/plans/index.html"
+
+[[services.production.rewrites]]
+from = "/advertising"
+to = "/advertising/index.html"
+
+[[services.production.rewrites]]
+from = "/data-license"
+to = "/data-license/index.html"
+
+[[services.production.rewrites]]
+from = "/press"
+to = "/press/index.html"
+
+[[services.production.rewrites]]
+from = "/jobs"
+to = "/jobs/index.html"
+
+[[services.production.rewrites]]
+from = "/privacy"
+to = "/privacy/index.html"
+
+[[services.production.rewrites]]
+from = "/terms"
+to = "/terms/index.html"
+
+[[services.production.rewrites]]
 from = "/*"
 to = "/index.html"
 

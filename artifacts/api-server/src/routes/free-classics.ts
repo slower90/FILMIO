@@ -67,10 +67,20 @@ export type FreeClassic = {
   licenseLabel: string;
 };
 
+export function freeClassicPath(item: Pick<FreeClassic, "source" | "identifier">): string {
+  return `/free-classics/${item.source}/${encodeURIComponent(item.identifier)}`;
+}
+
 type FreeClassicsCache = {
   items: FreeClassic[];
   fetchedAt: number;
 };
+
+let freeClassicsSitemapLoader: (() => Promise<FreeClassic[]>) | null = null;
+
+export async function getFreeClassicsForSitemap(): Promise<FreeClassic[]> {
+  return freeClassicsSitemapLoader ? freeClassicsSitemapLoader() : [];
+}
 
 type FreeClassicsRouteOptions = {
   fetchFn?: typeof fetch;
@@ -582,6 +592,7 @@ export function createFreeClassicsRouter(options: FreeClassicsRouteOptions = {})
       });
     return refreshPromise;
   };
+  freeClassicsSitemapLoader = async () => (await refreshCache()).items;
 
   const router: IRouter = Router();
   router.get("/free-classics", async (req, res): Promise<void> => {
@@ -622,6 +633,27 @@ export function createFreeClassicsRouter(options: FreeClassicsRouteOptions = {})
       );
     } catch (error) {
       req.log?.error({ err: error }, "Free Classics catalog unavailable");
+      res.status(502).json({ error: "Free Classics catalog is unavailable" });
+    }
+  });
+  router.get("/free-classics/:source/:identifier", async (req, res): Promise<void> => {
+    try {
+      if (!cache) await refreshCache();
+      const source = firstText(req.params.source);
+      const identifier = firstText(req.params.identifier);
+      const validSource = source === "archive" || source === "youtube" || source === "wikimedia" || source === "nfb";
+      if (!validSource || !identifier) {
+        res.status(400).json({ error: "Invalid Free Classics item path" });
+        return;
+      }
+      const item = cache?.items.find((candidate) => candidate.source === source && candidate.identifier === identifier);
+      if (!item) {
+        res.status(404).json({ error: "Free Classics item not found" });
+        return;
+      }
+      res.json(item);
+    } catch (error) {
+      req.log?.error({ err: error }, "Free Classics item unavailable");
       res.status(502).json({ error: "Free Classics catalog is unavailable" });
     }
   });

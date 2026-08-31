@@ -21,9 +21,9 @@ const appStoreLinks = [
 
 const footerLinks = [
   { href: "/help", label: "Help" },
-  { href: "/genres", label: "Site Index" },
-  { href: "/professionals", label: "Actor Directory" },
-  { href: "/pricing", label: "Plans" },
+  { href: "/site-index", label: "Site Index" },
+  { href: "/actor-directory", label: "Actor Directory" },
+  { href: "/plans", label: "Plans" },
   { href: "/advertising", label: "Advertising" },
   { href: "/data-license", label: "License Our Data" },
   { href: "/press", label: "Press Room" },
@@ -133,17 +133,13 @@ export default function PrismFooter() {
               {label}
             </Link>
           ))}
-          <Link href="/privacy-choices" className="flex items-center gap-1 hover:text-primary">
-            <span className="rounded-sm bg-primary px-1 py-0.5 text-[10px] font-bold text-primary-foreground">PC</span>
-            Your Ads Privacy Choices
-          </Link>
         </nav>
 
         <div className="flex flex-col items-center gap-1 text-xs text-muted-foreground">
           <p className="text-sm text-muted-foreground">
             part of the <span className="font-bold text-foreground">Vishnuva</span> group
           </p>
-          <p>© 1990-2026 by FILMIO, Inc.</p>
+          <p>© 2026 FILMIO, Inc.</p>
         </div>
       </div>
     </footer>
