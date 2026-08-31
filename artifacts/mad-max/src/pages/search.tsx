@@ -6,13 +6,14 @@ import {
 } from "@workspace/api-client-react";
 import { MovieCard } from "@/components/movie-card";
 import { Input } from "@/components/ui/input";
-import { Search as SearchIcon, Tv, Users } from "lucide-react";
+import { Search as SearchIcon, Tv } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useSearch } from "wouter";
 import { recordMoodSignal } from "@/lib/mood-agent";
 import { CatalogStatusNotice, type CatalogMetadata } from "@/components/catalog-status-notice";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 import { apiFetch } from "@/lib/api-url";
 
 interface RankedAnime {
@@ -187,7 +188,10 @@ export default function Search() {
                     </div>
                   </div>
                 ) : (
-                  <div className="py-20 text-center"><h2 className="font-display text-2xl uppercase tracking-widest text-muted-foreground">No ranked anime found</h2></div>
+                  <CinemaEmptyState
+                    description="Nothing matches exactly. Try a broader anime title or explore the full anime shelves."
+                    actions={[{ label: "Explore anime", href: "/anime", testId: "link-empty-anime-search" }]}
+                  />
                 )
               ) : loadingMovies ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -230,9 +234,10 @@ export default function Search() {
                    )}
                 </div>
               ) : (
-                <div className="text-center py-20">
-                  <h2 className="text-2xl font-display uppercase tracking-widest text-muted-foreground">No movies found</h2>
-                </div>
+                <CinemaEmptyState
+                  description="Nothing matches exactly. Try widening the decade, removing a filter, or exploring Discovery."
+                  actions={[{ label: "Explore discovery", href: "/discover", testId: "link-empty-movie-search" }]}
+                />
               )}
             </TabsContent>
 
@@ -268,10 +273,10 @@ export default function Search() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20">
-                  <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h2 className="text-2xl font-display uppercase tracking-widest text-muted-foreground">No professionals found</h2>
-                </div>
+                <CinemaEmptyState
+                  description="Nothing matches exactly. Try a shorter name, a different spelling, or browse the people behind the frame."
+                  actions={[{ label: "Browse professionals", href: "/professionals", testId: "link-empty-professionals-search" }]}
+                />
               )}
             </TabsContent>
           </Tabs>

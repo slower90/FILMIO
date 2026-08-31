@@ -33,9 +33,22 @@ export const professionalPostCommentsTable = pgTable("professional_post_comments
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const professionalQuestionsTable = pgTable("professional_questions", {
+  id: serial("id").primaryKey(),
+  professionalId: integer("professional_id").notNull().references(() => professionalsTable.id, { onDelete: "cascade" }),
+  askerUserId: text("asker_user_id").notNull(),
+  question: text("question").notNull(),
+  answer: text("answer"),
+  status: text("status").notNull().default("pending"),
+  answeredAt: timestamp("answered_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertProfessionalPostSchema = createInsertSchema(professionalPostsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProfessionalPostLikeSchema = createInsertSchema(professionalPostLikesTable).omit({ id: true, createdAt: true });
 export const insertProfessionalPostCommentSchema = createInsertSchema(professionalPostCommentsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProfessionalQuestionSchema = createInsertSchema(professionalQuestionsTable).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertProfessionalPost = z.infer<typeof insertProfessionalPostSchema>;
 export type InsertProfessionalPostLike = z.infer<typeof insertProfessionalPostLikeSchema>;
@@ -43,3 +56,4 @@ export type InsertProfessionalPostComment = z.infer<typeof insertProfessionalPos
 export type ProfessionalPost = typeof professionalPostsTable.$inferSelect;
 export type ProfessionalPostLike = typeof professionalPostLikesTable.$inferSelect;
 export type ProfessionalPostComment = typeof professionalPostCommentsTable.$inferSelect;
+export type ProfessionalQuestion = typeof professionalQuestionsTable.$inferSelect;

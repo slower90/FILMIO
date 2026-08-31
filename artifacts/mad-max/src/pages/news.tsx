@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 import { ExternalLink, RefreshCw, Film, Tv, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-url";
@@ -177,15 +178,13 @@ export default function News() {
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <p className="font-display uppercase tracking-widest">No articles available.</p>
-            <button
-              onClick={() => refetch()}
-              className="mt-4 text-primary hover:underline text-sm"
-            >
-              Try refreshing
-            </button>
-          </div>
+          <CinemaEmptyState
+            description="Nothing matches exactly in this news channel. Try another category or refresh the signal."
+            actions={[
+              { label: "Try another category", onClick: () => setCategory("all"), testId: "button-empty-news-all" },
+              { label: "Refresh signal", onClick: () => refetch(), testId: "button-empty-news-refresh" },
+            ]}
+          />
         ) : (
           <div className="space-y-3">
             {items.map((item) => (

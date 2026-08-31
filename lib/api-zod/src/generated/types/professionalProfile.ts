@@ -5,7 +5,12 @@
  * FILMIO - Movie Review & Discovery Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { ProfessionalAward } from './professionalAward';
+import type { ProfessionalInfluence } from './professionalInfluence';
+import type { ProfessionalInterview } from './professionalInterview';
 import type { ProfessionalProfileAvailabilityStatus } from './professionalProfileAvailabilityStatus';
+import type { ProfessionalQuestion } from './professionalQuestion';
+import type { ProfessionalWorkEntry } from './professionalWorkEntry';
 
 export interface ProfessionalProfile {
   id: number;
@@ -26,5 +31,10 @@ export interface ProfessionalProfile {
   verified: boolean;
   /** @nullable */
   imdbLink?: string | null;
+  workHistory?: ProfessionalWorkEntry[];
+  influences?: ProfessionalInfluence[];
+  awards?: ProfessionalAward[];
+  interviews?: ProfessionalInterview[];
+  questions?: ProfessionalQuestion[];
   createdAt: string;
 }

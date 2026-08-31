@@ -29,8 +29,41 @@ export const professionalWorkEntriesTable = pgTable("professional_work_entries",
   projectName: text("project_name").notNull(),
   role: text("role").notNull(),
   year: integer("year"),
+  movieId: integer("movie_id"),
   collaborators: text("collaborators").array().notNull().default([]),
   description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const professionalInfluencesTable = pgTable("professional_influences", {
+  id: serial("id").primaryKey(),
+  professionalId: integer("professional_id").notNull().references(() => professionalsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const professionalAwardsTable = pgTable("professional_awards", {
+  id: serial("id").primaryKey(),
+  professionalId: integer("professional_id").notNull().references(() => professionalsTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  organization: text("organization"),
+  category: text("category"),
+  year: integer("year"),
+  link: text("link"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const professionalInterviewsTable = pgTable("professional_interviews", {
+  id: serial("id").primaryKey(),
+  professionalId: integer("professional_id").notNull().references(() => professionalsTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  publication: text("publication").notNull(),
+  url: text("url").notNull(),
+  year: integer("year"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -50,6 +83,12 @@ export const professionalAuditionsTable = pgTable("professional_auditions", {
 });
 
 export const insertProfessionalWorkEntrySchema = createInsertSchema(professionalWorkEntriesTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProfessionalInfluenceSchema = createInsertSchema(professionalInfluencesTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProfessionalAwardSchema = createInsertSchema(professionalAwardsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProfessionalInterviewSchema = createInsertSchema(professionalInterviewsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProfessionalAuditionSchema = createInsertSchema(professionalAuditionsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type ProfessionalWorkEntry = typeof professionalWorkEntriesTable.$inferSelect;
+export type ProfessionalInfluence = typeof professionalInfluencesTable.$inferSelect;
+export type ProfessionalAward = typeof professionalAwardsTable.$inferSelect;
+export type ProfessionalInterview = typeof professionalInterviewsTable.$inferSelect;
 export type ProfessionalAudition = typeof professionalAuditionsTable.$inferSelect;
