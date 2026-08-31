@@ -3,6 +3,7 @@ import { Film, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { MovieCard } from "@/components/movie-card";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-url";
 import type { MoviePagedResult } from "@workspace/api-client-react";
@@ -93,9 +94,13 @@ export default function Browse() {
               This catalogue is temporarily unavailable. Please refresh and try again.
             </div>
           ) : movies.length === 0 ? (
-            <div className="border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-              No titles are available in this programme right now.
-            </div>
+            <CinemaEmptyState
+              description="Nothing matches exactly. Try the Live Signal programme, remove the language filter, or widen the frame."
+              actions={[
+                { label: "Open Live Signal", href: "/browse?collection=trending", testId: "link-empty-browse-trending" },
+                { label: "Discover freely", href: "/discover", testId: "link-empty-browse-discover" },
+              ]}
+            />
           ) : (
             <>
               <div className="grid grid-cols-2 gap-x-3 gap-y-9 sm:grid-cols-3 sm:gap-x-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">

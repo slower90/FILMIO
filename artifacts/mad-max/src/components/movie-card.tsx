@@ -43,7 +43,7 @@ export function MovieCard({ movie, showDescription = false, mediaType = "movie" 
           <LazyBlurImage
             src={tmdbPosterUrl(movie.posterPath)}
             placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")}
-            alt={movie.title}
+            alt={`${movie.title} movie poster`}
             width={342}
             height={513}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"

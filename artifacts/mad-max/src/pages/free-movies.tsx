@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 import { Clapperboard, ExternalLink } from "lucide-react";
 import { apiFetch } from "@/lib/api-url";
 
@@ -50,8 +51,11 @@ export default function FreeMovies() {
             className="border-b border-border/30"
           />
         ) : (
-          <div className="container mx-auto px-4 py-16 text-center">
-            <p className="text-muted-foreground">No no-cost or ad-supported titles are listed right now.</p>
+          <div className="container mx-auto px-4 py-16">
+            <CinemaEmptyState
+              description="Nothing matches exactly in this screening room. Try the wider catalogue or check back when OTT availability changes."
+              actions={[{ label: "Browse all cinema", href: "/browse?collection=trending", testId: "link-empty-free-movies-browse" }]}
+            />
           </div>
         )}
 

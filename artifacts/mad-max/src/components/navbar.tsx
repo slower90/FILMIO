@@ -214,7 +214,8 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
             ))
           ) : (
             <div className="px-3 py-4 text-xs text-muted-foreground">
-              No matching movies, shows, or people yet.
+              <p className="font-display text-[0.65rem] font-bold uppercase tracking-[0.12em] text-foreground">THE CAMERA FOUND NOTHING HERE.</p>
+              <p className="mt-1">Nothing matches exactly. Try a wider title, person, or show search.</p>
             </div>
           )}
           <button
@@ -398,26 +399,28 @@ export function Navbar() {
               : "bg-background/82 backdrop-blur-md",
         )}
       >
-        <div className="container relative mx-auto flex h-[4.75rem] items-center gap-2 px-3 sm:h-[4.5rem] sm:gap-4 sm:px-4">
-          {/* Hamburger */}
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="flex h-11 w-11 flex-none items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-            aria-label="Open menu"
-            data-testid="button-open-menu"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+        <div className="container relative mx-auto grid h-[4.75rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 px-3 sm:flex sm:h-[4.5rem] sm:gap-4 sm:px-4">
+          <div className="flex items-center gap-0.5 sm:contents">
+            {/* Hamburger */}
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+              aria-label="Open menu"
+              data-testid="button-open-menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
 
-          {/* Mobile search comes before the centered logo */}
-          <div className="sm:hidden">
-            <NavSearch compact />
+            {/* Mobile search stays in the left rail so it cannot meet the logo. */}
+            <div className="sm:hidden">
+              <NavSearch compact />
+            </div>
           </div>
 
           {/* Logo */}
           <Link
             href="/"
-            className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 text-primary transition-colors hover:text-primary/80 sm:gap-2"
+            className="col-start-2 row-start-1 flex min-w-0 max-w-full items-center justify-self-center gap-1 text-primary transition-colors hover:text-primary/80 sm:static sm:col-auto sm:row-auto sm:ml-2 sm:shrink-0 sm:translate-x-0 sm:translate-y-0 sm:gap-2"
             aria-label="FILMIO homepage"
             data-testid="link-home-brand"
           >
@@ -428,7 +431,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop search — grows to fill space */}
-          <div className="absolute bottom-3 left-4 right-4 hidden sm:static sm:mr-auto sm:flex sm:flex-1 sm:justify-start sm:pl-3 md:max-w-[260px] lg:max-w-[calc(50%-4rem)]">
+          <div className="absolute bottom-3 left-4 right-4 hidden sm:static sm:mr-auto sm:flex sm:min-w-0 sm:flex-1 sm:justify-start sm:pl-3 md:max-w-[260px] lg:max-w-[calc(50%-4rem)]">
             <NavSearch />
           </div>
 
@@ -475,11 +478,11 @@ export function Navbar() {
           </nav>
 
           {/* Right: auth */}
-          <div className="ml-auto flex flex-none items-center gap-2 sm:gap-4 lg:ml-5 lg:gap-5">
+          <div className="col-start-3 row-start-1 ml-0 flex flex-none items-center gap-1 sm:ml-auto sm:gap-4 lg:ml-5 lg:gap-5">
             <button
               type="button"
               onClick={() => setTheme(isLight ? "dark" : "light")}
-              className="mr-1 flex h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary sm:mr-0"
+              className="flex h-11 w-11 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
               aria-label={themeLabel}
               title={themeLabel}
               aria-pressed={isLight}
@@ -497,7 +500,7 @@ export function Navbar() {
               data-testid="link-watchlist"
             >
               <Bookmark className="h-4 w-4" />
-               <span>Your next screen</span>
+                <span className="hidden lg:inline">Your next screen</span>
               {watchlistCount > 0 && (
                 <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
                   {watchlistCount > 99 ? "99+" : watchlistCount}

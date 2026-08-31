@@ -98,6 +98,30 @@ function createFixtureFetch() {
       "/api/movies/by-genre?genreId=18&page=1": {
         results: [{ id: 101, title: "The Long Take" }],
       },
+      "/api/free-classics?limit=200": {
+        items: [{
+          identifier: "film-1",
+          title: "The Public Domain Film",
+          description: "A public-domain classic preserved for free online viewing.",
+          year: 1931,
+          posterUrl: "https://archive.org/services/img/film-1",
+          source: "archive",
+          sourceLabel: "Internet Archive",
+          sourceUrl: "https://archive.org/details/film-1",
+          licenseLabel: "Public Domain",
+        }],
+      },
+      "/api/free-classics/archive/film-1": {
+        identifier: "film-1",
+        title: "The Public Domain Film",
+        description: "A public-domain classic preserved for free online viewing.",
+        year: 1931,
+        posterUrl: "https://archive.org/services/img/film-1",
+        source: "archive",
+        sourceLabel: "Internet Archive",
+        sourceUrl: "https://archive.org/details/film-1",
+        licenseLabel: "Public Domain",
+      },
     };
 
     const fixture = fixtures[route];
@@ -147,14 +171,14 @@ test("keeps movie, TV, actor, genre, and Journal metadata route-specific", async
   const cases = [
     {
       route: "/movies/101/the-long-take",
-      title: "The Long Take (2024) Ratings & Reviews | FILMIO",
+      title: "The Long Take - Ratings, Reviews & Where to Watch | FILMIO",
       description: "A carefully observed story about making movies.",
       canonical: "https://vishnuva.in/movies/101/the-long-take",
       structuredType: "Movie",
     },
     {
       route: "/movies/202/the-night-shift?type=tv",
-      title: "The Night Shift (2025) Ratings & Reviews | FILMIO",
+      title: "The Night Shift - Ratings, Reviews & Where to Watch | FILMIO",
       description: "A TV series about the people who keep a city moving.",
       canonical: "https://vishnuva.in/movies/202/the-night-shift?type=tv",
       structuredType: "TVSeries",
@@ -193,6 +217,35 @@ test("keeps movie, TV, actor, genre, and Journal metadata route-specific", async
   }
 });
 
+test("prerenders Free Classics collection and Movie schema", async () => {
+  const collectionHtml = await renderRoute("/free-classics");
+  assert.match(collectionHtml, /<title>Watch Free Classic Movies Online - Public Domain Cinema \| FILMIO<\/title>/);
+  assert.match(collectionHtml, /name="description" content="Watch free classic movies online from public-domain cinema sources/);
+  assert.ok(jsonLdTypes(jsonLdFrom(collectionHtml)).includes("CollectionPage"));
+  assert.match(collectionHtml, /href="\/free-classics\/archive\/film-1"/);
+
+  const detailHtml = await renderRoute("/free-classics/archive/film-1");
+  const detailJsonLd = jsonLdFrom(detailHtml);
+  assert.match(detailHtml, /<title>The Public Domain Film - Watch Free Classic Movie Online \| FILMIO<\/title>/);
+  assert.ok(jsonLdTypes(detailJsonLd).includes("Movie"));
+  assert.equal(detailJsonLd.name, "The Public Domain Film");
+  assert.equal(detailJsonLd.image, "https://archive.org/services/img/film-1");
+  assert.equal(detailJsonLd.isAccessibleForFree, true);
+});
+
+test("keeps the homepage metadata aligned with the SEO brief", async () => {
+  const html = await readFile(path.resolve(import.meta.dirname, "../../index.html"), "utf8");
+  assert.match(html, /<title>FILMIO - Discover, Rate &amp; Review Movies, TV Shows &amp; Anime \| Free Classic Movies<\/title>/);
+  assert.match(html, /<meta name="description" content="Discover free movies online, watch free classic movies, and explore Indian films, TV shows, and anime with FILMIO ratings, reviews, trailers, and watch options\." \/>/);
+});
+
+test("prerenders static support metadata", async () => {
+  const html = await renderRoute("/help");
+  assert.match(html, /<title>FILMIO Help Center \| Search, Ratings &amp; Watchlists<\/title>/);
+  assert.match(html, /<h1>How Can We Help\?<\/h1>/);
+  assert.ok(jsonLdTypes(jsonLdFrom(html)).includes("WebPage"));
+});
+
 test("keeps the TV Journal type=tv query in canonical and structured data", async () => {
   const html = await renderRoute("/blog/movies/505/the-night-shift?type=tv");
   const jsonLd = jsonLdFrom(html);
@@ -218,6 +271,8 @@ test("keeps extensionless rewrite targets aligned with generated route files", a
     ["/actors/*", "/actors/*/index.html"],
     ["/genre/*", "/genre/*/index.html"],
     ["/anime", "/anime/index.html"],
+    ["/free-classics", "/free-classics/index.html"],
+    ["/free-classics/*", "/free-classics/*/index.html"],
   ];
 
   for (const [from, to] of expected) {
@@ -232,6 +287,7 @@ test("keeps extensionless rewrite targets aligned with generated route files", a
     ["/actors/606", "/actors/*"],
     ["/genre/18", "/genre/*"],
     ["/anime", "/anime"],
+    ["/free-classics/archive/film-1", "/free-classics/*"],
   ];
 
   for (const [route, rewriteFrom] of routeMappings) {

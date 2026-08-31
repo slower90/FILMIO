@@ -169,7 +169,10 @@ function MovieSearch({ onSelect, selected }: { onSelect: (movie: MovieSummary | 
               </button>
             ))
           ) : (
-            <p className="px-4 py-4 text-xs text-muted-foreground">No matching titles found.</p>
+            <div className="px-4 py-4">
+              <p className="font-display text-[0.65rem] font-bold uppercase tracking-[0.14em]">THE CAMERA FOUND NOTHING HERE.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Nothing matches exactly. Try a wider title search.</p>
+            </div>
           )}
         </div>
       )}

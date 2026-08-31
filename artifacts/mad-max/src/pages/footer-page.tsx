@@ -9,88 +9,145 @@ type PageConfig = {
   title: string;
   intro: string;
   lastUpdated?: string;
-  sections: Array<{ title: string; body: string; bullets?: string[] }>;
+  sections: Array<{
+    title: string;
+    body: string;
+    bullets?: string[];
+    links?: Array<{ label: string; href: string }>;
+  }>;
 };
 
 const pages: Record<string, PageConfig> = {
   help: {
     eyebrow: "FILMIO Support",
     title: "How can we help?",
-    intro: "Find your next watch, manage your account, or connect with the people behind the stories you love.",
+    intro: "FILMIO Help Center — movies/TV/anime search karna, rating dena, reviews likhna, watchlist banana, ya professional/audition profile setup karne mein madad.",
     sections: [
-      { title: "Explore FILMIO", body: "Use Discover, Genres, Anime, and Search to find films and shows. Open any title to see cast, trailers, ratings, and where to watch." },
-      { title: "Your account", body: "Sign in to save watchlists, rate titles, write reviews, follow professionals, and send private messages. Your profile settings are available from the account menu." },
-      { title: "Need more help?", body: "Our support team can help with account access, privacy requests, or a report about content.", bullets: ["Open the FILMIO contact form", "Include the page or title you are asking about", "Never send your password or verification codes"] },
+      { title: "Find and follow stories", body: "Search movies, TV, and anime, then open a title for cast, trailers, ratings, reviews, and official viewing options." },
+      { title: "Make FILMIO yours", body: "Sign in to rate titles, write reviews, build a watchlist, and set up a professional or audition profile." },
+      { title: "Still have a question?", body: "Sawal ho to support@vishnuva.in par likho. Never send your password or verification codes.", bullets: ["Open the FILMIO contact form", "Include the page or title you are asking about"] },
+    ],
+  },
+  "site-index": {
+    eyebrow: "FILMIO Directory",
+    title: "Site index",
+    intro: "FILMIO ke saare major sections ek jagah se explore karo.",
+    sections: [
+      {
+        title: "Movies, TV & Anime",
+        body: "Discovery, search, genres, free viewing, and the FILMIO Journal.",
+        links: [
+          { label: "Discover", href: "/discover" },
+          { label: "Search", href: "/search" },
+          { label: "Browse", href: "/browse" },
+          { label: "Genres", href: "/genres" },
+          { label: "Anime", href: "/anime" },
+          { label: "Free Movies", href: "/free-movies" },
+          { label: "Free Classics", href: "/free-classics" },
+          { label: "Film News", href: "/news" },
+        ],
+      },
+      {
+        title: "People & community",
+        body: "Meet the performers, filmmakers, and film fans who make FILMIO more useful.",
+        links: [
+          { label: "Top Actors", href: "/actors" },
+          { label: "Actor & Crew Directory", href: "/actor-directory" },
+          { label: "Industry Network", href: "/professionals" },
+          { label: "Industry Community", href: "/professionals/community" },
+          { label: "Profiles", href: "/profiles" },
+          { label: "Friends", href: "/friends" },
+        ],
+      },
+      {
+        title: "Your FILMIO",
+        body: "Save, reflect, and keep track of the stories and signals that matter to you.",
+        links: [
+          { label: "Watchlist", href: "/watchlist" },
+          { label: "Personal Signals", href: "/signals" },
+          { label: "Cinema Graph", href: "/profiles/graph" },
+          { label: "Events", href: "/events" },
+          { label: "Plans", href: "/plans" },
+        ],
+      },
+    ],
+  },
+  "actor-directory": {
+    eyebrow: "FILMIO Industry Network",
+    title: "Actor & crew directory",
+    intro: "FILMIO ke Industry Network mein registered actors, directors, aur crew members ki poori list — profile dekho, connect karo, ya audition opportunities explore karo.",
+    sections: [
+      { title: "Explore the network", body: "Industry Network mein verified cinematic profiles, filmographies, career timelines, influences, awards, interviews, auditions, and audience questions explore karo.", links: [{ label: "Open Industry Network", href: "/professionals" }, { label: "Meet the industry community", href: "/professionals/community" }] },
+    ],
+  },
+  plans: {
+    eyebrow: "FILMIO Plans",
+    title: "Free for everyone",
+    intro: "FILMIO free hai sabke liye — discovery, rating, review, watchlist sab free.",
+    sections: [
+      { title: "Everything that matters", body: "Discover movies, TV shows, and anime; rate and review what you watch; and keep your next watches in a personal watchlist. FILMIO ke core features ke liye payment required nahi hai." },
     ],
   },
   advertising: {
     eyebrow: "FILMIO For Business",
-    title: "Put your story in front of movie people",
-    intro: "Reach a focused audience of film fans, anime viewers, creators, and entertainment professionals.",
+    title: "Advertise on FILMIO",
+    intro: "FILMIO par advertise karna chahte ho? Movie promotions, brand partnerships, ya banner ads ke liye contact karo: ads@vishnuva.in",
     sections: [
-      { title: "Ways to partner", body: "Build awareness with sponsored discovery placements, premiere campaigns, trailer promotion, and creator-focused partnerships." },
-      { title: "Our approach", body: "Advertising should be clearly labelled, relevant, and respectful of the viewing experience. We do not sell private messages or private professional portfolio data." },
-      { title: "Start a conversation", body: "Tell us about your campaign, target audience, market, and timing.", bullets: ["Use the FILMIO contact form and select Advertising", "We reply with available formats and audience information", "Campaigns are reviewed before they go live"] },
+      { title: "Advertising enquiries", body: "Movie promotions, brand partnerships, ya banner ads ke liye ads@vishnuva.in par apni campaign details, audience, market, aur timing ke saath likho." },
     ],
   },
   "data-license": {
     eyebrow: "FILMIO Data",
     title: "License our data",
-    intro: "Explore commercial access to FILMIO discovery data for products, research, and entertainment experiences.",
+    intro: "FILMIO ka rating/review data apne product mein use karna chahte ho? Licensing enquiries ke liye contact karo: data@vishnuva.in",
     sections: [
-      { title: "Available data", body: "Depending on the license, access may include title metadata, genres, credits, ratings aggregates, and availability information." },
-      { title: "Responsible use", body: "Licensed data must be attributed where required, kept secure, and used in line with applicable rights and third-party source terms. Personal messages and private profile information are never part of the catalog feed." },
-      { title: "Request a license", body: "Share your company, use case, expected volume, and countries of operation.", bullets: ["Use the FILMIO contact form and select Data licensing", "Do not scrape the site or bypass access controls", "A license is required before commercial redistribution"] },
+      { title: "Licensing enquiries", body: "Data licensing ke liye data@vishnuva.in par apna product, use case, expected volume, aur distribution plans share karo. Private messages aur private profile information licensed data ka hissa nahi hain." },
     ],
   },
   press: {
     eyebrow: "FILMIO Press Room",
-    title: "The stories behind FILMIO",
-    intro: "Press resources, company news, and a direct line to our communications team.",
+    title: "Press room",
+    intro: "Media aur press enquiries ke liye — FILMIO ke baare mein likhna chahte ho? Contact: press@vishnuva.in",
     sections: [
-      { title: "About FILMIO", body: "FILMIO is a midnight-cinema discovery platform for movies, anime, reviews, watchlists, and professional connections." },
-      { title: "Press enquiries", body: "For interviews, product information, founder requests, or approved brand assets, contact our communications team.", bullets: ["Use the FILMIO contact form and select Press", "Please include your publication and deadline", "We respond to editorial requests as quickly as possible"] },
+      { title: "Media enquiries", body: "Interviews, product information, founder requests, aur approved brand assets ke liye press@vishnuva.in par apni publication aur deadline ke saath likho." },
     ],
   },
   jobs: {
     eyebrow: "Work at FILMIO",
-    title: "Make the next great movie experience",
-    intro: "We are building a place where audiences discover stories and the people who make them.",
+    title: "Jobs at FILMIO",
+    intro: "FILMIO team join karna chahte ho? Abhi hum chhoti team hain, lekin future openings yahan post honge. Interested ho to careers@vishnuva.in par likho.",
     sections: [
-      { title: "What we value", body: "Curiosity, craft, inclusive collaboration, thoughtful product decisions, and respect for the creative communities we serve." },
-      { title: "Open roles", body: "There are no public openings listed right now, but we welcome a concise introduction from people whose work fits our mission." },
-      { title: "Reach out", body: "Send a portfolio or LinkedIn profile and the kind of work you want to do.", bullets: ["Use the FILMIO contact form and select Careers", "Use the subject line “Future FILMIO teammate”", "We keep applications private and review them when roles open"] },
+      { title: "Future openings", body: "Abhi hum chhoti team hain aur current openings nahi hain. Future roles ke liye yahan updates milenge; apna portfolio, LinkedIn profile, aur kis tarah ka kaam karna chahte ho, careers@vishnuva.in par bhej sakte ho." },
     ],
   },
   terms: {
     eyebrow: "FILMIO Legal",
     title: "Conditions of use",
-    intro: "The rules for using FILMIO fairly, safely, and respectfully.",
+    intro: "FILMIO ko fairly, safely, aur respectfully use karne ke rules.",
     sections: [
-      { title: "Use the service responsibly", body: "You may browse, rate, review, save, and connect through FILMIO for lawful personal and professional purposes. Do not impersonate others, harass people, manipulate ratings, or interfere with the service." },
-      { title: "Your content", body: "You keep ownership of content you submit. You give FILMIO permission to host and display it only as needed to operate the service, and you are responsible for having the rights to share it." },
-      { title: "Third-party information", body: "Movie metadata, imagery, trailers, and provider information may come from third parties and can change. Availability varies by country and platform." },
-      { title: "Questions", body: "For legal questions or reports, use the FILMIO contact form." },
+      { title: "Account rules", body: "Account banate waqt accurate information do, apne account ko secure rakho, aur kisi aur ki identity impersonate mat karo. FILMIO ko lawful personal aur professional purposes ke liye use karo; service ko scrape, disrupt, abuse, ya unauthorized access mat karo." },
+      { title: "Content guidelines", body: "Fake reviews, rating manipulation, harassment, hate, threats, doxxing, spam, illegal content, aur kisi ki privacy violate karne wala content allowed nahi hai. FILMIO harmful ya rule-breaking content ko remove, restrict, ya report kar sakta hai." },
+      { title: "Rating and review policy", body: "Ratings aur reviews genuine viewing experience par based hone chahiye. Paid, coordinated, fake, repetitive, misleading, ya kisi film ko unfairly promote/damage karne wale reviews allowed nahi hain. Apne review ke rights aur accuracy ki responsibility aapki hai." },
+      { title: "Intellectual property", body: "FILMIO ka name, branding, software, design, aur original materials FILMIO ya uske licensors ke hain. Aap apne submitted content ke owner rehte ho, lekin FILMIO ko service operate karne ke liye use, host, display, aur distribute karne ki limited permission dete ho." },
+      { title: "Third-party information", body: "Movie metadata, images, trailers, ratings sources, aur provider information third parties se aa sakti hai. Inki accuracy, availability, rights, aur country/platform restrictions change ho sakti hain." },
+      { title: "Liability disclaimer", body: "FILMIO service ko available aur useful rakhne ki koshish karta hai, lekin service, catalog, recommendations, third-party links, availability, ya user content ke uninterrupted, error-free, complete, ya suitable hone ki guarantee nahi deta. Law ke maximum extent tak FILMIO indirect loss ke liye liable nahi hoga." },
+      { title: "Changes and contact", body: "FILMIO in conditions ko service ke saath update kar sakta hai; important changes ko page par post kiya jayega. Questions, reports, ya legal notices ke liye FILMIO Help Center use karo." },
     ],
   },
   privacy: {
     eyebrow: "FILMIO Legal",
     title: "Privacy policy",
-    intro: "We want you to enjoy discovering stories without giving up control of your personal information. This policy explains what FILMIO collects, why we use it, when it is shared, and how you can make privacy requests.",
-    lastUpdated: "Last updated: 24 August 2026",
+    intro: "FILMIO aapki privacy ko seriously leta hai. Ye policy batati hai ki hum kya data collect karte hain, kaise use karte hain, aur aap apne data par control kaise rakh sakte ho.",
+    lastUpdated: "Last updated: 31 August 2026",
     sections: [
-      { title: "What this covers", body: "This policy applies to the FILMIO website, mobile experiences, and related features for movie, TV, and anime discovery, ratings, reviews, watchlists, professional profiles, auditions, and private messaging. It does not apply to third-party websites or services linked from FILMIO." },
-      { title: "Information you choose to provide", body: "When you create or use an account, you may provide your name, email address, profile photo, preferences, ratings, reviews, watchlists, follows, professional profile, portfolio links, audition files, and messages. You decide what to publish on your profile or in a review. Do not upload information that you do not have the right to share." },
-      { title: "Information created through your use", body: "We receive information about the titles you search, view, rate, review, save, or discuss, along with settings, device information, browser information, approximate location inferred from network data, log data, and security signals. If you browse while signed out, some recent browsing history may stay only in your browser or device." },
-      { title: "How we use information", body: "We use information to provide and personalise discovery, show ratings and reviews, maintain watchlists and profiles, deliver notifications you request, operate private messaging, secure accounts, prevent abuse, troubleshoot the service, understand product performance, and improve FILMIO. We do not use the contents of private messages or private audition files to personalise public movie recommendations." },
-      { title: "What is public and what stays private", body: "Public reviews, ratings, follows, and professional profile information may be visible to other users according to your settings. Private messages and audition files are intended only for authenticated participants or the people you choose. We do not sell private messages, passwords, private audition files, or private profile information." },
-      { title: "When information is shared", body: "We may share information with service providers who help us host, secure, authenticate, store, analyse, or support FILMIO, under appropriate instructions and safeguards. We may also disclose information when required by law, to protect users and the service, or as part of a business reorganisation. Movie metadata, images, trailers, and availability information may come from independent third-party sources and are governed by their own policies." },
-      { title: "Retention and security", body: "We keep information for as long as needed to provide the service, meet legal and accounting obligations, resolve disputes, enforce agreements, and protect FILMIO. We use access controls, encryption where appropriate, and security monitoring, but no online service can promise absolute security. Please use a strong, unique password and report suspicious activity promptly." },
-      { title: "Your choices and privacy rights", body: "Depending on where you live, you may be able to access, correct, update, delete, or receive a copy of your personal information, withdraw consent where processing is based on consent, or object to certain uses. You can also sign out, edit your profile, remove saved titles, and manage advertising preferences from FILMIO.", bullets: ["Use the FILMIO contact form and select Privacy request", "Tell us which account, information, or action your request concerns", "We may verify your identity before completing a request", "We aim to respond within the time required by applicable law"] },
-      { title: "Children and age limits", body: "FILMIO is not intended for children who are not permitted to use the service under the laws that apply to them. We do not knowingly collect personal information from children without the required permission. If you believe a child has provided information, contact us so we can review and remove it where appropriate." },
-      { title: "Cookies and similar technologies", body: "We use essential storage and similar technologies to keep FILMIO secure, remember settings, maintain sessions, and understand service performance. Where required, we ask for your choices before using non-essential technologies. You can manage browser settings and visit Ads Privacy Choices to review advertising preferences." },
-      { title: "International processing and changes", body: "FILMIO and its service providers may process information in countries other than where you live. Where required, we use appropriate safeguards for those transfers. We may update this policy as FILMIO changes; we will post the revised version and update the date above. Material changes may also be communicated through the service." },
-       { title: "Contact us", body: "For privacy questions, requests, or concerns, use the FILMIO contact form. For general support, use the same form and select Support. If you are unhappy with our response, you may have the right to contact the data protection authority or regulator in your country." },
+      { title: "Data we collect", body: "Account banate ya use karte waqt hum email address, name, profile details, ratings, reviews, watchlists, follows, professional profile information, auditions, aur messages collect kar sakte hain. Search, viewing, settings, device/browser, log, aur security information bhi service ko operate karne ke liye process ho sakti hai." },
+      { title: "How we use your data", body: "Email aur account data sign-in, account support, security, aur requested notifications ke liye use hota hai. Ratings, reviews, aur watchlist data discovery ko personalise karne, recommendations improve karne, community features chalane, aur FILMIO ko better banane mein help karta hai. Private messages aur private audition files public recommendations ke liye use nahi kiye jaate." },
+      { title: "Third-party services and data", body: "FILMIO authentication ke liye Clerk use karta hai. Movie, TV, anime metadata, credits, images, trailers, aur availability information TMDB aur other third-party sources se aa sakti hai; un services ki apni terms aur privacy policies apply hoti hain. Hum service providers ke saath sirf FILMIO operate, secure, host, authenticate, aur support karne ke liye data share karte hain." },
+      { title: "Public and private information", body: "Aapke public ratings, reviews, follows, aur professional profile information doosre users ko dikh sakte hain. Private messages aur audition files sirf intended authenticated participants ya selected recipients ke liye hote hain. Hum passwords, private messages, private audition files, ya private profile data sell nahi karte." },
+      { title: "Cookies and device storage", body: "Hum essential cookies, local storage, aur similar technologies sessions maintain karne, settings yaad rakhne, security provide karne, aur service performance samajhne ke liye use karte hain. Browser settings se aap cookies aur local storage manage ya delete kar sakte ho; kuch features isse affect ho sakte hain." },
+      { title: "Your rights and data deletion", body: "Applicable law ke hisaab se aap apna data access, correct, update, export, ya delete karne ki request kar sakte ho; kuch processing par objection ya consent withdrawal bhi possible ho sakta hai. Data delete request ke liye FILMIO Help Center ke contact form se Privacy request select karo, ya support@vishnuva.in par account email aur requested action ke saath likho. Hum request complete karne se pehle identity verify kar sakte hain." },
+      { title: "Security, retention, and changes", body: "Hum access controls, encryption where appropriate, aur security monitoring use karte hain, lekin koi online service absolute security guarantee nahi kar sakti. Data ko service, legal obligations, disputes, abuse prevention, aur security ke liye zaroori duration tak retain kiya ja sakta hai. Policy change hone par updated date ke saath yahan publish ki jayegi." },
+      { title: "Contact us", body: "Privacy ya general support ke liye support@vishnuva.in par likho ya FILMIO Help Center ka contact form use karo. Applicable law ke tahat aap apne local data protection authority se bhi contact kar sakte ho." },
     ],
   },
   "privacy-choices": {
@@ -98,8 +155,8 @@ const pages: Record<string, PageConfig> = {
     title: "Ads privacy choices",
     intro: "Choose how FILMIO uses advertising-related information on this device.",
     sections: [
-      { title: "Your current preference", body: "FILMIO does not use private messages, private auditions, or your password for advertising. You can opt out of personalised advertising below." },
-      { title: "Manage preferences", body: "Your preference is saved on this device and can be changed at any time.", bullets: ["Personalised advertising: Off", "Contextual advertising: On", "Essential security and service measurement: On"] },
+      { title: "Your current preference", body: "FILMIO currently does not use third-party ad networks or advertising trackers. This page is retained for future product planning and does not change how FILMIO uses your data today." },
+      { title: "Manage preferences", body: "There are no third-party advertising preferences to manage at this time." },
     ],
   },
 };
@@ -128,6 +185,15 @@ export default function FooterPage() {
             <section key={section.title} className="rounded-md border border-border bg-card/40 p-6">
               <h2 className="font-display text-xl font-bold uppercase tracking-wider">{section.title}</h2>
               <p className="mt-3 text-sm leading-7 text-muted-foreground">{section.body}</p>
+              {section.links && (
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  {section.links.map((link) => (
+                    <Link key={link.href} href={link.href} className="rounded-sm border border-border/70 px-3 py-2 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
               {section.bullets && <ul className="mt-4 space-y-2 text-sm text-muted-foreground">{section.bullets.map((bullet) => <li key={bullet} className="flex gap-2"><span className="text-primary">•</span>{bullet === "Open the FILMIO contact form" || bullet.startsWith("Use the FILMIO contact form") ? <Link href={contactFormHref} className="underline underline-offset-4 hover:text-primary">{bullet}</Link> : bullet}</li>)}</ul>}
             </section>
           ))}

@@ -92,7 +92,7 @@ function MovieCard({
         <LazyBlurImage
           src={tmdbPosterUrl(movie.posterPath)}
           placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")}
-          alt={movie.title}
+          alt={`${movie.title} movie poster`}
           width={342}
           height={513}
           className="transition-transform duration-500 group-hover:scale-105"

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Navbar } from "@/components/navbar";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 import { Search, UserRound } from "lucide-react";
 import { apiFetch } from "@/lib/api-url";
 
@@ -82,7 +83,10 @@ export default function Actors() {
             ))}
           </div>
         ) : (
-          <p className="py-20 text-center text-muted-foreground">No actors found.</p>
+          <CinemaEmptyState
+            description="Nothing matches exactly. Try a shorter name, a different spelling, or explore the wider catalogue."
+            actions={[{ label: "Explore discovery", href: "/discover", testId: "link-empty-actors-discover" }]}
+          />
         )}
       </main>
     </div>

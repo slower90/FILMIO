@@ -3,9 +3,10 @@ import { useLocation } from "wouter";
 
 const SITE_NAME = "FILMIO";
 export const SITE_URL = "https://vishnuva.in";
-const DEFAULT_TITLE = "FILMIO | Discover, Rate & Review Movies Across India";
+const DEFAULT_TITLE =
+  "FILMIO - Discover, Rate & Review Movies, TV Shows & Anime | Free Classic Movies";
 const DEFAULT_DESCRIPTION =
-  "Discover Indian and global movies, TV shows, and anime on FILMIO. Compare ratings, read reviews, explore cast, watch trailers, and find where to watch in India.";
+  "Discover free movies online, watch free classic movies, and explore Indian films, TV shows, and anime with FILMIO ratings, reviews, trailers, and watch options.";
 
 const routeMetadata: Record<string, { title: string; description: string }> = {
   "/discover": {
@@ -38,15 +39,51 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   },
   "/free-movies": {
     title: "Free Movies to Watch in India | FILMIO",
-    description: "Discover legitimate free and ad-supported movies available through official providers, with ratings and reviews from FILMIO.",
+    description: "Find free movies online through legal providers, browse public-domain cinema, and use FILMIO ratings, reviews, trailers, and watch options.",
   },
   "/free-classics": {
-    title: "Free Classics: Public Domain Films | FILMIO",
-    description: "Watch enduring public-domain films legally and for free through the Internet Archive screening room on FILMIO.",
+    title: "Watch Free Classic Movies Online - Public Domain Cinema | FILMIO",
+    description: "Watch free classic movies online from public-domain cinema sources, explore film history, and discover legal films with FILMIO ratings, reviews, and details.",
+  },
+  "/browse": {
+    title: "Browse Movies, TV & Anime | FILMIO",
+    description: "Browse movies, TV shows, anime, Indian cinema, and curated collections with FILMIO ratings, reviews, and watch options.",
   },
   "/pricing": {
     title: "FILMIO Membership | Film Community",
     description: "See FILMIO membership options for deeper film discovery, reviews, and connections with the movie community.",
+  },
+  "/help": {
+    title: "FILMIO Help Center | Search, Ratings & Watchlists",
+    description: "Get help searching movies, TV, and anime, rating and reviewing titles, building watchlists, and setting up FILMIO professional profiles.",
+  },
+  "/site-index": {
+    title: "FILMIO Site Index | Movies, TV, Anime & Industry Network",
+    description: "Browse direct links to FILMIO movies, TV shows, anime, actors, free classics, the Industry Network, watchlists, and community sections.",
+  },
+  "/actor-directory": {
+    title: "Actor & Crew Directory | FILMIO Industry Network",
+    description: "Explore FILMIO's registered actors, directors, and crew members, their profiles, connections, and audition opportunities.",
+  },
+  "/plans": {
+    title: "FILMIO Plans | Free Movie Discovery",
+    description: "FILMIO is free for everyone: discover, rate, review, and save movies, TV shows, and anime to your watchlist.",
+  },
+  "/advertising": {
+    title: "Advertise on FILMIO | Movie Promotions & Partnerships",
+    description: "Contact FILMIO about movie promotions, brand partnerships, and banner advertising.",
+  },
+  "/data-license": {
+    title: "License FILMIO Data | Ratings & Reviews",
+    description: "Learn how to enquire about licensing FILMIO rating and review data for your product.",
+  },
+  "/press": {
+    title: "FILMIO Press Room | Media Enquiries",
+    description: "Find media and press contact information for stories about FILMIO.",
+  },
+  "/jobs": {
+    title: "Jobs at FILMIO | Future Openings",
+    description: "Learn about future opportunities to join the FILMIO team.",
   },
   "/privacy": {
     title: "Privacy Policy | FILMIO",
@@ -75,7 +112,7 @@ function descriptionForPath(path: string) {
   if (path.startsWith("/movies/")) {
     return {
       title: "Movie Ratings, Reviews & Where to Watch | FILMIO",
-      description: "Read movie details, FILMIO ratings and reviews, trailers, cast information, and official viewing options in India.",
+      description: "Read movie ratings and reviews, watch trailers, explore cast details, and find official places to watch movies online in India with FILMIO.",
     };
   }
   if (path.startsWith("/blog/movies/")) {
@@ -115,6 +152,7 @@ export function SiteSeo() {
       <title>{title}</title>
       <meta name="description" content={description} />
       <meta name="author" content="FILMIO" />
+      <meta name="application-name" content="FILMIO" />
       <meta name="theme-color" content="#0a0a0f" />
       <meta name="robots" content={isPrivateRoute ? "noindex, nofollow" : "index, follow"} />
       <link rel="canonical" href={canonicalUrl} />
@@ -129,6 +167,7 @@ export function SiteSeo() {
       <meta property="og:type" content="website" />
       <meta property="og:image" content={imageUrl} />
       <meta property="og:image:alt" content={`${SITE_NAME} movie discovery and review platform`} />
+      <meta property="og:image:type" content="image/svg+xml" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />

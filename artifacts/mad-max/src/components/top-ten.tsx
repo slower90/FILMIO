@@ -76,7 +76,7 @@ export function TopTen({ movies, isLoading }: TopTenProps) {
                     <LazyBlurImage
                       src={tmdbPosterUrl(movie.posterPath, "w185")}
                       placeholderSrc={tmdbPosterUrl(movie.posterPath, "w92")}
-                      alt={movie.title}
+                      alt={`${movie.title} movie poster`}
                       width={185}
                       height={278}
                       className="shadow-lg"

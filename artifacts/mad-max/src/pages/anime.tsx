@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/navbar";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { Link } from "wouter";
 import { Search, ExternalLink, Star, Tv } from "lucide-react";
@@ -119,7 +120,12 @@ function AnimeRow({
                 ))
               : items.length === 0
               ? (
-                <p className="text-muted-foreground text-sm py-4">No results available right now.</p>
+                <CinemaEmptyState
+                  compact
+                  className="w-full"
+                  description="This shelf is quiet right now. Try another anime shelf or search for a wider title."
+                  actions={[{ label: "Browse anime", href: "/anime", testId: "link-empty-anime-shelf" }]}
+                />
               )
               : items.map((anime) => <AnimeCard key={anime.id} anime={anime} />)}
           </div>
@@ -197,7 +203,11 @@ export default function Anime() {
               ))}
             </div>
           ) : searchResults?.results.length === 0 ? (
-            <p className="text-muted-foreground">No results found.</p>
+            <CinemaEmptyState
+              compact
+              description="Nothing matches exactly. Try widening the title, using fewer words, or browse the anime shelves."
+              actions={[{ label: "Browse anime", href: "/anime", testId: "link-empty-anime-search-page" }]}
+            />
           ) : (
             <div className="flex gap-3 overflow-x-auto pb-3" style={{ scrollbarWidth: "none" }}>
               {searchResults?.results.map((a) => <AnimeCard key={a.id} anime={a} />)}

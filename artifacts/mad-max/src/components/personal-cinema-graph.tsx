@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, Compass, Eye, Heart, Languages, MapPin, Star, UserRound, X } from "lucide-react";
+import { ArrowUpRight, Compass, Eye, Heart, Languages, MapPin, Star, UserRound } from "lucide-react";
 import { Link } from "wouter";
 import { useQueries } from "@tanstack/react-query";
 import type { Rating, ViewingHistoryEntry, WatchlistEntry } from "@workspace/api-client-react";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import type { CinemaPreferenceKey, CinemaPreferences } from "@/lib/cinema-preferences";
 import { apiFetch } from "@/lib/api-url";
 import { LazyBlurImage } from "@/components/lazy-blur-image";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 
 type GraphFilter = "all" | "watched" | "rated" | "loved" | "disliked";
 type SignalKind = "actor" | "director" | "genre" | "country" | "decade" | "language";
@@ -316,11 +317,15 @@ export function PersonalCinemaGraph({
       </div>
 
       {filteredMovies.length === 0 ? (
-        <div className="cinema-graph-empty my-6">
-          <X className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
-          <h2 className="mt-4 font-display text-lg font-bold uppercase">No films match this lens</h2>
-          <p className="mt-2 text-sm text-muted-foreground">This room has no {filter} signals yet. Try another lens or add a few ratings.</p>
-        </div>
+        <CinemaEmptyState
+          compact
+          className="my-6"
+          description={`This room has no ${filter} signals yet. Try another lens or add a few ratings to widen the map.`}
+          actions={[
+            { label: "Show all films", onClick: () => setFilter("all"), testId: "button-empty-cinema-graph-all" },
+            { label: "Find a film", href: "/discover", testId: "link-empty-cinema-graph-discover" },
+          ]}
+        />
       ) : (
         <>
           <div className="cinema-graph-workspace">
