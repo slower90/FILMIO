@@ -1057,6 +1057,179 @@ export interface FriendsOverview {
   counts: FriendsOverviewCounts;
 }
 
+export interface ProfessionalWorkEntry {
+  id: number;
+  professionalId: number;
+  projectName: string;
+  role: string;
+  /** @nullable */
+  year: number | null;
+  /** @nullable */
+  movieId: number | null;
+  collaborators: string[];
+  /** @nullable */
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfessionalInfluence {
+  id: number;
+  professionalId: number;
+  name: string;
+  /** @nullable */
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfessionalInfluenceInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export interface ProfessionalAward {
+  id: number;
+  professionalId: number;
+  title: string;
+  /** @nullable */
+  organization: string | null;
+  /** @nullable */
+  category: string | null;
+  /** @nullable */
+  year: number | null;
+  /** @nullable */
+  link: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfessionalAwardInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /** @nullable */
+  organization?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  year?: number | null;
+  /** @nullable */
+  link?: string | null;
+}
+
+export interface ProfessionalInterview {
+  id: number;
+  professionalId: number;
+  title: string;
+  publication: string;
+  url: string;
+  /** @nullable */
+  year: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfessionalInterviewInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  publication: string;
+  /** @maxLength 500 */
+  url: string;
+  /** @nullable */
+  year?: number | null;
+}
+
+export type ProfessionalQuestionStatus = typeof ProfessionalQuestionStatus[keyof typeof ProfessionalQuestionStatus];
+
+
+export const ProfessionalQuestionStatus = {
+  pending: 'pending',
+  published: 'published',
+  hidden: 'hidden',
+} as const;
+
+export type ProfessionalQuestionAsker = {
+  id: string;
+  displayName: string;
+  /** @nullable */
+  avatarUrl: string | null;
+};
+
+export interface ProfessionalQuestion {
+  id: number;
+  professionalId: number;
+  question: string;
+  /** @nullable */
+  answer: string | null;
+  status: ProfessionalQuestionStatus;
+  /** @nullable */
+  answeredAt: string | null;
+  createdAt: string;
+  asker: ProfessionalQuestionAsker;
+}
+
+export interface ProfessionalQuestionInput {
+  /**
+     * @minLength 10
+     * @maxLength 1000
+     */
+  question: string;
+}
+
+export type ProfessionalQuestionUpdateStatus = typeof ProfessionalQuestionUpdateStatus[keyof typeof ProfessionalQuestionUpdateStatus];
+
+
+export const ProfessionalQuestionUpdateStatus = {
+  pending: 'pending',
+  published: 'published',
+  hidden: 'hidden',
+} as const;
+
+export interface ProfessionalQuestionUpdate {
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  answer?: string | null;
+  status?: ProfessionalQuestionUpdateStatus;
+}
+
+export interface ProfessionalQuestionsResponse {
+  questions: ProfessionalQuestion[];
+}
+
+export type ProfessionalPortfolioAuditionsItem = { [key: string]: unknown };
+
+export type ProfessionalPortfolioMediaItem = { [key: string]: unknown };
+
+export interface ProfessionalPortfolio {
+  work: ProfessionalWorkEntry[];
+  auditions: ProfessionalPortfolioAuditionsItem[];
+  media: ProfessionalPortfolioMediaItem[];
+  influences: ProfessionalInfluence[];
+  awards: ProfessionalAward[];
+  interviews: ProfessionalInterview[];
+  questions: ProfessionalQuestion[];
+}
+
 export type ProfessionalProfileAvailabilityStatus = typeof ProfessionalProfileAvailabilityStatus[keyof typeof ProfessionalProfileAvailabilityStatus];
 
 
@@ -1085,6 +1258,11 @@ export interface ProfessionalProfile {
   verified: boolean;
   /** @nullable */
   imdbLink?: string | null;
+  workHistory?: ProfessionalWorkEntry[];
+  influences?: ProfessionalInfluence[];
+  awards?: ProfessionalAward[];
+  interviews?: ProfessionalInterview[];
+  questions?: ProfessionalQuestion[];
   createdAt: string;
 }
 
