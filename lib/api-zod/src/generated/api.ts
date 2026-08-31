@@ -2051,6 +2051,61 @@ export const GetMyProfessionalProfileResponse = zod.object({
   "availabilityStatus": zod.enum(['available', 'not_available', 'open_to_projects']),
   "verified": zod.boolean(),
   "imdbLink": zod.string().nullish(),
+  "workHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "projectName": zod.string(),
+  "role": zod.string(),
+  "year": zod.number().int().nullable(),
+  "movieId": zod.number().int().nullable(),
+  "collaborators": zod.array(zod.string()),
+  "description": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "influences": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "name": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "awards": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "organization": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "link": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "interviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "publication": zod.string(),
+  "url": zod.string(),
+  "year": zod.number().int().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "questions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
+})).optional(),
   "createdAt": zod.string()
 })
 
@@ -2083,6 +2138,61 @@ export const CreateProfessionalProfileResponse = zod.object({
   "availabilityStatus": zod.enum(['available', 'not_available', 'open_to_projects']),
   "verified": zod.boolean(),
   "imdbLink": zod.string().nullish(),
+  "workHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "projectName": zod.string(),
+  "role": zod.string(),
+  "year": zod.number().int().nullable(),
+  "movieId": zod.number().int().nullable(),
+  "collaborators": zod.array(zod.string()),
+  "description": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "influences": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "name": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "awards": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "organization": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "link": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "interviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "publication": zod.string(),
+  "url": zod.string(),
+  "year": zod.number().int().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "questions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
+})).optional(),
   "createdAt": zod.string()
 })
 
@@ -2115,8 +2225,355 @@ export const UpdateProfessionalProfileResponse = zod.object({
   "availabilityStatus": zod.enum(['available', 'not_available', 'open_to_projects']),
   "verified": zod.boolean(),
   "imdbLink": zod.string().nullish(),
+  "workHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "projectName": zod.string(),
+  "role": zod.string(),
+  "year": zod.number().int().nullable(),
+  "movieId": zod.number().int().nullable(),
+  "collaborators": zod.array(zod.string()),
+  "description": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "influences": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "name": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "awards": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "organization": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "link": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "interviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "publication": zod.string(),
+  "url": zod.string(),
+  "year": zod.number().int().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "questions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
+})).optional(),
   "createdAt": zod.string()
 })
+
+
+/**
+ * @summary Get my professional portfolio and audience questions
+ */
+export const GetMyProfessionalPortfolioResponse = zod.object({
+  "work": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "projectName": zod.string(),
+  "role": zod.string(),
+  "year": zod.number().int().nullable(),
+  "movieId": zod.number().int().nullable(),
+  "collaborators": zod.array(zod.string()),
+  "description": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "auditions": zod.array(zod.object({
+
+}).passthrough()),
+  "media": zod.array(zod.object({
+
+}).passthrough()),
+  "influences": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "name": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "awards": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "organization": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "link": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "interviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "publication": zod.string(),
+  "url": zod.string(),
+  "year": zod.number().int().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "questions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
+}))
+})
+
+
+/**
+ * @summary Add a creative influence
+ */
+export const createProfessionalInfluenceBodyNameMax = 120;
+
+export const createProfessionalInfluenceBodyNoteMax = 1000;
+
+
+
+export const CreateProfessionalInfluenceBody = zod.object({
+  "name": zod.string().min(1).max(createProfessionalInfluenceBodyNameMax),
+  "note": zod.string().max(createProfessionalInfluenceBodyNoteMax).nullish()
+})
+
+export const CreateProfessionalInfluenceResponse = zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "name": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Update a creative influence
+ */
+
+
+
+export const UpdateProfessionalInfluenceParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateProfessionalInfluenceBodyNameMax = 120;
+
+export const updateProfessionalInfluenceBodyNoteMax = 1000;
+
+
+
+export const UpdateProfessionalInfluenceBody = zod.object({
+  "name": zod.string().min(1).max(updateProfessionalInfluenceBodyNameMax),
+  "note": zod.string().max(updateProfessionalInfluenceBodyNoteMax).nullish()
+})
+
+export const UpdateProfessionalInfluenceResponse = zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "name": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a creative influence
+ */
+
+
+
+export const DeleteProfessionalInfluenceParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteProfessionalInfluenceResponse = zod.void()
+
+
+/**
+ * @summary Add an award
+ */
+export const createProfessionalAwardBodyTitleMax = 160;
+
+
+
+export const CreateProfessionalAwardBody = zod.object({
+  "title": zod.string().min(1).max(createProfessionalAwardBodyTitleMax),
+  "organization": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "year": zod.number().int().nullish(),
+  "link": zod.string().nullish()
+})
+
+export const CreateProfessionalAwardResponse = zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "organization": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "link": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Update an award
+ */
+
+
+
+export const UpdateProfessionalAwardParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateProfessionalAwardBodyTitleMax = 160;
+
+
+
+export const UpdateProfessionalAwardBody = zod.object({
+  "title": zod.string().min(1).max(updateProfessionalAwardBodyTitleMax),
+  "organization": zod.string().nullish(),
+  "category": zod.string().nullish(),
+  "year": zod.number().int().nullish(),
+  "link": zod.string().nullish()
+})
+
+export const UpdateProfessionalAwardResponse = zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "organization": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "link": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete an award
+ */
+
+
+
+export const DeleteProfessionalAwardParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteProfessionalAwardResponse = zod.void()
+
+
+/**
+ * @summary Add an interview
+ */
+export const createProfessionalInterviewBodyTitleMax = 200;
+
+export const createProfessionalInterviewBodyPublicationMax = 160;
+
+export const createProfessionalInterviewBodyUrlMax = 500;
+
+
+
+export const CreateProfessionalInterviewBody = zod.object({
+  "title": zod.string().min(1).max(createProfessionalInterviewBodyTitleMax),
+  "publication": zod.string().min(1).max(createProfessionalInterviewBodyPublicationMax),
+  "url": zod.string().url().max(createProfessionalInterviewBodyUrlMax),
+  "year": zod.number().int().nullish()
+})
+
+export const CreateProfessionalInterviewResponse = zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "publication": zod.string(),
+  "url": zod.string(),
+  "year": zod.number().int().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Update an interview
+ */
+
+
+
+export const UpdateProfessionalInterviewParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateProfessionalInterviewBodyTitleMax = 200;
+
+export const updateProfessionalInterviewBodyPublicationMax = 160;
+
+export const updateProfessionalInterviewBodyUrlMax = 500;
+
+
+
+export const UpdateProfessionalInterviewBody = zod.object({
+  "title": zod.string().min(1).max(updateProfessionalInterviewBodyTitleMax),
+  "publication": zod.string().min(1).max(updateProfessionalInterviewBodyPublicationMax),
+  "url": zod.string().url().max(updateProfessionalInterviewBodyUrlMax),
+  "year": zod.number().int().nullish()
+})
+
+export const UpdateProfessionalInterviewResponse = zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "publication": zod.string(),
+  "url": zod.string(),
+  "year": zod.number().int().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete an interview
+ */
+
+
+
+export const DeleteProfessionalInterviewParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteProfessionalInterviewResponse = zod.void()
 
 
 /**
@@ -2140,6 +2597,61 @@ export const SearchProfessionalsResponseItem = zod.object({
   "availabilityStatus": zod.enum(['available', 'not_available', 'open_to_projects']),
   "verified": zod.boolean(),
   "imdbLink": zod.string().nullish(),
+  "workHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "projectName": zod.string(),
+  "role": zod.string(),
+  "year": zod.number().int().nullable(),
+  "movieId": zod.number().int().nullable(),
+  "collaborators": zod.array(zod.string()),
+  "description": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "influences": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "name": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "awards": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "organization": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "link": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "interviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "publication": zod.string(),
+  "url": zod.string(),
+  "year": zod.number().int().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "questions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
+})).optional(),
   "createdAt": zod.string()
 })
 export const SearchProfessionalsResponse = zod.array(SearchProfessionalsResponseItem)
@@ -2165,7 +2677,154 @@ export const GetProfessionalProfileResponse = zod.object({
   "availabilityStatus": zod.enum(['available', 'not_available', 'open_to_projects']),
   "verified": zod.boolean(),
   "imdbLink": zod.string().nullish(),
+  "workHistory": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "projectName": zod.string(),
+  "role": zod.string(),
+  "year": zod.number().int().nullable(),
+  "movieId": zod.number().int().nullable(),
+  "collaborators": zod.array(zod.string()),
+  "description": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "influences": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "name": zod.string(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "awards": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "organization": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "year": zod.number().int().nullable(),
+  "link": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "interviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "title": zod.string(),
+  "publication": zod.string(),
+  "url": zod.string(),
+  "year": zod.number().int().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})).optional(),
+  "questions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
+})).optional(),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Get published audience questions
+ */
+export const GetProfessionalQuestionsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetProfessionalQuestionsResponse = zod.object({
+  "questions": zod.array(zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
+}))
+})
+
+
+/**
+ * @summary Ask a professional a question
+ */
+export const CreateProfessionalQuestionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const createProfessionalQuestionBodyQuestionMin = 10;
+export const createProfessionalQuestionBodyQuestionMax = 1000;
+
+
+
+export const CreateProfessionalQuestionBody = zod.object({
+  "question": zod.string().min(createProfessionalQuestionBodyQuestionMin).max(createProfessionalQuestionBodyQuestionMax)
+})
+
+export const CreateProfessionalQuestionResponse = zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
+})
+
+
+/**
+ * @summary Answer or moderate an audience question
+ */
+
+
+
+export const UpdateProfessionalQuestionParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateProfessionalQuestionBodyAnswerMax = 2000;
+
+
+
+export const UpdateProfessionalQuestionBody = zod.object({
+  "answer": zod.string().max(updateProfessionalQuestionBodyAnswerMax).nullish(),
+  "status": zod.enum(['pending', 'published', 'hidden']).optional()
+})
+
+export const UpdateProfessionalQuestionResponse = zod.object({
+  "id": zod.number().int(),
+  "professionalId": zod.number().int(),
+  "question": zod.string(),
+  "answer": zod.string().nullable(),
+  "status": zod.enum(['pending', 'published', 'hidden']),
+  "answeredAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "asker": zod.object({
+  "id": zod.string(),
+  "displayName": zod.string(),
+  "avatarUrl": zod.string().nullable()
+})
 })
 
 
