@@ -1895,6 +1895,166 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProfessionalProfile"
 
+  /professionals/me/portfolio:
+    get:
+      operationId: getMyProfessionalPortfolio
+      tags: [professionals]
+      summary: Get my professional portfolio and audience questions
+      responses:
+        "200":
+          description: Private professional portfolio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalPortfolio"
+
+  /professionals/me/influences:
+    post:
+      operationId: createProfessionalInfluence
+      tags: [professionals]
+      summary: Add a creative influence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalInfluenceInput"
+      responses:
+        "201":
+          description: Created influence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalInfluence"
+
+  /professionals/me/influences/{id}:
+    patch:
+      operationId: updateProfessionalInfluence
+      tags: [professionals]
+      summary: Update a creative influence
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalInfluenceInput"
+      responses:
+        "200":
+          description: Updated influence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalInfluence"
+    delete:
+      operationId: deleteProfessionalInfluence
+      tags: [professionals]
+      summary: Delete a creative influence
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalResourceId"
+      responses:
+        "204":
+          description: Deleted
+
+  /professionals/me/awards:
+    post:
+      operationId: createProfessionalAward
+      tags: [professionals]
+      summary: Add an award
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalAwardInput"
+      responses:
+        "201":
+          description: Created award
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalAward"
+
+  /professionals/me/awards/{id}:
+    patch:
+      operationId: updateProfessionalAward
+      tags: [professionals]
+      summary: Update an award
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalAwardInput"
+      responses:
+        "200":
+          description: Updated award
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalAward"
+    delete:
+      operationId: deleteProfessionalAward
+      tags: [professionals]
+      summary: Delete an award
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalResourceId"
+      responses:
+        "204":
+          description: Deleted
+
+  /professionals/me/interviews:
+    post:
+      operationId: createProfessionalInterview
+      tags: [professionals]
+      summary: Add an interview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalInterviewInput"
+      responses:
+        "201":
+          description: Created interview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalInterview"
+
+  /professionals/me/interviews/{id}:
+    patch:
+      operationId: updateProfessionalInterview
+      tags: [professionals]
+      summary: Update an interview
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalInterviewInput"
+      responses:
+        "200":
+          description: Updated interview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalInterview"
+    delete:
+      operationId: deleteProfessionalInterview
+      tags: [professionals]
+      summary: Delete an interview
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalResourceId"
+      responses:
+        "204":
+          description: Deleted
+
   /professionals/search:
     get:
       operationId: searchProfessionals
@@ -1943,6 +2103,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /professionals/{id}/questions:
+    get:
+      operationId: getProfessionalQuestions
+      tags: [professionals]
+      summary: Get published audience questions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Published questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalQuestionsResponse"
+    post:
+      operationId: createProfessionalQuestion
+      tags: [professionals]
+      summary: Ask a professional a question
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalQuestionInput"
+      responses:
+        "201":
+          description: Question submitted for review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalQuestion"
+
+  /professionals/me/questions/{id}:
+    patch:
+      operationId: updateProfessionalQuestion
+      tags: [professionals]
+      summary: Answer or moderate an audience question
+      parameters:
+        - $ref: "#/components/parameters/ProfessionalResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalQuestionUpdate"
+      responses:
+        "200":
+          description: Updated audience question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfessionalQuestion"
 
   # ─── CHAT ─────────────────────────────────────────────────────────────────────
   /chat/conversations:
@@ -2044,6 +2267,13 @@ components:
         type: integer
         minimum: 1
     PostId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    ProfessionalResourceId:
       name: id
       in: path
       required: true
@@ -3318,6 +3548,233 @@ components:
       required: [users, incomingRequests, outgoingRequests, friends, counts]
 
     # ── Professional schemas ──
+    ProfessionalWorkEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        professionalId:
+          type: integer
+        projectName:
+          type: string
+        role:
+          type: string
+        year:
+          type: ["integer", "null"]
+        movieId:
+          type: ["integer", "null"]
+        collaborators:
+          type: array
+          items:
+            type: string
+        description:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, professionalId, projectName, role, year, movieId, collaborators, description, createdAt, updatedAt]
+
+    ProfessionalInfluence:
+      type: object
+      properties:
+        id:
+          type: integer
+        professionalId:
+          type: integer
+        name:
+          type: string
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, professionalId, name, note, createdAt, updatedAt]
+
+    ProfessionalInfluenceInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        note:
+          type: ["string", "null"]
+          maxLength: 1000
+      required: [name]
+
+    ProfessionalAward:
+      type: object
+      properties:
+        id:
+          type: integer
+        professionalId:
+          type: integer
+        title:
+          type: string
+        organization:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        link:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, professionalId, title, organization, category, year, link, createdAt, updatedAt]
+
+    ProfessionalAwardInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        organization:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        link:
+          type: ["string", "null"]
+      required: [title]
+
+    ProfessionalInterview:
+      type: object
+      properties:
+        id:
+          type: integer
+        professionalId:
+          type: integer
+        title:
+          type: string
+        publication:
+          type: string
+        url:
+          type: string
+        year:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, professionalId, title, publication, url, year, createdAt, updatedAt]
+
+    ProfessionalInterviewInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        publication:
+          type: string
+          minLength: 1
+          maxLength: 160
+        url:
+          type: string
+          format: uri
+          maxLength: 500
+        year:
+          type: ["integer", "null"]
+      required: [title, publication, url]
+
+    ProfessionalQuestion:
+      type: object
+      properties:
+        id:
+          type: integer
+        professionalId:
+          type: integer
+        question:
+          type: string
+        answer:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, published, hidden]
+        answeredAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        asker:
+          type: object
+          properties:
+            id:
+              type: string
+            displayName:
+              type: string
+            avatarUrl:
+              type: ["string", "null"]
+          required: [id, displayName, avatarUrl]
+      required: [id, professionalId, question, answer, status, answeredAt, createdAt, asker]
+
+    ProfessionalQuestionInput:
+      type: object
+      properties:
+        question:
+          type: string
+          minLength: 10
+          maxLength: 1000
+      required: [question]
+
+    ProfessionalQuestionUpdate:
+      type: object
+      properties:
+        answer:
+          type: ["string", "null"]
+          maxLength: 2000
+        status:
+          type: string
+          enum: [pending, published, hidden]
+
+    ProfessionalQuestionsResponse:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalQuestion"
+      required: [questions]
+
+    ProfessionalPortfolio:
+      type: object
+      properties:
+        work:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalWorkEntry"
+        auditions:
+          type: array
+          items:
+            type: object
+        media:
+          type: array
+          items:
+            type: object
+        influences:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalInfluence"
+        awards:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalAward"
+        interviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalInterview"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalQuestion"
+      required: [work, auditions, media, influences, awards, interviews, questions]
+
     ProfessionalProfile:
       type: object
       properties:
@@ -3350,6 +3807,26 @@ components:
           type: boolean
         imdbLink:
           type: ["string", "null"]
+        workHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalWorkEntry"
+        influences:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalInfluence"
+        awards:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalAward"
+        interviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalInterview"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfessionalQuestion"
         createdAt:
           type: string
       required: [id, userId, roles, skills, availabilityStatus, verified, createdAt]
