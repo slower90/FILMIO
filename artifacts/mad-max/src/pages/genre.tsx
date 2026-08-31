@@ -4,6 +4,7 @@ import { useParams } from "wouter";
 import gsap from "gsap";
 import { Navbar } from "@/components/navbar";
 import { MovieCard } from "@/components/movie-card";
+import { CinemaEmptyState } from "@/components/cinema-empty-state";
 import { Button } from "@/components/ui/button";
 import { Film, Loader2 } from "lucide-react";
 import { recordMoodSignal } from "@/lib/mood-agent";
@@ -178,9 +179,13 @@ export default function GenrePage() {
             Couldn't load movies for this genre. Please try again.
           </p>
         ) : uniqueMovies.length === 0 ? (
-          <p className="text-center text-muted-foreground py-20">
-            No movies found for this genre.
-          </p>
+          <CinemaEmptyState
+            description={`Nothing matches exactly in ${genreName || "this genre"}. Try another genre or return to the wider catalogue.`}
+            actions={[
+              { label: "Browse all cinema", href: "/browse?collection=trending", testId: "link-empty-genre-browse" },
+              { label: "Explore discovery", href: "/discover", testId: "link-empty-genre-discover" },
+            ]}
+          />
         ) : (
           <>
             <div
