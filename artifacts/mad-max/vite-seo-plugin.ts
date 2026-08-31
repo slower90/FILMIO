@@ -32,6 +32,18 @@ type MovieStory = {
   sections?: Array<{ title: string; body: string }>;
 };
 
+type FreeClassic = {
+  identifier: string;
+  title: string;
+  description?: string | null;
+  year?: number | null;
+  posterUrl?: string;
+  source: "archive" | "youtube" | "wikimedia" | "nfb";
+  sourceLabel?: string;
+  sourceUrl: string;
+  licenseLabel?: string;
+};
+
 function titleFromSlug(slug: string | null, fallback: string) {
   const value = slug
     ?.split("-")
@@ -64,9 +76,123 @@ type SeoPage = {
   body: string;
   canonicalUrl: string;
   ogType?: "website" | "article";
+  imageUrl?: string;
   links?: Array<{ href: string; label: string }>;
   jsonLd?: Record<string, unknown>;
 };
+
+const staticSeoPages: Record<string, { title: string; description: string; heading: string; body: string }> = {
+  "/discover": {
+    title: "Discover Movies & TV Shows in India | FILMIO",
+    description: "Explore trending movies, Indian cinema, TV shows, and hidden gems with FILMIO ratings, reviews, trailers, and watch options.",
+    heading: "Discover Movies & TV Shows",
+    body: "Explore movies, TV shows, Indian cinema, and hidden gems with ratings, reviews, trailers, cast, and official viewing options.",
+  },
+  "/actors": {
+    title: "Actors, Cast & Filmographies | FILMIO",
+    description: "Explore actors, cast members, filmographies, and memorable performances across Indian and global movies and TV on FILMIO.",
+    heading: "Actors & Filmographies",
+    body: "Explore actors, cast members, filmographies, and memorable performances across Indian and global cinema.",
+  },
+  "/genres": {
+    title: "Movie Genres, Ratings & Reviews | FILMIO",
+    description: "Browse movies by genre, discover stories that match your mood, and compare FILMIO community ratings and reviews for your next watch.",
+    heading: "Movie Genres",
+    body: "Browse movies by genre and discover stories that match your mood through transparent ratings and reviews.",
+  },
+  "/news": {
+    title: "Film & Entertainment News | FILMIO",
+    description: "Keep up with film, TV, anime, and entertainment news for curious viewers and serious movie fans in India and around the world.",
+    heading: "Film & Entertainment News",
+    body: "Read film, TV, anime, and entertainment news for curious viewers and serious movie fans.",
+  },
+  "/free-movies": {
+    title: "Free Movies Online | Legal Streaming Options | FILMIO",
+    description: "Find free movies online through official providers, compare ratings and reviews, and discover legal no-cost and ad-supported viewing options.",
+    heading: "Free Movies Online",
+    body: "Find legal free and ad-supported movies with ratings, reviews, trailers, and official viewing options.",
+  },
+  "/browse": {
+    title: "Browse Movies, TV & Anime | FILMIO",
+    description: "Browse movies, TV shows, anime, Indian cinema, and curated collections with FILMIO ratings, reviews, trailers, and watch options.",
+    heading: "Browse Movies, TV & Anime",
+    body: "Browse curated collections and find your next movie, TV show, or anime through ratings and reviews.",
+  },
+  "/events": {
+    title: "Film Events & Screenings | FILMIO",
+    description: "Discover film events, screenings, conversations, and community moments for movie lovers and industry professionals on FILMIO.",
+    heading: "Film Events & Screenings",
+    body: "Discover film events, screenings, conversations, and community moments on FILMIO.",
+  },
+  "/pricing": {
+    title: "FILMIO Membership | Film Community",
+    description: "Explore FILMIO membership options for movie discovery, ratings, reviews, watchlists, and connections with the film community.",
+    heading: "FILMIO Membership",
+    body: "Explore FILMIO membership options for deeper film discovery and community connections.",
+  },
+  "/help": {
+    title: "FILMIO Help Center | Search, Ratings & Watchlists",
+    description: "Get help searching movies, rating and reviewing titles, building watchlists, and setting up FILMIO professional profiles and auditions.",
+    heading: "How Can We Help?",
+    body: "Get help with movie search, ratings, reviews, watchlists, professional profiles, and auditions.",
+  },
+  "/site-index": {
+    title: "FILMIO Site Index | Movies, TV, Anime & Industry Network",
+    description: "Browse direct links to FILMIO movies, TV shows, anime, actors, free classics, the Industry Network, watchlists, and community sections.",
+    heading: "FILMIO Site Index",
+    body: "Browse direct links to FILMIO movies, TV shows, anime, actors, free classics, and community sections.",
+  },
+  "/actor-directory": {
+    title: "Actor & Crew Directory | FILMIO Industry Network",
+    description: "Explore FILMIO's registered actors, directors, and crew members, their profiles, connections, and audition opportunities.",
+    heading: "Actor & Crew Directory",
+    body: "Explore actors, directors, writers, editors, cinematographers, composers, designers, producers, and sound professionals.",
+  },
+  "/plans": {
+    title: "FILMIO Plans | Free Movie Discovery",
+    description: "FILMIO is free for everyone: discover, rate, review, and save movies, TV shows, and anime to your watchlist.",
+    heading: "FILMIO Is Free",
+    body: "Discover, rate, review, and save movies, TV shows, and anime on FILMIO for free.",
+  },
+  "/advertising": {
+    title: "Advertise on FILMIO | Movie Promotions & Partnerships",
+    description: "Reach serious movie audiences with FILMIO movie promotions, brand partnerships, and banner advertising opportunities.",
+    heading: "Advertise on FILMIO",
+    body: "Explore movie promotions, brand partnerships, and advertising opportunities with FILMIO.",
+  },
+  "/data-license": {
+    title: "License FILMIO Data | Ratings & Reviews",
+    description: "Learn how to enquire about licensing FILMIO movie ratings, reviews, and discovery data for your product or editorial project.",
+    heading: "License FILMIO Data",
+    body: "Learn about licensing FILMIO ratings, reviews, and discovery data.",
+  },
+  "/press": {
+    title: "FILMIO Press Room | Media Enquiries",
+    description: "Find FILMIO media information, approved brand assets, interviews, and press contact details for stories about movie discovery.",
+    heading: "FILMIO Press Room",
+    body: "Find media information, approved brand assets, interviews, and press contact details.",
+  },
+  "/jobs": {
+    title: "Jobs at FILMIO | Future Openings",
+    description: "Learn about future opportunities to join FILMIO and help build a thoughtful movie discovery and film community platform.",
+    heading: "Jobs at FILMIO",
+    body: "Learn about future opportunities to join the FILMIO team.",
+  },
+  "/privacy": {
+    title: "Privacy Policy | FILMIO",
+    description: "Read how FILMIO collects, uses, protects, and lets you control personal information across movie discovery, reviews, profiles, and messaging.",
+    heading: "Privacy Policy",
+    body: "Read how FILMIO handles account, ratings, reviews, profile, messaging, and device information.",
+  },
+  "/terms": {
+    title: "Conditions of Use | FILMIO",
+    description: "Read the rules for using FILMIO movie discovery, ratings, reviews, profiles, messaging, and community features responsibly.",
+    heading: "Conditions of Use",
+    body: "Read the rules for using FILMIO movie discovery, ratings, reviews, profiles, messaging, and community features.",
+  },
+};
+
+let freeClassicsCatalogPromise: Promise<FreeClassic[]> | null = null;
 
 const escapeHtml = (value: unknown) =>
   String(value ?? "")
@@ -97,12 +223,32 @@ async function getJson<T>(path: string): Promise<T | null> {
   }
 }
 
+async function getFreeClassicsCatalog(): Promise<FreeClassic[]> {
+  if (!freeClassicsCatalogPromise) {
+    freeClassicsCatalogPromise = getJson<{ items?: FreeClassic[] }>("/free-classics?limit=200")
+      .then((data) => data?.items ?? []);
+  }
+  return freeClassicsCatalogPromise;
+}
+
 function movieTitle(movie: Movie) {
   return movie.title || movie.name || "Movie";
 }
 
 function movieHref(movie: Movie) {
   return `/movies/${movie.id}`;
+}
+
+function freeClassicHref(item: Pick<FreeClassic, "source" | "identifier">) {
+  return `/free-classics/${item.source}/${encodeURIComponent(item.identifier)}`;
+}
+
+function decodePathSegment(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 async function pageForPath(
@@ -115,6 +261,104 @@ async function pageForPath(
       (prefix) => path === prefix || path.startsWith(`${prefix}/`),
     ) || path.startsWith("/sign-in") || path.startsWith("/sign-up");
   if (privateRoute) return null;
+
+  if (path === "/free-classics") {
+    const items = options.allowStoryFallback
+      ? await getFreeClassicsCatalog()
+      : options.fetchApiData === false
+        ? []
+        : ((await getJson<{ items?: FreeClassic[] }>("/free-classics?limit=200"))?.items ?? []);
+    const title = "Watch Free Classic Movies Online - Public Domain Cinema | FILMIO";
+    const description = "Watch free classic movies online from public-domain cinema sources, explore film history, and discover legal films with FILMIO ratings, reviews, and details.";
+    return {
+      title,
+      description,
+      heading: "Watch Free Classic Movies Online",
+      body: `<h2>Public Domain Cinema</h2><p>${escapeHtml(description)}</p>`,
+      canonicalUrl: `${SITE_URL}/free-classics`,
+      links: items.slice(0, 100).map((item) => ({
+        href: freeClassicHref(item),
+        label: item.title,
+      })),
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: title,
+        description,
+        url: `${SITE_URL}/free-classics`,
+        mainEntity: {
+          "@type": "ItemList",
+          itemListElement: items.slice(0, 50).map((item, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            name: item.title,
+            url: `${SITE_URL}${freeClassicHref(item)}`,
+          })),
+        },
+      },
+    };
+  }
+
+  const freeClassicMatch = path.match(/^\/free-classics\/([^/]+)\/([^/]+)$/);
+  if (freeClassicMatch) {
+    const source = decodePathSegment(freeClassicMatch[1]) as FreeClassic["source"];
+    const identifier = decodePathSegment(freeClassicMatch[2]);
+    const item = options.allowStoryFallback
+      ? (await getFreeClassicsCatalog()).find(
+          (candidate) => candidate.source === source && candidate.identifier === identifier,
+        ) ?? null
+      : options.fetchApiData === false
+        ? null
+        : await getJson<FreeClassic>(`/free-classics/${source}/${encodeURIComponent(identifier)}`);
+    if (!item && !options.allowStoryFallback) return null;
+    const fallbackTitle = titleFromSlug(identifier, "Free Classic Movie");
+    const name = item?.title ?? fallbackTitle;
+    const description =
+      item?.description?.trim() ||
+      `Watch ${name} online from a legal free-to-watch source on FILMIO. Explore public-domain cinema, film history, and official viewing details.`;
+    const canonicalUrl = `${SITE_URL}${path}`;
+    return {
+      title: `${name} - Watch Free Classic Movie Online | FILMIO`,
+      description,
+      heading: name,
+      body: `<h2>Public Domain Cinema</h2><p>${escapeHtml(description)}</p><p>Watch this classic legally through the official ${escapeHtml(item?.sourceLabel ?? "free-to-watch")} source.</p>`,
+      canonicalUrl,
+      imageUrl: item?.posterUrl,
+      links: [
+        { href: "/free-classics", label: "Browse all Free Classic Movies" },
+        ...(item ? [{ href: item.sourceUrl, label: "Open official source" }] : []),
+      ],
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "Movie",
+        name,
+        description,
+        url: canonicalUrl,
+        ...(item?.posterUrl ? { image: item.posterUrl } : {}),
+        ...(item?.year ? { datePublished: `${item.year}-01-01` } : {}),
+        isAccessibleForFree: true,
+        ...(item?.sourceUrl ? { license: item.sourceUrl, sameAs: item.sourceUrl } : {}),
+        ...(item?.sourceUrl ? { potentialAction: { "@type": "WatchAction", target: item.sourceUrl } } : {}),
+      },
+    };
+  }
+
+  const staticPage = staticSeoPages[path];
+  if (staticPage) {
+    const canonicalUrl = `${SITE_URL}${path}`;
+    return {
+      ...staticPage,
+      canonicalUrl,
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: staticPage.title,
+        description: staticPage.description,
+        url: canonicalUrl,
+        isPartOf: { "@type": "WebSite", name: "FILMIO", url: `${SITE_URL}/` },
+      },
+    };
+  }
 
   const storyMatch = path.match(/^\/blog\/movies\/(\d+)(?:\/[^/]+)?$/);
   if (storyMatch) {
@@ -226,11 +470,12 @@ async function pageForPath(
       const canonicalPath = `/movies/${movie.id}/${slugify(title)}${type === "tv" ? "?type=tv" : ""}`;
       const canonicalUrl = `${SITE_URL}${canonicalPath}`;
       return {
-        title: `${title}${year ? ` (${year})` : ""} Ratings & Reviews | FILMIO`,
-        description,
+        title: `${title} - Ratings, Reviews & Where to Watch | FILMIO`,
+        description: description.slice(0, 160),
         heading: title,
         body: `<p>${escapeHtml(description)}</p><p class="seo-facts">${type === "tv" ? "TV series" : "Movie"}${year ? ` · Released ${escapeHtml(year)}` : ""}${rating ? ` · TMDB rating ${rating.toFixed(1)}/10` : ""}</p>`,
         canonicalUrl,
+        imageUrl: posterUrl(movie.posterPath),
         links: (data?.credits?.cast ?? []).slice(0, 8).map((person) => ({
           href: `/actors/${person.id}`,
           label: person.name,
@@ -241,7 +486,8 @@ async function pageForPath(
           name: title,
           description,
           url: canonicalUrl,
-          ...(year ? { dateCreated: movie.releaseDate } : {}),
+           ...(year ? { datePublished: movie.releaseDate } : {}),
+           ...(posterUrl(movie.posterPath) ? { image: posterUrl(movie.posterPath) } : {}),
           ...(rating
             ? { aggregateRating: { "@type": "AggregateRating", ratingValue: rating, bestRating: 10 } }
             : {}),
@@ -353,14 +599,18 @@ export function staticRouteFile(routePath: string) {
 }
 
 function renderPageHtml(html: string, page: SeoPage) {
+  const metaDescription =
+    page.description.length > 160
+      ? `${page.description.slice(0, 157).trimEnd()}...`
+      : page.description;
   let updated = html
     .replace(/<title>[^<]*<\/title>/i, `<title>${escapeHtml(page.title)}</title>`)
-    .replace(/<meta name="description" content="[^"]*"\s*\/?>/i, `<meta name="description" content="${escapeHtml(page.description)}" />`)
+    .replace(/<meta name="description" content="[^"]*"\s*\/?>/i, `<meta name="description" content="${escapeHtml(metaDescription)}" />`)
     .replace(/<meta name="robots" content="[^"]*"\s*\/?>/i, `<meta name="robots" content="index, follow" />`)
     .replace(/<meta property="og:title" content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${escapeHtml(page.title)}" />`)
-    .replace(/<meta property="og:description" content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${escapeHtml(page.description)}" />`)
+    .replace(/<meta property="og:description" content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${escapeHtml(metaDescription)}" />`)
     .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${escapeHtml(page.title)}" />`)
-    .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${escapeHtml(page.description)}" />`);
+    .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${escapeHtml(metaDescription)}" />`);
 
   updated = replaceOrInsert(
     updated,
@@ -377,6 +627,18 @@ function renderPageHtml(html: string, page: SeoPage) {
     /<meta property="og:type"[^>]*>/i,
     `<meta property="og:type" content="${page.ogType ?? "website"}" />`,
   );
+  if (page.imageUrl) {
+    updated = replaceOrInsert(
+      updated,
+      /<meta property="og:image"[^>]*>/i,
+      `<meta property="og:image" content="${escapeHtml(page.imageUrl)}" />`,
+    );
+    updated = replaceOrInsert(
+      updated,
+      /<meta name="twitter:image"[^>]*>/i,
+      `<meta name="twitter:image" content="${escapeHtml(page.imageUrl)}" />`,
+    );
+  }
   updated = replaceOrInsert(
     updated,
     /<link rel="alternate" hrefLang="en-IN"[^>]*>/i,
@@ -409,7 +671,10 @@ async function renderRouteHtml(source: string, routePath: string, allowStoryFall
   try {
     page = await pageForPath(pathname, url.searchParams, {
       allowStoryFallback,
-      fetchApiData: !allowStoryFallback,
+      fetchApiData:
+        !allowStoryFallback ||
+        pathname === "/free-classics" ||
+        pathname.startsWith("/free-classics/"),
     });
   } catch {
     page = null;
