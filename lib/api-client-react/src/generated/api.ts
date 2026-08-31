@@ -72,9 +72,20 @@ import type {
   PostLikeResponse,
   PostUploadInput,
   PostUploadResponse,
+  ProfessionalAward,
+  ProfessionalAwardInput,
+  ProfessionalInfluence,
+  ProfessionalInfluenceInput,
+  ProfessionalInterview,
+  ProfessionalInterviewInput,
+  ProfessionalPortfolio,
   ProfessionalProfile,
   ProfessionalProfileInput,
   ProfessionalProfileUpdate,
+  ProfessionalQuestion,
+  ProfessionalQuestionInput,
+  ProfessionalQuestionUpdate,
+  ProfessionalQuestionsResponse,
   ProfileAvatarUploadInput,
   ProfileAvatarUploadResponse,
   Rating,
@@ -5816,6 +5827,725 @@ export const useUpdateProfessionalProfile = <TError = ErrorType<unknown>,
       return useMutation(getUpdateProfessionalProfileMutationOptions(options));
     }
 
+export const getGetMyProfessionalPortfolioUrl = () => {
+
+
+
+
+  return `/api/professionals/me/portfolio`
+}
+
+/**
+ * @summary Get my professional portfolio and audience questions
+ */
+export const getMyProfessionalPortfolio = async ( options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalPortfolio> => {
+
+  return customFetch<ProfessionalPortfolio>(getGetMyProfessionalPortfolioUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyProfessionalPortfolioQueryKey = () => {
+    return [
+    `/api/professionals/me/portfolio`
+    ] as const;
+    }
+
+
+export const getGetMyProfessionalPortfolioQueryOptions = <TData = Awaited<ReturnType<typeof getMyProfessionalPortfolio>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyProfessionalPortfolio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyProfessionalPortfolioQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyProfessionalPortfolio>>> = ({ signal }) => getMyProfessionalPortfolio({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyProfessionalPortfolio>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyProfessionalPortfolioQueryResult = NonNullable<Awaited<ReturnType<typeof getMyProfessionalPortfolio>>>
+export type GetMyProfessionalPortfolioQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get my professional portfolio and audience questions
+ */
+
+export function useGetMyProfessionalPortfolio<TData = Awaited<ReturnType<typeof getMyProfessionalPortfolio>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyProfessionalPortfolio>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyProfessionalPortfolioQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateProfessionalInfluenceUrl = () => {
+
+
+
+
+  return `/api/professionals/me/influences`
+}
+
+/**
+ * @summary Add a creative influence
+ */
+export const createProfessionalInfluence = async (professionalInfluenceInput: ProfessionalInfluenceInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalInfluence> => {
+
+  return customFetch<ProfessionalInfluence>(getCreateProfessionalInfluenceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalInfluenceInput)
+  }
+);}
+
+
+
+
+
+export const getCreateProfessionalInfluenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfessionalInfluence>>, TError,{data: BodyType<ProfessionalInfluenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProfessionalInfluence>>, TError,{data: BodyType<ProfessionalInfluenceInput>}, TContext> => {
+
+const mutationKey = ['createProfessionalInfluence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProfessionalInfluence>>, {data: BodyType<ProfessionalInfluenceInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createProfessionalInfluence(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateProfessionalInfluenceMutationResult = NonNullable<Awaited<ReturnType<typeof createProfessionalInfluence>>>
+    export type CreateProfessionalInfluenceMutationBody = BodyType<ProfessionalInfluenceInput>
+    export type CreateProfessionalInfluenceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a creative influence
+ */
+export const useCreateProfessionalInfluence = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfessionalInfluence>>, TError,{data: BodyType<ProfessionalInfluenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createProfessionalInfluence>>,
+        TError,
+        {data: BodyType<ProfessionalInfluenceInput>},
+        TContext
+      > => {
+      return useMutation(getCreateProfessionalInfluenceMutationOptions(options));
+    }
+
+export const getUpdateProfessionalInfluenceUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/me/influences/${id}`
+}
+
+/**
+ * @summary Update a creative influence
+ */
+export const updateProfessionalInfluence = async (id: number,
+    professionalInfluenceInput: ProfessionalInfluenceInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalInfluence> => {
+
+  return customFetch<ProfessionalInfluence>(getUpdateProfessionalInfluenceUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalInfluenceInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateProfessionalInfluenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalInfluence>>, TError,{id: number;data: BodyType<ProfessionalInfluenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalInfluence>>, TError,{id: number;data: BodyType<ProfessionalInfluenceInput>}, TContext> => {
+
+const mutationKey = ['updateProfessionalInfluence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProfessionalInfluence>>, {id: number;data: BodyType<ProfessionalInfluenceInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateProfessionalInfluence(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProfessionalInfluenceMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfessionalInfluence>>>
+    export type UpdateProfessionalInfluenceMutationBody = BodyType<ProfessionalInfluenceInput>
+    export type UpdateProfessionalInfluenceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a creative influence
+ */
+export const useUpdateProfessionalInfluence = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalInfluence>>, TError,{id: number;data: BodyType<ProfessionalInfluenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateProfessionalInfluence>>,
+        TError,
+        {id: number;data: BodyType<ProfessionalInfluenceInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateProfessionalInfluenceMutationOptions(options));
+    }
+
+export const getDeleteProfessionalInfluenceUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/me/influences/${id}`
+}
+
+/**
+ * @summary Delete a creative influence
+ */
+export const deleteProfessionalInfluence = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteProfessionalInfluenceUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteProfessionalInfluenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalInfluence>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalInfluence>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteProfessionalInfluence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteProfessionalInfluence>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteProfessionalInfluence(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteProfessionalInfluenceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteProfessionalInfluence>>>
+
+    export type DeleteProfessionalInfluenceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a creative influence
+ */
+export const useDeleteProfessionalInfluence = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalInfluence>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteProfessionalInfluence>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteProfessionalInfluenceMutationOptions(options));
+    }
+
+export const getCreateProfessionalAwardUrl = () => {
+
+
+
+
+  return `/api/professionals/me/awards`
+}
+
+/**
+ * @summary Add an award
+ */
+export const createProfessionalAward = async (professionalAwardInput: ProfessionalAwardInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalAward> => {
+
+  return customFetch<ProfessionalAward>(getCreateProfessionalAwardUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalAwardInput)
+  }
+);}
+
+
+
+
+
+export const getCreateProfessionalAwardMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfessionalAward>>, TError,{data: BodyType<ProfessionalAwardInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProfessionalAward>>, TError,{data: BodyType<ProfessionalAwardInput>}, TContext> => {
+
+const mutationKey = ['createProfessionalAward'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProfessionalAward>>, {data: BodyType<ProfessionalAwardInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createProfessionalAward(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateProfessionalAwardMutationResult = NonNullable<Awaited<ReturnType<typeof createProfessionalAward>>>
+    export type CreateProfessionalAwardMutationBody = BodyType<ProfessionalAwardInput>
+    export type CreateProfessionalAwardMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add an award
+ */
+export const useCreateProfessionalAward = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfessionalAward>>, TError,{data: BodyType<ProfessionalAwardInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createProfessionalAward>>,
+        TError,
+        {data: BodyType<ProfessionalAwardInput>},
+        TContext
+      > => {
+      return useMutation(getCreateProfessionalAwardMutationOptions(options));
+    }
+
+export const getUpdateProfessionalAwardUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/me/awards/${id}`
+}
+
+/**
+ * @summary Update an award
+ */
+export const updateProfessionalAward = async (id: number,
+    professionalAwardInput: ProfessionalAwardInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalAward> => {
+
+  return customFetch<ProfessionalAward>(getUpdateProfessionalAwardUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalAwardInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateProfessionalAwardMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalAward>>, TError,{id: number;data: BodyType<ProfessionalAwardInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalAward>>, TError,{id: number;data: BodyType<ProfessionalAwardInput>}, TContext> => {
+
+const mutationKey = ['updateProfessionalAward'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProfessionalAward>>, {id: number;data: BodyType<ProfessionalAwardInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateProfessionalAward(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProfessionalAwardMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfessionalAward>>>
+    export type UpdateProfessionalAwardMutationBody = BodyType<ProfessionalAwardInput>
+    export type UpdateProfessionalAwardMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update an award
+ */
+export const useUpdateProfessionalAward = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalAward>>, TError,{id: number;data: BodyType<ProfessionalAwardInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateProfessionalAward>>,
+        TError,
+        {id: number;data: BodyType<ProfessionalAwardInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateProfessionalAwardMutationOptions(options));
+    }
+
+export const getDeleteProfessionalAwardUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/me/awards/${id}`
+}
+
+/**
+ * @summary Delete an award
+ */
+export const deleteProfessionalAward = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteProfessionalAwardUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteProfessionalAwardMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalAward>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalAward>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteProfessionalAward'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteProfessionalAward>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteProfessionalAward(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteProfessionalAwardMutationResult = NonNullable<Awaited<ReturnType<typeof deleteProfessionalAward>>>
+
+    export type DeleteProfessionalAwardMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete an award
+ */
+export const useDeleteProfessionalAward = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalAward>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteProfessionalAward>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteProfessionalAwardMutationOptions(options));
+    }
+
+export const getCreateProfessionalInterviewUrl = () => {
+
+
+
+
+  return `/api/professionals/me/interviews`
+}
+
+/**
+ * @summary Add an interview
+ */
+export const createProfessionalInterview = async (professionalInterviewInput: ProfessionalInterviewInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalInterview> => {
+
+  return customFetch<ProfessionalInterview>(getCreateProfessionalInterviewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalInterviewInput)
+  }
+);}
+
+
+
+
+
+export const getCreateProfessionalInterviewMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfessionalInterview>>, TError,{data: BodyType<ProfessionalInterviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProfessionalInterview>>, TError,{data: BodyType<ProfessionalInterviewInput>}, TContext> => {
+
+const mutationKey = ['createProfessionalInterview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProfessionalInterview>>, {data: BodyType<ProfessionalInterviewInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createProfessionalInterview(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateProfessionalInterviewMutationResult = NonNullable<Awaited<ReturnType<typeof createProfessionalInterview>>>
+    export type CreateProfessionalInterviewMutationBody = BodyType<ProfessionalInterviewInput>
+    export type CreateProfessionalInterviewMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add an interview
+ */
+export const useCreateProfessionalInterview = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfessionalInterview>>, TError,{data: BodyType<ProfessionalInterviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createProfessionalInterview>>,
+        TError,
+        {data: BodyType<ProfessionalInterviewInput>},
+        TContext
+      > => {
+      return useMutation(getCreateProfessionalInterviewMutationOptions(options));
+    }
+
+export const getUpdateProfessionalInterviewUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/me/interviews/${id}`
+}
+
+/**
+ * @summary Update an interview
+ */
+export const updateProfessionalInterview = async (id: number,
+    professionalInterviewInput: ProfessionalInterviewInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalInterview> => {
+
+  return customFetch<ProfessionalInterview>(getUpdateProfessionalInterviewUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalInterviewInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateProfessionalInterviewMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalInterview>>, TError,{id: number;data: BodyType<ProfessionalInterviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalInterview>>, TError,{id: number;data: BodyType<ProfessionalInterviewInput>}, TContext> => {
+
+const mutationKey = ['updateProfessionalInterview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProfessionalInterview>>, {id: number;data: BodyType<ProfessionalInterviewInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateProfessionalInterview(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProfessionalInterviewMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfessionalInterview>>>
+    export type UpdateProfessionalInterviewMutationBody = BodyType<ProfessionalInterviewInput>
+    export type UpdateProfessionalInterviewMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update an interview
+ */
+export const useUpdateProfessionalInterview = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalInterview>>, TError,{id: number;data: BodyType<ProfessionalInterviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateProfessionalInterview>>,
+        TError,
+        {id: number;data: BodyType<ProfessionalInterviewInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateProfessionalInterviewMutationOptions(options));
+    }
+
+export const getDeleteProfessionalInterviewUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/me/interviews/${id}`
+}
+
+/**
+ * @summary Delete an interview
+ */
+export const deleteProfessionalInterview = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteProfessionalInterviewUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteProfessionalInterviewMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalInterview>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalInterview>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteProfessionalInterview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteProfessionalInterview>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteProfessionalInterview(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteProfessionalInterviewMutationResult = NonNullable<Awaited<ReturnType<typeof deleteProfessionalInterview>>>
+
+    export type DeleteProfessionalInterviewMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete an interview
+ */
+export const useDeleteProfessionalInterview = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProfessionalInterview>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteProfessionalInterview>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteProfessionalInterviewMutationOptions(options));
+    }
+
 export const getSearchProfessionalsUrl = (params?: SearchProfessionalsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -5976,6 +6706,227 @@ export function useGetProfessionalProfile<TData = Awaited<ReturnType<typeof getP
 
 
 
+
+export const getGetProfessionalQuestionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/${id}/questions`
+}
+
+/**
+ * @summary Get published audience questions
+ */
+export const getProfessionalQuestions = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalQuestionsResponse> => {
+
+  return customFetch<ProfessionalQuestionsResponse>(getGetProfessionalQuestionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProfessionalQuestionsQueryKey = (id: number,) => {
+    return [
+    `/api/professionals/${id}/questions`
+    ] as const;
+    }
+
+
+export const getGetProfessionalQuestionsQueryOptions = <TData = Awaited<ReturnType<typeof getProfessionalQuestions>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfessionalQuestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProfessionalQuestionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProfessionalQuestions>>> = ({ signal }) => getProfessionalQuestions(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProfessionalQuestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProfessionalQuestionsQueryResult = NonNullable<Awaited<ReturnType<typeof getProfessionalQuestions>>>
+export type GetProfessionalQuestionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get published audience questions
+ */
+
+export function useGetProfessionalQuestions<TData = Awaited<ReturnType<typeof getProfessionalQuestions>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfessionalQuestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProfessionalQuestionsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateProfessionalQuestionUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/${id}/questions`
+}
+
+/**
+ * @summary Ask a professional a question
+ */
+export const createProfessionalQuestion = async (id: number,
+    professionalQuestionInput: ProfessionalQuestionInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalQuestion> => {
+
+  return customFetch<ProfessionalQuestion>(getCreateProfessionalQuestionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalQuestionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateProfessionalQuestionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfessionalQuestion>>, TError,{id: number;data: BodyType<ProfessionalQuestionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProfessionalQuestion>>, TError,{id: number;data: BodyType<ProfessionalQuestionInput>}, TContext> => {
+
+const mutationKey = ['createProfessionalQuestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProfessionalQuestion>>, {id: number;data: BodyType<ProfessionalQuestionInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createProfessionalQuestion(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateProfessionalQuestionMutationResult = NonNullable<Awaited<ReturnType<typeof createProfessionalQuestion>>>
+    export type CreateProfessionalQuestionMutationBody = BodyType<ProfessionalQuestionInput>
+    export type CreateProfessionalQuestionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Ask a professional a question
+ */
+export const useCreateProfessionalQuestion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProfessionalQuestion>>, TError,{id: number;data: BodyType<ProfessionalQuestionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createProfessionalQuestion>>,
+        TError,
+        {id: number;data: BodyType<ProfessionalQuestionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateProfessionalQuestionMutationOptions(options));
+    }
+
+export const getUpdateProfessionalQuestionUrl = (id: number,) => {
+
+
+
+
+  return `/api/professionals/me/questions/${id}`
+}
+
+/**
+ * @summary Answer or moderate an audience question
+ */
+export const updateProfessionalQuestion = async (id: number,
+    professionalQuestionUpdate: ProfessionalQuestionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ProfessionalQuestion> => {
+
+  return customFetch<ProfessionalQuestion>(getUpdateProfessionalQuestionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalQuestionUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateProfessionalQuestionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalQuestion>>, TError,{id: number;data: BodyType<ProfessionalQuestionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalQuestion>>, TError,{id: number;data: BodyType<ProfessionalQuestionUpdate>}, TContext> => {
+
+const mutationKey = ['updateProfessionalQuestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProfessionalQuestion>>, {id: number;data: BodyType<ProfessionalQuestionUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateProfessionalQuestion(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProfessionalQuestionMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfessionalQuestion>>>
+    export type UpdateProfessionalQuestionMutationBody = BodyType<ProfessionalQuestionUpdate>
+    export type UpdateProfessionalQuestionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Answer or moderate an audience question
+ */
+export const useUpdateProfessionalQuestion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfessionalQuestion>>, TError,{id: number;data: BodyType<ProfessionalQuestionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateProfessionalQuestion>>,
+        TError,
+        {id: number;data: BodyType<ProfessionalQuestionUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateProfessionalQuestionMutationOptions(options));
+    }
 
 export const getListConversationsUrl = () => {
 
