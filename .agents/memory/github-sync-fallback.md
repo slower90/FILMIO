@@ -33,6 +33,12 @@ After a cooldown, the connector's direct `proxyFetch` Git endpoints can sometime
 
 **How to apply:** Treat each successful write as a separate verified commit, never assume a failed batch partially landed, and leave blocked paths explicitly reported with their remote SHA. Large multi-file durable payloads can trigger a sandbox pattern error even when single-blob writes work; split them only while the proxy remains healthy, then stop on the first WAF response.
 
+GraphQL commit mutations can move the branch even when the connector returns an HTML/Cloudflare response that cannot be parsed as JSON.
+
+**Why:** A multi-file mutation advanced the branch before its response parser failed, so the next retry would have duplicated work or collided with the guarded head.
+
+**How to apply:** Always re-read and audit the branch ref after any write response—especially a non-JSON 403—before retrying; treat the observed ref head, not the response body, as the source of truth.
+
 Cloudflare can also reject one specific source path or payload while accepting adjacent files of similar size; final synchronization must therefore be verified per target blob, not inferred from the branch head alone.
 
 **Why:** A Free Classics sync accepted backend, page, generated-contract, and most frontend files but repeatedly blocked one route-metadata source file across Contents, Git Data, blob, and GraphQL writes.
