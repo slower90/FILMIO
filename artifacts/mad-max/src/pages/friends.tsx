@@ -490,9 +490,9 @@ export default function Friends() {
             ) : (
               <div className="py-12 text-center">
                 <UsersRound className="mx-auto h-8 w-8 text-[hsl(var(--friends-coral))]" />
-                <h3 className="mt-4 text-lg">{query.trim() ? "No matching movie lovers." : "Your next movie friend is not here yet."}</h3>
+                 <h3 className="mt-4 text-lg">{query.trim() ? "THE CAMERA FOUND NOTHING HERE." : "Your next movie friend is not here yet."}</h3>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                  {query.trim() ? "Try a different name or username." : "Try a broader search, then send the first invitation."}
+                   {query.trim() ? "Nothing matches exactly. Try a different name or username." : "Try a broader search, then send the first invitation."}
                 </p>
               </div>
             )}
