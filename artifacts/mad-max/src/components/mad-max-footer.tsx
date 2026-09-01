@@ -20,6 +20,7 @@ const appStoreLinks = [
 ];
 
 const footerLinks = [
+  { href: "/about-vishnuva", label: "About Vishnuva" },
   { href: "/help", label: "Help" },
   { href: "/site-index", label: "Site Index" },
   { href: "/actor-directory", label: "Actor Directory" },
