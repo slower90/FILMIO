@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Moon,
   Sun,
+  Sparkles,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
@@ -125,7 +126,7 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
       )}
       <div className="relative">
         {compact && focused && (
-          <div className="fixed left-4 right-4 top-[4.75rem] z-[60] text-left sm:hidden">
+            <div className="fixed left-4 right-4 top-[4.75rem] z-[60] text-left sm:hidden">
             <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
               Search FILMIO
             </p>
@@ -135,7 +136,7 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
           className={cn(
             "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none",
             compact && !focused && "hidden",
-            compact && focused && "fixed left-7 top-[7.25rem] z-[61]",
+             compact && focused && "fixed left-7 top-[7.25rem] z-[61]",
           )}
         />
         <input
@@ -161,7 +162,7 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
           className={cn(
             "w-full bg-card/60 border border-border rounded-md pl-9 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors",
             compact && !focused && "hidden",
-            compact && focused && "fixed left-4 right-4 top-[6.5rem] z-[60] w-auto shadow-2xl",
+             compact && focused && "fixed left-4 right-4 top-[6.5rem] z-[60] w-auto shadow-2xl",
           )}
         />
         {loading && (
@@ -173,7 +174,7 @@ function NavSearch({ compact = false }: { compact?: boolean }) {
         <div
           className={cn(
             "absolute left-0 right-0 top-full mt-1 bg-card border border-border rounded-md shadow-xl z-[100] overflow-hidden",
-            compact && focused && "fixed left-4 right-4 top-[9.6rem] z-[60] mt-0 max-h-[70vh] overflow-y-auto",
+             compact && focused && "fixed left-4 right-4 top-[9.6rem] z-[60] mt-0 max-h-[70vh] overflow-y-auto",
           )}
         >
           {loading && results.length === 0 ? (
@@ -243,6 +244,7 @@ interface DrawerProps {
 }
 
 const DRAWER_LINKS = [
+  { href: "/about-vishnuva", label: "About Vishnuva", icon: Sparkles },
   { href: "/discover", label: "Discover", icon: TrendingUp },
   { href: "/genres", label: "Browse by Genre", icon: Film },
   { href: "/anime", label: "Anime", icon: Tv },
