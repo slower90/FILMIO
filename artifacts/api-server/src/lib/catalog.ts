@@ -71,6 +71,12 @@ const mapOmdbSearchResult = (item: any, mediaType?: string) => ({
   media_type: mediaType === "series" ? "tv" : "movie",
 });
 
+const omdbNames = (value: unknown) =>
+  String(value ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name && name !== "N/A");
+
 /**
  * OMDb is an approved, terms-compliant metadata backup for movie and TV
  * search/detail responses. It intentionally does not pretend to provide
@@ -110,6 +116,29 @@ export const createOmdbProvider = (apiKey: string): CatalogProvider => ({
     const isTv = data.Type === "series" || path.startsWith("/tv/");
     const genres = String(data.Genre ?? "").split(",").map((name) => name.trim()).filter(Boolean)
       .map((name, index) => ({ id: index + 1, name }));
+    const cast = omdbNames(data.Actors).map((name, index) => ({
+      id: -(index + 1),
+      name,
+      character: "",
+      profilePath: null,
+      order: index,
+    }));
+    const crew = [
+      ...omdbNames(data.Director).map((name, index) => ({
+        id: -(index + 101),
+        name,
+        job: "Director",
+        department: "Directing",
+        profilePath: null,
+      })),
+      ...omdbNames(data.Writer).map((name, index) => ({
+        id: -(index + 201),
+        name,
+        job: "Writer",
+        department: "Writing",
+        profilePath: null,
+      })),
+    ];
     return {
       id: data.imdbID,
       title: data.Title ?? "",
@@ -129,7 +158,7 @@ export const createOmdbProvider = (apiKey: string): CatalogProvider => ({
       budget: 0,
       revenue: 0,
       imdb_id: data.imdbID ?? null,
-      credits: { cast: [], crew: [] },
+      credits: { cast, crew },
       videos: { results: [] },
       "watch/providers": { results: {} },
     };

@@ -1,0 +1,20 @@
+<svg width="640" height="480" viewBox="0 0 640 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="480" fill="#111116"/>
+  <path d="M0 360L640 96V480H0V360Z" fill="#191A20"/>
+  <path d="M80 0L640 220V0H80Z" fill="#1A1815"/>
+  <g opacity=".28" stroke="#F1E9D9">
+    <path d="M0 120H640M0 240H640M0 360H640"/>
+    <path d="M128 0V480M256 0V480M384 0V480M512 0V480"/>
+  </g>
+  <path d="M98 410L263 66L578 410H98Z" fill="#0D0E12" stroke="#F4B343" stroke-width="4"/>
+  <path d="M155 370L274 118L506 370H155Z" fill="#F4B343" fill-opacity=".08" stroke="#F1E9D9" stroke-opacity=".56" stroke-width="2"/>
+  <path d="M213 330L285 178L425 330H213Z" fill="#F4B343" fill-opacity=".16"/>
+  <circle cx="320" cy="245" r="20" fill="#F4B343"/>
+  <circle cx="320" cy="245" r="8" fill="#111116"/>
+  <path d="M320 245L503 91" stroke="#F4B343" stroke-width="3" stroke-dasharray="5 9"/>
+  <g fill="#F1E9D9" font-family="Arial, sans-serif" font-size="14" letter-spacing="3">
+    <text x="42" y="54">FRAME / 02</text><text x="446" y="442">STORY LAB</text>
+  </g>
+  <circle cx="320" cy="245" r="62" stroke="#F4B343" stroke-opacity=".3"/>
+  <circle cx="320" cy="245" r="93" stroke="#F4B343" stroke-opacity=".13"/>
+</svg>

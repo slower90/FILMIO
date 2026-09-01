@@ -13,4 +13,5 @@ export * from "./chat";
 export * from "./anime";
 export * from "./viewing-history";
 export * from "./search-catalog";
+export * from "./catalog-movies";
 export * from "./signals";

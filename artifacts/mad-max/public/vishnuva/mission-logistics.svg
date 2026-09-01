@@ -1,0 +1,21 @@
+<svg width="640" height="480" viewBox="0 0 640 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="480" fill="#101116"/>
+  <g opacity=".35" stroke="#D99B38">
+    <path d="M0 96H640M0 192H640M0 288H640M0 384H640"/>
+    <path d="M128 0V480M256 0V480M384 0V480M512 0V480"/>
+  </g>
+  <g opacity=".45" stroke="#F1E9D9" stroke-width="2">
+    <path d="M-20 386C76 346 107 218 198 252C275 281 291 389 381 349C456 315 470 149 660 96"/>
+    <path d="M-20 124C88 151 132 89 232 121C314 147 365 233 439 215C503 199 543 138 660 157"/>
+  </g>
+  <path d="M58 376C136 338 153 224 221 250C299 280 305 358 389 327C466 299 486 143 604 112" stroke="#F4B343" stroke-width="6" stroke-linecap="round"/>
+  <path d="M58 376C136 338 153 224 221 250C299 280 305 358 389 327C466 299 486 143 604 112" stroke="#F8D48A" stroke-width="1.5" stroke-dasharray="2 12" stroke-linecap="round"/>
+  <g fill="#F4B343" stroke="#101116" stroke-width="5">
+    <circle cx="58" cy="376" r="11"/><circle cx="221" cy="250" r="11"/><circle cx="389" cy="327" r="11"/><circle cx="604" cy="112" r="11"/>
+  </g>
+  <g fill="#F1E9D9" font-family="Arial, sans-serif" font-size="14" letter-spacing="3">
+    <text x="34" y="424">ORIGIN</text><text x="553" y="80">REACH</text>
+  </g>
+  <circle cx="389" cy="327" r="43" stroke="#F4B343" stroke-opacity=".22"/>
+  <circle cx="389" cy="327" r="62" stroke="#F4B343" stroke-opacity=".1"/>
+</svg>

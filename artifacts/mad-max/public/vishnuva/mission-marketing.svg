@@ -1,0 +1,21 @@
+<svg width="640" height="480" viewBox="0 0 640 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="480" fill="#0E1015"/>
+  <g opacity=".35" stroke="#D99B38">
+    <path d="M0 96H640M0 192H640M0 288H640M0 384H640"/>
+    <path d="M128 0V480M256 0V480M384 0V480M512 0V480"/>
+  </g>
+  <g stroke="#F1E9D9" stroke-opacity=".34" stroke-width="2">
+    <path d="M116 337L227 184L348 279L455 119L568 244"/>
+    <path d="M116 337L348 279L568 244M227 184L455 119"/>
+  </g>
+  <g fill="#F4B343" stroke="#0E1015" stroke-width="6">
+    <circle cx="116" cy="337" r="15"/><circle cx="227" cy="184" r="15"/><circle cx="348" cy="279" r="15"/><circle cx="455" cy="119" r="15"/><circle cx="568" cy="244" r="15"/>
+  </g>
+  <path d="M348 279C348 225 392 181 446 181C500 181 544 225 544 279" stroke="#F4B343" stroke-width="5" stroke-linecap="round"/>
+  <path d="M348 279C348 191 420 119 508 119C596 119 668 191 668 279" stroke="#F4B343" stroke-opacity=".35" stroke-width="2"/>
+  <g fill="#F1E9D9" font-family="Arial, sans-serif" font-size="14" letter-spacing="3">
+    <text x="52" y="430">SIGNAL / 03</text><text x="454" y="78">AUDIENCE</text>
+  </g>
+  <circle cx="348" cy="279" r="48" stroke="#F4B343" stroke-opacity=".22"/>
+  <circle cx="348" cy="279" r="76" stroke="#F4B343" stroke-opacity=".1"/>
+</svg>

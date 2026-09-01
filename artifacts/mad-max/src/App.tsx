@@ -47,6 +47,7 @@ const MovieStory = lazy(() => import('@/pages/movie-story'));
 const Friends = lazy(() => import('@/pages/friends'));
 const Profiles = lazy(() => import('@/pages/profiles'));
 const CinemaGraph = lazy(() => import('@/pages/cinema-graph'));
+const AboutVishnuva = lazy(() => import('@/pages/about-vishnuva'));
 
 // Setup QueryClient
 const queryClient = new QueryClient({
@@ -490,7 +491,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/friends" component={Friends} />
           <Route path="/profile" component={Profile} />
           <Route path="/profile/:id" component={Profile} />
-          <Route path="/professionals" component={ProtectedProfessionals} />
+          <Route path="/professionals" component={Professionals} />
           <Route path="/professionals/dashboard" component={ProtectedProfessionalDashboard} />
           <Route path="/professionals/community" component={IndustryCommunity} />
           <Route path="/professionals/:id" component={PublicProfessionalDetail} />
@@ -506,6 +507,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/news" component={News} />
           <Route path="/signals" component={Signals} />
           <Route path="/events" component={Events} />
+           <Route path="/about-vishnuva" component={AboutVishnuva} />
           <Route path="/help" component={FooterPage} />
           <Route path="/site-index" component={FooterPage} />
           <Route path="/actor-directory" component={FooterPage} />
