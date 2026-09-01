@@ -31,6 +31,7 @@ type Mutation = {
 
 export type ReviewSubmissionEffects = {
   invalidateRatingStats: () => void;
+  invalidateCraftSignal?: () => void;
   invalidateAudienceReviews: () => void;
   setMessage: (message: string) => void;
   setError: (message: string) => void;
@@ -66,6 +67,7 @@ export function submitRatingAndReview({
     {
       onSuccess: () => {
         effects.invalidateRatingStats();
+        effects.invalidateCraftSignal?.();
         if (!content) {
           effects.setMessage("Your rating was saved.");
           effects.clearForm();
@@ -77,6 +79,7 @@ export function submitRatingAndReview({
             onSuccess: () => {
               effects.invalidateAudienceReviews();
               effects.invalidateRatingStats();
+              effects.invalidateCraftSignal?.();
               effects.clearForm();
               effects.setMessage("Your rating and review were saved.");
             },

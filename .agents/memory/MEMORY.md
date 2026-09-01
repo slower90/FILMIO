@@ -32,3 +32,4 @@
 - [Browse query routing](browse-query-routing.md) — Wouter location can be pathname-only; parse browser search for query-driven listing state
 - [Web API authentication across origins](web-api-auth.md) — separate-origin web deployments must forward the Clerk session token instead of relying only on cookies
 - [Video.js wrapper styling](videojs-wrapper-styling.md) — data-vjs-player consumes its wrapper; attach persistent player CSS hooks to the ancestor that remains
+- [Craft dimension signals](craft-dimension-signals.md) — derive visible craft scores from FILMIO evidence + public Reddit discussion, never fabricate unavailable data

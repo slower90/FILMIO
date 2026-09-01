@@ -47,6 +47,10 @@ import {
   getMovieOverviewQueryKey,
   type MovieOverviewResponse,
 } from "@/lib/movie-prefetch";
+import {
+  fetchCraftDimensions,
+  type CraftDimensionsResponse,
+} from "@/lib/craft-dimensions";
 
 // ── Fetchers for non-spec endpoints ──────────────────────────────────────────
 
@@ -137,7 +141,13 @@ export default function MovieDetail() {
   const providers = overview?.providers;
   const videos = overview?.videos;
   const { data: stats } = useGetMovieStats(movieId, {
-    query: { queryKey: getGetMovieStatsQueryKey(movieId), enabled: !!movieId },
+    query: {
+      queryKey: getGetMovieStatsQueryKey(movieId),
+      enabled: !!movieId,
+      staleTime: 60 * 1000,
+      refetchInterval: 5 * 60 * 1000,
+      refetchOnWindowFocus: true,
+    },
   });
   const { data: criticReviews } = useListReviews(
     { movieId, type: "critic" },
@@ -147,6 +157,14 @@ export default function MovieDetail() {
     { movieId, type: "audience" },
     { query: { queryKey: getListReviewsQueryKey({ movieId, type: "audience" }), enabled: !!movieId } },
   );
+  const craftSignalQuery = useQuery<CraftDimensionsResponse>({
+    queryKey: ["movie-craft-dimensions", movieId, movie?.title, movie?.voteAverage],
+    queryFn: () => fetchCraftDimensions(movieId, movie!.title, movie!.voteAverage ?? 0),
+    enabled: !!movieId && !!movie?.title,
+    staleTime: 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
 
   const handleWatchlistToggle = () => {
     if (!movie || !isSignedIn) return;
@@ -211,6 +229,10 @@ export default function MovieDetail() {
         invalidateRatingStats: () =>
           queryClient.invalidateQueries({
             queryKey: getGetMovieStatsQueryKey(movieId),
+          }),
+        invalidateCraftSignal: () =>
+          queryClient.invalidateQueries({
+            queryKey: ["movie-craft-dimensions", movieId],
           }),
         invalidateAudienceReviews: () =>
           queryClient.invalidateQueries({
@@ -591,7 +613,7 @@ export default function MovieDetail() {
               <span className="flex items-center gap-1.5 text-primary">
                 <Star className="w-4 h-4 fill-primary" />
                 FILMIO Rating{" "}
-                {displayRating.toFixed(1)}
+                 {displayRating > 0 ? displayRating.toFixed(1) : "—"}
               </span>
             </div>
 
@@ -762,13 +784,9 @@ export default function MovieDetail() {
                 Cast &amp; Crew
               </h2>
               <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-thin snap-x">
-                  {cast.map((person) => (
-                  <Link
-                    href={`/actors/${person.id}`}
-                    key={person.id}
-                    className="group cursor-pointer shrink-0 w-24 md:w-28 snap-start"
-                    aria-label={`View ${person.name}'s filmography`}
-                  >
+                  {cast.map((person) => {
+                  const castCard = (
+                    <>
                     <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden mb-2 bg-muted border border-border/50 group-hover:border-primary transition-colors">
                       {person.profilePath ? (
                         <img
@@ -789,8 +807,27 @@ export default function MovieDetail() {
                     <p className="text-[11px] text-muted-foreground text-center line-clamp-2">
                       {person.character}
                     </p>
-                  </Link>
-                ))}
+                    </>
+                  );
+                  return person.id > 0 ? (
+                    <Link
+                      href={`/actors/${person.id}`}
+                      key={person.id}
+                      className="group cursor-pointer shrink-0 w-24 md:w-28 snap-start"
+                      aria-label={`View ${person.name}'s filmography`}
+                    >
+                      {castCard}
+                    </Link>
+                  ) : (
+                    <div
+                      key={person.id}
+                      className="group shrink-0 w-24 md:w-28 snap-start"
+                      aria-label={`${person.name} cast credit`}
+                    >
+                      {castCard}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -858,8 +895,11 @@ export default function MovieDetail() {
           {stats && (
             <MovieScoreFingerprint
               movie={movie}
-              score={displayRating}
+              title={movie.title}
+              score={craftSignalQuery.data?.overallScore ?? displayRating}
               stats={stats}
+              autoSignal={craftSignalQuery.data}
+              isRefreshing={craftSignalQuery.isFetching}
             />
           )}
 

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, ratingsTable, reviewsTable } from "@workspace/db";
-import { avg, count, eq, inArray, sql } from "drizzle-orm";
+import { avg, count, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   catalogIdentity,
   createCatalogClient,
@@ -20,6 +20,19 @@ import {
 } from "../lib/smart-search";
 import { searchMeilisearch } from "../lib/meilisearch";
 import { freeClassicPath, getFreeClassicsForSitemap } from "./free-classics";
+import {
+  findLocalCatalogMovieById,
+  findLocalCatalogMoviesByQuery,
+  findUpcomingLocalCatalogMovies,
+  getManagedMovieTitles,
+  localCatalogMovieToRaw,
+  resolveManagedMovieTitle,
+} from "../lib/local-catalog";
+import {
+  calculateCraftDimensions,
+  calculateFilmioAutoScore,
+  searchRedditDiscussions,
+} from "../lib/craft-dimensions";
 
 const router: IRouter = Router();
 
@@ -51,6 +64,10 @@ const fallbackCatalogProvider = process.env.CATALOG_FALLBACK_BASE_URL
     : undefined;
 
 const tmdbClient = createCatalogClient(primaryCatalogProvider, fallbackCatalogProvider);
+const primaryTmdbClient = createCatalogClient(primaryCatalogProvider);
+const fallbackCatalogClient = fallbackCatalogProvider
+  ? createCatalogClient(fallbackCatalogProvider)
+  : null;
 
 const tmdbFetch = (path: string, params: Record<string, string | number> = {}) => {
   return tmdbClient.fetch(path, params);
@@ -59,6 +76,16 @@ const tmdbFetch = (path: string, params: Record<string, string | number> = {}) =
 const tmdbFetchWithMetadata = (path: string, params: Record<string, string | number> = {}) => {
   return tmdbClient.fetchWithMetadata(path, params);
 };
+
+const primaryTmdbFetchWithMetadata = (
+  path: string,
+  params: Record<string, string | number> = {},
+) => primaryTmdbClient.fetchWithMetadata(path, params);
+
+const fallbackCatalogFetchWithMetadata = fallbackCatalogClient
+  ? (path: string, params: Record<string, string | number> = {}) =>
+      fallbackCatalogClient.fetchWithMetadata(path, params)
+  : undefined;
 
 const SITEMAP_CACHE_TTL_MS = 15 * 60 * 1000;
 const SITEMAP_SITE_URL = (process.env.SITE_URL || "https://vishnuva.in").replace(/\/+$/, "");
@@ -101,6 +128,7 @@ async function buildSitemapXml(): Promise<string> {
     ["/browse", "weekly", "0.7"],
     ["/events", "weekly", "0.5"],
     ["/pricing", "monthly", "0.3"],
+    ["/about-vishnuva", "monthly", "0.5"],
     ["/help", "yearly", "0.2"],
     ["/site-index", "monthly", "0.3"],
     ["/actor-directory", "weekly", "0.5"],
@@ -188,10 +216,121 @@ const mapMovie = (m: any) => ({
   genreIds: m.genre_ids ?? [],
 });
 
+const resolveManagedMovie = (title: string) =>
+  resolveManagedMovieTitle(title, {
+    primaryFetch: primaryTmdbFetchWithMetadata,
+    fallbackFetch: fallbackCatalogFetchWithMetadata,
+  });
+
+const getManagedMovieSearchResult = async (title: string) => {
+  const resolved = await resolveManagedMovie(title);
+  if (!resolved || (!resolved.local && resolved.metadata.source !== "tmdb")) return null;
+  return {
+    movie: mapMovie(resolved.raw),
+    metadata: resolved.metadata,
+  };
+};
+
+const mapProvider = (p: any) => ({
+  providerId: p.provider_id,
+  providerName: p.provider_name,
+  logoPath: p.logo_path ?? "",
+});
+
+const buildMovieOverviewResponse = (data: any, metadata: CatalogMetadata) => {
+  const regionData =
+    data["watch/providers"]?.results?.IN ??
+    data["watch/providers"]?.results?.US ??
+    data["watch/providers"]?.results?.[Object.keys(data["watch/providers"]?.results ?? {})[0]] ??
+    {};
+
+  return {
+    movie: {
+      id: data.id,
+      title: data.title ?? data.name ?? "",
+      overview: data.overview ?? "",
+      posterPath: data.poster_path ?? null,
+      backdropPath: data.backdrop_path ?? null,
+      releaseDate: data.release_date ?? data.first_air_date ?? "",
+      runtime: Number(data.runtime) > 0 ? Number(data.runtime) : data.episode_run_time?.[0] > 0 ? data.episode_run_time[0] : null,
+      genres: (data.genres ?? []).map((g: any) => ({ id: g.id, name: g.name })),
+      originalLanguage: data.original_language ?? null,
+      productionCountries: (data.production_countries ?? []).map((country: any) => country.name).filter(Boolean),
+      voteAverage: data.vote_average ?? 0,
+      voteCount: data.vote_count ?? 0,
+      tagline: data.tagline ?? null,
+      status: data.status ?? "",
+      budget: data.budget ?? 0,
+      revenue: data.revenue ?? 0,
+      imdbId: data.imdb_id ?? data.external_ids?.imdb_id ?? null,
+    },
+    credits: {
+      cast: (data.credits?.cast ?? []).slice(0, 20).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        character: c.character ?? "",
+        profilePath: c.profile_path ?? c.profilePath ?? null,
+        order: c.order ?? 0,
+      })),
+      crew: (data.credits?.crew ?? [])
+        .filter((c: any) => ["Director", "Producer", "Screenplay", "Writer"].includes(c.job))
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          job: c.job,
+          department: c.department,
+          profilePath: c.profile_path ?? c.profilePath ?? null,
+        })),
+    },
+    providers: {
+      flatrate: (regionData.flatrate ?? []).map(mapProvider),
+      free: (regionData.free ?? []).map(mapProvider),
+      ads: (regionData.ads ?? []).map(mapProvider),
+      rent: (regionData.rent ?? []).map(mapProvider),
+      buy: (regionData.buy ?? []).map(mapProvider),
+      link: regionData.link ?? null,
+    },
+    videos: {
+      results: (data.videos?.results ?? []).map((v: any) => ({
+        id: v.id,
+        key: v.key,
+        name: v.name,
+        site: v.site,
+        type: v.type,
+        official: v.official ?? false,
+      })),
+    },
+    metadata,
+  };
+};
+
 const hasReleased = (movie: ReturnType<typeof mapMovie>) => {
   if (!movie.releaseDate) return true;
   const releaseTime = new Date(`${movie.releaseDate}T23:59:59.999Z`).getTime();
   return Number.isNaN(releaseTime) || releaseTime <= Date.now();
+};
+
+const appendManagedUpcomingMovies = async (movies: ReturnType<typeof mapMovie>[]) => {
+  const [localMovies, managedMovies] = await Promise.all([
+    findUpcomingLocalCatalogMovies(),
+    Promise.all(getManagedMovieTitles().map((title) => resolveManagedMovie(title))),
+  ]);
+  const extras = [
+    ...localMovies.map(localCatalogMovieToRaw),
+    ...managedMovies
+      .filter((movie): movie is NonNullable<typeof movie> => Boolean(movie))
+      .filter((movie) => movie.local || movie.metadata.source === "tmdb")
+      .map((movie) => movie.raw),
+  ].map(mapMovie);
+  const seen = new Set(movies.map((movie) => movie.id));
+  return [
+    ...movies,
+    ...extras.filter((movie) => {
+      if (!Number.isInteger(movie.id) || seen.has(movie.id)) return false;
+      seen.add(movie.id);
+      return true;
+    }),
+  ];
 };
 
 const getPrismRatings = async (movieIds: number[]) => {
@@ -318,6 +457,17 @@ router.get("/movies/search-multi", async (req, res): Promise<void> => {
     res.status(400).json({ error: "q is required" });
     return;
   }
+  const managed = await getManagedMovieSearchResult(q);
+  if (managed) {
+    res.json({
+      results: [{ ...managed.movie, mediaType: "movie" }],
+      page: 1,
+      totalPages: 1,
+      totalResults: 1,
+      metadata: managed.metadata,
+    });
+    return;
+  }
   const data = await tmdbFetch("/search/multi", { query: q, page });
   void upsertSearchCatalog(
     (data.results ?? [])
@@ -347,6 +497,55 @@ router.get("/movies/search-smart", async (req, res): Promise<void> => {
   const rawQuery = String(req.query.q ?? "").trim();
   if (!rawQuery) {
     res.status(400).json({ error: "q is required" });
+    return;
+  }
+
+  const managed = await getManagedMovieSearchResult(rawQuery);
+  if (managed) {
+    const intent = parseSearchIntent(rawQuery, []);
+    res.json({
+      query: rawQuery,
+      intent: {
+        limit: 1,
+        genre: intent.genre,
+        language: intent.language,
+        india: intent.india,
+        anime: false,
+        adult: false,
+        sort: "relevance",
+        year: intent.year,
+      },
+      results: [managed.movie],
+      totalResults: 1,
+      metadata: managed.metadata,
+    });
+    return;
+  }
+
+  const localResults = await findLocalCatalogMoviesByQuery(rawQuery, 20);
+  if (localResults.length > 0) {
+    const intent = parseSearchIntent(rawQuery, []);
+    res.json({
+      query: rawQuery,
+      intent: {
+        limit: Math.min(localResults.length, 20),
+        genre: intent.genre,
+        language: intent.language,
+        india: intent.india,
+        anime: false,
+        adult: false,
+        sort: "relevance",
+        year: intent.year,
+      },
+      results: localResults.map((movie) => mapMovie(localCatalogMovieToRaw(movie))),
+      totalResults: localResults.length,
+      metadata: {
+        source: "local",
+        fetchedAt: new Date().toISOString(),
+        stale: false,
+        partial: false,
+      },
+    });
     return;
   }
 
@@ -750,6 +949,17 @@ router.get("/movies/search", async (req, res): Promise<void> => {
     res.status(400).json({ error: "q is required" });
     return;
   }
+  const managed = await getManagedMovieSearchResult(q);
+  if (managed) {
+    res.json({
+      results: [managed.movie],
+      page: 1,
+      totalPages: 1,
+      totalResults: 1,
+      metadata: managed.metadata,
+    });
+    return;
+  }
   const data = await tmdbFetch("/search/movie", { query: q, page });
   res.json({
     results: (data.results ?? []).map(mapMovie),
@@ -811,13 +1021,16 @@ router.get("/movies/catalog", async (req, res): Promise<void> => {
       total_results?: number;
       results?: unknown;
     };
-    const mapped = mergeCatalogItems(
+    let mapped = mergeCatalogItems(
       [Array.isArray(data.results) ? data.results : []],
       catalogIdentity,
     )
       .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
       .map(mapMovie)
       .filter((movie) => config.includeUnreleased || hasReleased(movie));
+    if (collection === "upcoming") {
+      mapped = await appendManagedUpcomingMovies(mapped);
+    }
     res.json({
       results: mapped.slice(0, limit),
       page: data.page ?? page,
@@ -867,7 +1080,8 @@ router.get("/movies/tv-upcoming", async (req, res): Promise<void> => {
 router.get("/movies/upcoming", async (req, res): Promise<void> => {
   const maxPages = Number(req.query.maxPages) || 2;
   const pageData = await tmdbFetchMultiPageWithMetadata("/movie/upcoming", maxPages, { region: "IN" }, true);
-  res.json({ results: pageData.results, totalResults: pageData.results.length, metadata: pageData.metadata });
+  const results = await appendManagedUpcomingMovies(pageData.results);
+  res.json({ results, totalResults: results.length, metadata: pageData.metadata });
 });
 
 router.get("/movies/in-theaters", async (req, res): Promise<void> => {
@@ -1045,6 +1259,13 @@ router.get("/movies/:movieId/story", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid movie id" });
     return;
   }
+  if (req.query.type !== "tv" && await findLocalCatalogMovieById(id)) {
+    res.status(503).json({
+      error: "Movie story is temporarily unavailable",
+      status: "unavailable",
+    });
+    return;
+  }
 
   try {
     const story = await getMovieStory({
@@ -1073,7 +1294,19 @@ router.get("/movies/:movieId/story", async (req, res): Promise<void> => {
 router.get("/movies/:movieId/overview", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid movie id" });
+    return;
+  }
   const mediaType = req.query.type === "tv" ? "tv" : "movie";
+  const localMovie = mediaType === "movie" ? await findLocalCatalogMovieById(id) : null;
+  if (localMovie) {
+    res.json(buildMovieOverviewResponse(
+      localCatalogMovieToRaw(localMovie),
+      { source: "local", fetchedAt: localMovie.updatedAt.toISOString(), stale: false },
+    ));
+    return;
+  }
   const catalogResponse = await tmdbFetchWithMetadata(`/${mediaType}/${id}`, {
     append_to_response: "credits,videos,watch/providers,external_ids",
   });
@@ -1082,82 +1315,17 @@ router.get("/movies/:movieId/overview", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Movie not found" });
     return;
   }
-
-  const regionData =
-    data["watch/providers"]?.results?.IN ??
-    data["watch/providers"]?.results?.US ??
-    data["watch/providers"]?.results?.[Object.keys(data["watch/providers"]?.results ?? {})[0]] ??
-    {};
-  const mapProvider = (p: any) => ({
-    providerId: p.provider_id,
-    providerName: p.provider_name,
-    logoPath: p.logo_path ?? "",
-  });
-
-  res.json({
-    movie: {
-      id: data.id,
-      title: data.title ?? data.name ?? "",
-      overview: data.overview ?? "",
-      posterPath: data.poster_path ?? null,
-      backdropPath: data.backdrop_path ?? null,
-      releaseDate: data.release_date ?? data.first_air_date ?? "",
-      runtime: data.runtime ?? data.episode_run_time?.[0] ?? null,
-      genres: (data.genres ?? []).map((g: any) => ({ id: g.id, name: g.name })),
-      originalLanguage: data.original_language ?? null,
-      productionCountries: (data.production_countries ?? []).map((country: any) => country.name).filter(Boolean),
-      voteAverage: data.vote_average ?? 0,
-      voteCount: data.vote_count ?? 0,
-      tagline: data.tagline ?? null,
-      status: data.status ?? "",
-      budget: data.budget ?? 0,
-      revenue: data.revenue ?? 0,
-      imdbId: data.imdb_id ?? data.external_ids?.imdb_id ?? null,
-    },
-    credits: {
-      cast: (data.credits?.cast ?? []).slice(0, 20).map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        character: c.character ?? "",
-        profilePath: c.profile_path ?? null,
-        order: c.order ?? 0,
-      })),
-      crew: (data.credits?.crew ?? [])
-        .filter((c: any) => ["Director", "Producer", "Screenplay", "Writer"].includes(c.job))
-        .map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          job: c.job,
-          department: c.department,
-          profilePath: c.profile_path ?? null,
-        })),
-    },
-    providers: {
-      flatrate: (regionData.flatrate ?? []).map(mapProvider),
-      free: (regionData.free ?? []).map(mapProvider),
-      ads: (regionData.ads ?? []).map(mapProvider),
-      rent: (regionData.rent ?? []).map(mapProvider),
-      buy: (regionData.buy ?? []).map(mapProvider),
-      link: regionData.link ?? null,
-    },
-    videos: {
-      results: (data.videos?.results ?? []).map((v: any) => ({
-        id: v.id,
-        key: v.key,
-        name: v.name,
-        site: v.site,
-        type: v.type,
-        official: v.official ?? false,
-      })),
-    },
-    metadata: catalogResponse,
-  });
+  res.json(buildMovieOverviewResponse(data, catalogResponse));
 });
 
 // GET /movies/:movieId/recommendations
 router.get("/movies/:movieId/recommendations", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
+  if (await findLocalCatalogMovieById(id)) {
+    res.json({ results: [], totalResults: 0 });
+    return;
+  }
   const maxPages = Number(req.query.maxPages) || 2;
   const results = await tmdbFetchMultiPage(`/movie/${id}/recommendations`, maxPages);
   res.json({ results, totalResults: results.length });
@@ -1167,6 +1335,15 @@ router.get("/movies/:movieId/recommendations", async (req, res): Promise<void> =
 router.get("/movies/:movieId/credits", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
+  const localMovie = await findLocalCatalogMovieById(id);
+  if (localMovie) {
+    const data = localCatalogMovieToRaw(localMovie);
+    res.json({
+      cast: data.credits.cast ?? [],
+      crew: data.credits.crew ?? [],
+    });
+    return;
+  }
   const data = await tmdbFetch(`/movie/${id}/credits`);
   res.json({
     cast: (data.cast ?? []).slice(0, 20).map((c: any) => ({
@@ -1194,6 +1371,10 @@ router.get("/movies/:movieId/credits", async (req, res): Promise<void> => {
 router.get("/movies/:movieId/watch-providers", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
+  if (await findLocalCatalogMovieById(id)) {
+    res.json({ flatrate: [], rent: [], buy: [], link: null });
+    return;
+  }
   const data = await tmdbFetch(`/movie/${id}/watch/providers`);
   const regionData =
     data.results?.US ??
@@ -1216,6 +1397,10 @@ router.get("/movies/:movieId/watch-providers", async (req, res): Promise<void> =
 router.get("/movies/:movieId/videos", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
+  if (await findLocalCatalogMovieById(id)) {
+    res.json({ results: [] });
+    return;
+  }
   const data = await tmdbFetch(`/movie/${id}/videos`);
   const results = (data.results ?? []).map((v: any) => ({
     id: v.id,
@@ -1280,10 +1465,113 @@ router.get("/movies/:movieId/stats", async (req, res): Promise<void> => {
   });
 });
 
+// GET /movies/:movieId/craft-dimensions?title=...&baselineScore=...
+// Builds transparent, auto-updating craft signals from FILMIO ratings/reviews
+// and public Reddit discussion. Third-party scores are never displayed as-is.
+router.get("/movies/:movieId/craft-dimensions", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
+  const movieId = parseInt(raw, 10);
+  if (!Number.isInteger(movieId) || movieId <= 0) {
+    res.status(400).json({ error: "Invalid movie id" });
+    return;
+  }
+
+  const title = String(req.query.title ?? "").trim().slice(0, 180);
+  const baselineScore = Number(req.query.baselineScore);
+  const [[ratingStats], [reviewStats], filmioReviews, reddit] = await Promise.all([
+    db
+      .select({
+        averageRating: avg(ratingsTable.score),
+        totalRatings: count(ratingsTable.id),
+      })
+      .from(ratingsTable)
+      .where(eq(ratingsTable.movieId, movieId)),
+    db
+      .select({ totalReviews: count(reviewsTable.id) })
+      .from(reviewsTable)
+      .where(eq(reviewsTable.movieId, movieId)),
+    db
+      .select({
+        content: reviewsTable.content,
+        rating: reviewsTable.rating,
+        isCriticReview: reviewsTable.isCriticReview,
+      })
+      .from(reviewsTable)
+      .where(eq(reviewsTable.movieId, movieId))
+      .orderBy(desc(reviewsTable.createdAt))
+      .limit(100),
+    title ? searchRedditDiscussions(title) : Promise.resolve({ posts: [], status: "not_found" as const }),
+  ]);
+  const averageRating = ratingStats.averageRating
+    ? parseFloat(String(ratingStats.averageRating))
+    : 0;
+  const totalRatings = Number(ratingStats.totalRatings);
+  const overallScore = calculateFilmioAutoScore({
+    baselineScore: Number.isFinite(baselineScore) ? baselineScore : null,
+    averageRating,
+    totalRatings,
+  });
+  const dimensions = calculateCraftDimensions({
+    overallScore,
+    filmioRatings: { averageRating, totalRatings },
+    filmioReviews: filmioReviews.map((review) => ({
+      text: review.content,
+      rating: review.rating,
+      weight: review.isCriticReview ? 1.25 : 1,
+    })),
+    redditPosts: reddit.posts,
+  });
+
+  res.json({
+    movieId,
+    overallScore,
+    dimensions,
+    sources: {
+      filmio: {
+        totalRatings,
+        averageRating,
+        totalReviews: Number(reviewStats.totalReviews),
+      },
+      reddit: {
+        status: reddit.status,
+        totalResults: reddit.posts.length,
+        posts: reddit.posts,
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  });
+});
+
 // GET /movies/:movieId  ← bare route always last
 router.get("/movies/:movieId", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.movieId) ? req.params.movieId[0] : req.params.movieId;
   const id = parseInt(raw, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid movie id" });
+    return;
+  }
+  const localMovie = await findLocalCatalogMovieById(id);
+  if (localMovie) {
+    const data = localCatalogMovieToRaw(localMovie);
+    res.json({
+      id: data.id,
+      title: data.title,
+      overview: data.overview,
+      posterPath: data.poster_path,
+      backdropPath: data.backdrop_path,
+      releaseDate: data.release_date,
+      runtime: data.runtime,
+      genres: data.genres,
+      voteAverage: data.vote_average,
+      voteCount: data.vote_count,
+      tagline: data.tagline,
+      status: data.status,
+      budget: data.budget,
+      revenue: data.revenue,
+      imdbId: data.imdb_id,
+    });
+    return;
+  }
   const data = await tmdbFetch(`/movie/${id}`);
   if (!data || data.success === false) {
     res.status(404).json({ error: "Movie not found" });

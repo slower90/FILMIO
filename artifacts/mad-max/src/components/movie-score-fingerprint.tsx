@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
-import { BarChart3, CircleHelp, MessageCircle, Sparkles, Users } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
+import { BarChart3, CircleHelp, ExternalLink, MessageCircle, RefreshCw, Sparkles, Users } from "lucide-react";
+import type { CraftDimensionsResponse } from "@/lib/craft-dimensions";
 
 export type FingerprintStats = {
   totalRatings: number;
@@ -111,36 +112,52 @@ function audienceDNA(stats?: FingerprintStats) {
 
 export function MovieScoreFingerprint({
   movie,
+  title,
   score,
   stats,
+  autoSignal,
+  isRefreshing = false,
 }: {
   movie: { genres?: Array<{ name: string }> };
+  title: string;
   score: number;
   stats?: FingerprintStats;
+  autoSignal?: CraftDimensionsResponse;
+  isRefreshing?: boolean;
 }) {
   const contourValues = distributionValues(stats);
   const hasAudienceShape = contourValues.length > 0;
   const dna = audienceDNA(stats);
   const genreNames = (movie.genres ?? []).slice(0, 4).map((genre) => genre.name);
+  const liveDimensions = autoSignal?.dimensions ?? [];
+  const hasMeasuredDimensions = liveDimensions.some((dimension) => dimension.score !== null);
+  const redditPosts = autoSignal?.sources.reddit.posts ?? [];
+  const redditStatus = autoSignal?.sources.reddit.status ?? "not_found";
+  const redditSearchUrl = `https://www.reddit.com/search/?q=${encodeURIComponent(`"${title}" review`)}`;
+  const autoScore = autoSignal?.overallScore ?? score;
+  const filmioSource = autoSignal?.sources.filmio;
+  const updatedAt = autoSignal?.updatedAt
+    ? new Date(autoSignal.updatedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    : null;
 
   return (
     <section className="movie-score-fingerprint" aria-labelledby="movie-score-title">
       <div className="movie-score-heading">
         <div>
           <p className="editorial-kicker">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> The new movie score
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Live movie signal
           </p>
           <h2 id="movie-score-title" className="mt-3 font-display text-xl font-semibold uppercase tracking-tight">
             Cinema fingerprint
           </h2>
         </div>
-        <span className="movie-score-source">FILMIO / 10-point signal</span>
+        <span className="movie-score-source">FILMIO auto / 10-point signal</span>
       </div>
 
       <div className="movie-score-fingerprint-main">
         <div className="movie-score-visual">
-          <ScoreRing score={score} />
-          <span className="movie-score-visual-caption">{score > 0 ? "FILMIO score" : "No score yet"}</span>
+          <ScoreRing score={autoScore} />
+          <span className="movie-score-visual-caption">{autoScore > 0 ? "FILMIO auto score" : "No score yet"}</span>
           <div className={`movie-score-contour ${!hasAudienceShape ? "movie-score-contour--empty" : ""}`}>
             <svg viewBox="0 0 220 220" role="img" aria-label={hasAudienceShape ? "Audience rating distribution contour" : "Audience contour awaiting ratings"}>
               {[0.32, 0.62, 0.9].map((radius) => (
@@ -168,21 +185,37 @@ export function MovieScoreFingerprint({
         <div className="movie-score-breakdown">
           <div className="movie-score-breakdown-header">
             <span>Craft dimensions</span>
-            <span className="movie-score-breakdown-state">
-              <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" /> Not yet measured
+              <span className={`movie-score-breakdown-state ${hasMeasuredDimensions ? "movie-score-breakdown-state--live" : ""}`} aria-live="polite">
+              {isRefreshing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : hasMeasuredDimensions ? <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> : <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />}
+              {isRefreshing ? "Updating" : hasMeasuredDimensions ? "Auto-updating" : "Awaiting signal"}
             </span>
           </div>
           <div className="movie-score-dimensions" aria-label="Craft dimension scores">
-            {DIMENSIONS.map((dimension) => (
-              <div key={dimension} className="movie-score-dimension">
-                <span>{dimension}</span>
-                <span className="movie-score-dimension-line" aria-hidden="true" />
-                <span className="movie-score-dimension-value" aria-label={`${dimension} score not yet measured`}>—</span>
-              </div>
-            ))}
+            {DIMENSIONS.map((dimension) => {
+              const signal = liveDimensions.find((item) => item.key === dimension);
+              const dimensionScore = signal?.score ?? null;
+              const scoreLabel = dimensionScore === null ? "not yet measured" : `${dimensionScore.toFixed(1)} out of 10`;
+              return (
+                <div key={dimension} className="movie-score-dimension">
+                  <span>{dimension}</span>
+                  <span
+                    className="movie-score-dimension-line"
+                    style={{ "--dimension-progress": dimensionScore === null ? "0%" : `${dimensionScore * 10}%` } as CSSProperties}
+                    aria-hidden="true"
+                  >
+                    <span className="movie-score-dimension-line-fill" />
+                  </span>
+                  <span className={`movie-score-dimension-value ${dimensionScore !== null ? "movie-score-dimension-value--live" : ""}`} aria-label={`${dimension} score ${scoreLabel}`}>
+                    {dimensionScore === null ? "—" : dimensionScore.toFixed(1)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
           <p className="movie-score-explainer">
-            FILMIO currently collects one title score. Category scores will appear here once members can rate the craft separately; this contour already reflects the real audience distribution.
+            {hasMeasuredDimensions
+              ? `Auto-scored from ${filmioSource?.totalRatings ?? stats?.totalRatings ?? 0} FILMIO rating${(filmioSource?.totalRatings ?? stats?.totalRatings ?? 0) === 1 ? "" : "s"}, written reviews, and public Reddit discussion.`
+              : "Scores appear automatically when FILMIO ratings or public Reddit craft discussion gives the model enough signal."}
           </p>
         </div>
       </div>
@@ -200,6 +233,35 @@ export function MovieScoreFingerprint({
             </DNAChip>
           ))}
         </div>
+      </div>
+
+      <div className="movie-score-evidence">
+        <div className="movie-score-evidence-heading">
+          <span><MessageCircle className="h-4 w-4" aria-hidden="true" /> Reddit review signals</span>
+          <a href={redditSearchUrl} target="_blank" rel="noreferrer" className="movie-score-evidence-link">
+            Search Reddit <ExternalLink className="h-3 w-3" aria-hidden="true" />
+          </a>
+        </div>
+        <p className="movie-score-evidence-refresh">
+          FILMIO {filmioSource?.totalRatings ?? stats?.totalRatings ?? 0} rating{(filmioSource?.totalRatings ?? stats?.totalRatings ?? 0) === 1 ? "" : "s"} · {redditPosts.length} public result{redditPosts.length === 1 ? "" : "s"}{updatedAt ? ` · Updated ${updatedAt}` : ""}
+        </p>
+        {redditPosts.length > 0 ? (
+          <div className="movie-score-evidence-list">
+            {redditPosts.slice(0, 3).map((post) => (
+              <a key={post.url} href={post.url} target="_blank" rel="noreferrer" className="movie-score-evidence-item">
+                <span className="movie-score-evidence-meta">{post.subreddit} · {post.comments.toLocaleString("en-IN")} comments</span>
+                <strong>{post.title}</strong>
+                {post.snippet && <span>{post.snippet}</span>}
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="movie-score-evidence-empty">
+            {redditStatus === "unavailable"
+              ? "Reddit is temporarily unavailable. FILMIO ratings will continue updating independently."
+              : "No public Reddit review discussion found yet. This signal will check again automatically."}
+          </p>
+        )}
       </div>
 
       {genreNames.length > 0 && (
