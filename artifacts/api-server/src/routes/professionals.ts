@@ -1154,7 +1154,9 @@ router.get("/professionals/search", async (req, res): Promise<void> => {
     query = query.where(sql`${professionalsTable.roles} @> ARRAY[${role}]::text[]`);
   }
 
-  const results = await query.limit(20);
+  // The directory is the source of truth for everyone who has created a
+  // professional profile. Do not silently truncate it to the first 20 rows.
+  const results = await query.orderBy(desc(professionalsTable.createdAt), desc(professionalsTable.id));
   const enriched = await Promise.all(results.map(enrichProfile));
   res.json(enriched);
 });
