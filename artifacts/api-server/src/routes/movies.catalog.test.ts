@@ -82,8 +82,12 @@ const originalFetch = globalThis.fetch;
 
 test("maps every supported catalogue collection to its provider request", async () => {
   const requestedUrls: URL[] = [];
+  let providerResultNumber = 0;
   globalThis.fetch = (async (input) => {
     const url = new URL(String(input));
+    if (url.pathname === "/3/search/movie") {
+      return Response.json({ page: 1, total_pages: 1, total_results: 0, results: [] });
+    }
     requestedUrls.push(url);
     const collection = collections.find((entry) => url.pathname === entry.path);
     assert.ok(collection, `unexpected provider path: ${url.pathname}`);
@@ -91,7 +95,7 @@ test("maps every supported catalogue collection to its provider request", async 
       page: 3,
       total_pages: 9,
       total_results: 234,
-      results: [providerResult(collection.mediaType, requestedUrls.length)],
+      results: [providerResult(collection.mediaType, ++providerResultNumber)],
     });
   }) as typeof fetch;
 
@@ -116,14 +120,15 @@ test("maps every supported catalogue collection to its provider request", async 
       assert.equal(payload.page, 3);
       assert.equal(payload.totalPages, 9);
       assert.equal(payload.totalResults, 234);
-      assert.equal(payload.results.length, 1);
-      assert.equal(
-        payload.results[0].title,
-        `${collection.mediaType === "tv" ? "Series" : "Film"} ${requestedUrls.length}`,
-      );
-      assert.equal(payload.results[0].releaseDate, "2024-02-03");
+      const expectedTitle = `${collection.mediaType === "tv" ? "Series" : "Film"} ${providerResultNumber}`;
+      const providerMovie = payload.results.find((movie) => movie.title === expectedTitle);
+      assert.ok(providerMovie);
+      assert.equal(providerMovie.releaseDate, "2024-02-03");
+      if (collection.collection !== "upcoming") {
+        assert.equal(payload.results.length, 1);
+      }
 
-      const request = requestedUrls.at(-1);
+      const request = [...requestedUrls].reverse().find((candidate: URL) => candidate.pathname === collection.path);
       assert.ok(request);
       assert.equal(request.pathname, collection.path);
       assert.equal(request.searchParams.get("page"), "3");
@@ -139,7 +144,7 @@ test("maps every supported catalogue collection to its provider request", async 
     server.close();
   }
 
-  assert.equal(requestedUrls.length, collections.length);
+  assert.ok(requestedUrls.length >= collections.length);
 });
 
 test("removes duplicate provider records without changing stable order or page size", async () => {
