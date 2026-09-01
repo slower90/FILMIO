@@ -680,54 +680,63 @@ export default function Professionals() {
         </div>
       </section>
 
-      {!profileExists && <main className="container mx-auto max-w-6xl px-4 py-16">
+      <main className="container mx-auto max-w-6xl px-4 py-16" aria-labelledby="professional-directory-title">
+        <div className="mb-8 flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-primary">FILMIO directory</p>
+            <h2 id="professional-directory-title" className="font-display text-3xl font-bold uppercase tracking-tight md:text-4xl">
+              Film professionals
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              Discover every creator who has built a professional profile on FILMIO.
+            </p>
+          </div>
+          {!isLoading && professionals && (
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              {professionals.length} {professionals.length === 1 ? "profile" : "profiles"}
+            </span>
+          )}
+        </div>
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="h-64 animate-pulse bg-muted rounded-md" />
+              <div key={i} className="h-64 animate-pulse rounded-md bg-muted" />
             ))}
           </div>
         ) : professionals && professionals.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {professionals.map(pro => (
-              <Link
-                key={pro.id}
-                 href={`/professionals/${pro.id}`}
-              >
-                <div className="group bg-card border border-border rounded-md overflow-hidden hover-elevate transition-all h-full flex flex-col cursor-pointer">
-                  <div className="h-24 bg-gradient-to-br from-secondary to-background border-b border-border relative">
-                    <img 
+              <Link key={pro.id} href={`/professionals/${pro.id}`}>
+                <div className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-md border border-border bg-card transition-all hover-elevate">
+                  <div className="relative h-24 border-b border-border bg-gradient-to-br from-secondary to-background">
+                    <img
                       src={pro.headshotUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${pro.displayName}`}
                       alt={pro.displayName || "Professional"}
-                      className="absolute -bottom-10 left-6 w-20 h-20 rounded-full border-4 border-card object-cover bg-muted group-hover:scale-105 transition-transform"
+                      className="absolute -bottom-10 left-6 h-20 w-20 rounded-full border-4 border-card bg-muted object-cover transition-transform group-hover:scale-105"
                     />
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute right-4 top-4">
                       {pro.verified && (
-                        <div className="bg-background/80 backdrop-blur text-primary text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded flex items-center gap-1 border border-border">
-                          <BadgeCheck className="w-3 h-3" /> Verified
+                        <div className="flex items-center gap-1 rounded border border-border bg-background/80 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary backdrop-blur">
+                          <BadgeCheck className="h-3 w-3" /> Verified
                         </div>
                       )}
                     </div>
                   </div>
-                  
-                  <div className="pt-14 px-6 pb-6 flex-1 flex flex-col">
-                    <h3 className="text-xl font-bold font-display uppercase tracking-wide group-hover:text-primary transition-colors flex items-center gap-2">
-                      {pro.displayName}
+                  <div className="flex flex-1 flex-col px-6 pb-6 pt-14">
+                    <h3 className="flex items-center gap-2 font-display text-xl font-bold uppercase tracking-wide transition-colors group-hover:text-primary">
+                      {pro.displayName || "FILMIO professional"}
                     </h3>
-                    
-                    <div className="flex flex-wrap gap-2 mt-3 mb-4">
+                    <div className="mb-4 mt-3 flex flex-wrap gap-2">
                       {pro.roles?.map(role => (
-                        <span key={role} className="text-xs uppercase tracking-widest font-medium text-muted-foreground bg-secondary/50 px-2 py-1 rounded">
+                        <span key={role} className="rounded bg-secondary/50 px-2 py-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
                           {role}
                         </span>
                       ))}
                     </div>
-                    
-                    <p className="text-sm text-foreground/80 line-clamp-2 mt-auto">
+                    <p className="mt-auto line-clamp-2 text-sm text-foreground/80">
                       {pro.bio || "No biography provided."}
                     </p>
-                    
-                    <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-xs font-medium uppercase tracking-widest">
+                    <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-4 text-xs font-medium uppercase tracking-widest">
                       <span className={
                         pro.availabilityStatus === "available" ? "text-green-500" :
                         pro.availabilityStatus === "open_to_projects" ? "text-primary" : "text-muted-foreground"
@@ -742,14 +751,14 @@ export default function Professionals() {
           </div>
         ) : (
           <CinemaEmptyState
-            description="Nothing matches exactly. Try a shorter name, a different spelling, or explore the wider FILMIO catalogue."
+            description="No film professionals have created a public profile yet. Be the first to introduce your work to the FILMIO community."
             actions={[
+              { label: "Join FILMIO", href: "/sign-up?redirect=/professionals", testId: "link-empty-professionals-join" },
               { label: "Explore discovery", href: "/discover", testId: "link-empty-professionals-browse" },
-              { label: "Search again", href: "/search", testId: "link-empty-professionals-search-again" },
             ]}
           />
         )}
-      </main>}
+      </main>
     </div>
   );
 }
