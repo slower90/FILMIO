@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useClerk, useUser } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -207,7 +207,15 @@ function getMutationError(error: unknown) {
   return responseError || "We could not save your profile. Please try again.";
 }
 
-function MovieOverviewShelves({ preferences }: { preferences?: CinemaPreferences }) {
+function MovieOverviewShelves({
+  preferences,
+  isOwner,
+  onAddFavorite,
+}: {
+  preferences?: CinemaPreferences;
+  isOwner: boolean;
+  onAddFavorite: (kind: "actor" | "director") => void;
+}) {
   return (
     <>
       <section className="profile-dna-panel" aria-labelledby="film-dna-title">
@@ -221,11 +229,11 @@ function MovieOverviewShelves({ preferences }: { preferences?: CinemaPreferences
       <div className="profile-two-column">
         <section className="profile-surface" aria-labelledby="favorite-directors-title">
           <SectionHeading eyebrow="03 / Your choice" title="FAVORITE DIRECTORS" icon={<Film className="h-3.5 w-3.5" aria-hidden="true" />} />
-          <PeopleList titleId="favorite-directors-title" value={preferences?.favoriteDirector} people={preferences?.favoriteDirectors} />
+          <PeopleList titleId="favorite-directors-title" kind="director" value={preferences?.favoriteDirector} people={preferences?.favoriteDirectors} editable={isOwner} onAdd={onAddFavorite} />
         </section>
         <section className="profile-surface" aria-labelledby="favorite-actors-title">
           <SectionHeading eyebrow="04 / Your choice" title="FAVORITE ACTORS" icon={<Users className="h-3.5 w-3.5" aria-hidden="true" />} />
-          <PeopleList titleId="favorite-actors-title" value={preferences?.favoriteActor} people={preferences?.favoriteActors} />
+          <PeopleList titleId="favorite-actors-title" kind="actor" value={preferences?.favoriteActor} people={preferences?.favoriteActors} editable={isOwner} onAdd={onAddFavorite} />
         </section>
       </div>
     </>
@@ -241,20 +249,92 @@ function DnaColumn({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function PeopleList({ titleId, value, people = [] }: { titleId: string; value?: string | null; people?: FavoritePerson[] }) {
+function PeopleList({
+  titleId,
+  kind,
+  value,
+  people = [],
+  editable = false,
+  onAdd,
+}: {
+  titleId: string;
+  kind: "actor" | "director";
+  value?: string | null;
+  people?: FavoritePerson[];
+  editable?: boolean;
+  onAdd?: (kind: "actor" | "director") => void;
+}) {
   const displayPeople = people.length ? people : value ? [{ id: 0, name: value, profilePath: null }] : [];
-  return displayPeople.length ? (
-    <ol className="profile-people-list" aria-labelledby={titleId}>
-      {displayPeople.map((person, index) => (
-        <li key={`${person.id}-${person.name}`}>
+  return (
+    <div className="profile-people-map space-y-4">
+      <div className="profile-people-map-orbit" aria-hidden="true" />
+      {displayPeople.length ? (
+        <ol className="profile-people-list" aria-labelledby={titleId}>
+          {displayPeople.map((person, index) => (
+            <FavoritePersonCard key={`${person.id}-${person.name}`} person={person} index={index} kind={kind} />
+          ))}
+        </ol>
+      ) : (
+        <EmptyShelf>
+          {editable ? "No name added yet. Add your favorite below." : "Not selected yet."}
+        </EmptyShelf>
+      )}
+      {editable && onAdd && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onAdd(kind)}
+          className="gap-2"
+          data-testid={`button-add-favorite-${kind}`}
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+          {displayPeople.length ? `Add another ${kind}` : `Add ${kind} name`}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function FavoritePersonCard({ person, index, kind }: { person: FavoritePerson; index: number; kind: "actor" | "director" }) {
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const roleLabel = kind === "actor" ? "ACTOR / CAST" : "DIRECTOR / CREW";
+
+  return (
+    <li
+      className="profile-person-node"
+      style={{
+        "--person-rotate-x": `${tilt.x}deg`,
+        "--person-rotate-y": `${tilt.y}deg`,
+      } as CSSProperties}
+      onPointerMove={(event) => {
+        if (event.pointerType !== "mouse") return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+        const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+        setTilt({ x: Number((-y * 8).toFixed(2)), y: Number((x * 10).toFixed(2)) });
+      }}
+      onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+    >
+      <div className="profile-person-card">
+        <div className="profile-person-image">
+          {person.profilePath ? (
+            <img src={tmdbPosterUrl(person.profilePath, "w342")} alt={`${person.name} portrait`} loading="lazy" />
+          ) : (
+            <span className="profile-person-initials" aria-label={`${person.name} initials`}>{initials(person.name)}</span>
+          )}
+          <span className="profile-person-image-shade" aria-hidden="true" />
           <span className="profile-person-number">{String(index + 1).padStart(2, "0")}</span>
-          {person.profilePath && <img src={tmdbPosterUrl(person.profilePath, "w185")} alt="" className="h-10 w-7 rounded-sm object-cover" />}
-          <span className="profile-person-name">{person.name}</span>
-          <span className="profile-person-count">Chosen by you</span>
-        </li>
-      ))}
-    </ol>
-  ) : <EmptyShelf>Not selected yet. Choose one in room settings.</EmptyShelf>;
+          <span className="profile-person-scanline" aria-hidden="true" />
+        </div>
+        <div className="profile-person-copy">
+          <span className="profile-person-type">{roleLabel}</span>
+          <strong className="profile-person-name">{person.name}</strong>
+          <span className="profile-person-count"><span className="profile-person-status-dot" aria-hidden="true" /> Chosen by you</span>
+        </div>
+      </div>
+    </li>
+  );
 }
 
 function FavoritePeoplePicker({
@@ -427,9 +507,12 @@ export default function Profile() {
     if (!currentUser) { setLocation(`/sign-in?redirect=${encodeURIComponent(`/profile/${profileId}`)}`); return; }
     createConversation.mutate({ data: { participantId: profile.clerkId } }, { onSuccess: (conversation) => setLocation(`/chat?conv=${conversation.id}`) });
   };
-  const openEditor = () => {
+  const openEditor = (focusKind?: "actor" | "director") => {
     setDraft(profileDraftFrom(identityProfile || profile, activeProfile?.favoriteGenre, activeProfile?.favoriteActors, activeProfile?.favoriteDirectors));
     setEditing(true);
+    if (focusKind) {
+      window.setTimeout(() => document.getElementById(`favorite-${focusKind}-search`)?.focus(), 0);
+    }
   };
   const saveProfile = async () => {
     if (!draft) return;
@@ -514,7 +597,7 @@ export default function Profile() {
               <p className="profile-archetype"><span>Archetype</span><strong>Not yet authored</strong><small>FILMIO will never guess a taste identity.</small></p>
               {profile.bio && <p className="profile-bio" data-testid="text-profile-bio">{profile.bio}</p>}
               <div className="profile-actions">
-                 {!isMe ? <><Button type="button" variant={profile.isFollowedByMe ? "outline" : "default"} onClick={handleFollowToggle} disabled={followUser.isPending || unfollowUser.isPending} className="profile-action-primary" data-testid="button-profile-follow">{profile.isFollowedByMe ? <><UserMinus aria-hidden="true" /> Unfollow</> : <><UserPlus aria-hidden="true" /> Follow</>}</Button><Button type="button" variant="outline" onClick={handleMessage} disabled={createConversation.isPending} data-testid="button-profile-message"><MessageSquare aria-hidden="true" /> {createConversation.isPending ? "Opening" : "Message"}</Button></> : <><Button type="button" variant="default" onClick={openEditor} className="profile-action-primary" data-testid="button-edit-profile"><Pencil aria-hidden="true" /> Edit profile</Button><Button type="button" variant="outline" onClick={() => void signOut()} data-testid="button-profile-sign-out"><LogOut aria-hidden="true" /> Sign out</Button></>}
+                 {!isMe ? <><Button type="button" variant={profile.isFollowedByMe ? "outline" : "default"} onClick={handleFollowToggle} disabled={followUser.isPending || unfollowUser.isPending} className="profile-action-primary" data-testid="button-profile-follow">{profile.isFollowedByMe ? <><UserMinus aria-hidden="true" /> Unfollow</> : <><UserPlus aria-hidden="true" /> Follow</>}</Button><Button type="button" variant="outline" onClick={handleMessage} disabled={createConversation.isPending} data-testid="button-profile-message"><MessageSquare aria-hidden="true" /> {createConversation.isPending ? "Opening" : "Message"}</Button></> : <><Button type="button" variant="default" onClick={() => openEditor()} className="profile-action-primary" data-testid="button-edit-profile"><Pencil aria-hidden="true" /> Edit profile</Button><Button type="button" variant="outline" onClick={() => void signOut()} data-testid="button-profile-sign-out"><LogOut aria-hidden="true" /> Sign out</Button></>}
                 {profile.isProfessional && <Link href={`/professionals/${profile.id}`} className="profile-professional-link" data-testid="link-professional-profile"><Network aria-hidden="true" /> View professional profile</Link>}
                  {isMe && <Link href="/professionals/dashboard" className="profile-professional-link" data-testid="link-edit-professional-profile"><Briefcase aria-hidden="true" /> {profile.isProfessional ? "Edit professional profile" : "Build professional profile"}</Link>}
               </div>
@@ -586,7 +669,7 @@ export default function Profile() {
            {isMe ? <PersonalCinemaGraph history={history} ratings={ratings} watchlist={watchlist} profileName={activeProfile?.name || displayName} preferences={activeProfile || undefined} /> : <EmptyShelf privateShelf><strong>Private viewing room.</strong> Watch history, ratings, and watchlist are visible only to their owner.</EmptyShelf>}
         </section>
 
-         <MovieOverviewShelves preferences={isMe ? activeProfile || undefined : undefined} />
+         <MovieOverviewShelves preferences={isMe ? activeProfile || undefined : undefined} isOwner={isMe} onAddFavorite={openEditor} />
         {!isMe && <section className="profile-private-note"><ShieldCheck aria-hidden="true" /><div><p className="profile-micro-label">PRIVATE BY DESIGN</p><p>Personal ratings, watch history, watchlist, and taste connections stay with the viewing profile that created them.</p></div></section>}
 
         <section className="profile-surface profile-top-ten" aria-labelledby="top-ten-title">
