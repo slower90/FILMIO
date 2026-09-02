@@ -15,3 +15,4 @@ export * from "./viewing-history";
 export * from "./search-catalog";
 export * from "./catalog-movies";
 export * from "./signals";
+export * from "./cinema-os";

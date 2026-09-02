@@ -1,6 +1,28 @@
 export type CinemaStorage = Pick<Storage, "getItem" | "setItem">;
 
-export type ProfileActivityState = "signed-out" | "loading" | "error" | "empty" | "ready";
+export type ProfileActivityState =
+  "signed-out" | "loading" | "error" | "empty" | "ready";
+
+export type CinemaOsLocalState = {
+  afterglow: {
+    movieId: number | null;
+    movieTitle: string;
+    note: string;
+    updatedAt: string;
+  };
+  doubleFeature: [number | null, number | null];
+  spoilerNote: string;
+  passportCount: number;
+  curriculumProgress: number;
+};
+
+export const EMPTY_CINEMA_OS_STATE: CinemaOsLocalState = {
+  afterglow: { movieId: null, movieTitle: "", note: "", updatedAt: "" },
+  doubleFeature: [null, null],
+  spoilerNote: "",
+  passportCount: 0,
+  curriculumProgress: 1,
+};
 
 export type ProfileActivitySnapshot = {
   isSignedIn: boolean;
@@ -48,11 +70,53 @@ export function readCinemaLocal<T>(
   }
 }
 
-export function saveCinemaLocal(storage: CinemaStorage, key: string, value: unknown): void {
+export function saveCinemaLocal(
+  storage: CinemaStorage,
+  key: string,
+  value: unknown,
+): void {
   storage.setItem(key, JSON.stringify(value));
 }
 
-export function getProfileActivityState(snapshot: ProfileActivitySnapshot): ProfileActivityState {
+export function hasMeaningfulCinemaOsState(state: CinemaOsLocalState): boolean {
+  return Boolean(
+    state.afterglow.note.trim() ||
+    state.doubleFeature.some((movieId) => movieId !== null) ||
+    state.spoilerNote.trim() ||
+    state.passportCount > 0 ||
+    state.curriculumProgress > 1,
+  );
+}
+
+export function mergeCinemaOsState(
+  remote: CinemaOsLocalState,
+  local: CinemaOsLocalState,
+): CinemaOsLocalState {
+  const localAfterglowIsNewer =
+    Boolean(local.afterglow.note.trim()) &&
+    (!remote.afterglow.note.trim() ||
+      new Date(local.afterglow.updatedAt).getTime() >
+        new Date(remote.afterglow.updatedAt).getTime());
+
+  return {
+    afterglow: localAfterglowIsNewer ? local.afterglow : remote.afterglow,
+    doubleFeature: remote.doubleFeature.some((movieId) => movieId !== null)
+      ? remote.doubleFeature
+      : local.doubleFeature,
+    spoilerNote: remote.spoilerNote.trim()
+      ? remote.spoilerNote
+      : local.spoilerNote,
+    passportCount: Math.max(remote.passportCount, local.passportCount),
+    curriculumProgress: Math.max(
+      remote.curriculumProgress,
+      local.curriculumProgress,
+    ),
+  };
+}
+
+export function getProfileActivityState(
+  snapshot: ProfileActivitySnapshot,
+): ProfileActivityState {
   if (!snapshot.isSignedIn) return "signed-out";
   if (
     !snapshot.isReady ||
@@ -62,10 +126,18 @@ export function getProfileActivityState(snapshot: ProfileActivitySnapshot): Prof
   ) {
     return "loading";
   }
-  if (snapshot.historyError || snapshot.ratingsError || snapshot.watchlistError) {
+  if (
+    snapshot.historyError ||
+    snapshot.ratingsError ||
+    snapshot.watchlistError
+  ) {
     return "error";
   }
-  if (snapshot.watchedCount === 0 && snapshot.ratedCount === 0 && snapshot.queuedCount === 0) {
+  if (
+    snapshot.watchedCount === 0 &&
+    snapshot.ratedCount === 0 &&
+    snapshot.queuedCount === 0
+  ) {
     return "empty";
   }
   return "ready";

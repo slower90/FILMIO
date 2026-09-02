@@ -23,6 +23,8 @@ import type {
   AddToWatchlistParams,
   ChatMessage,
   ChatMessageInput,
+  CinemaOsStateInput,
+  CinemaOsStateResponse,
   ClearViewingHistoryParams,
   Comment,
   CommentInput,
@@ -35,6 +37,7 @@ import type {
   FriendsOverview,
   GenreListResult,
   GetCatalogMoviesParams,
+  GetCinemaOsStateParams,
   GetFeedParams,
   GetFreeClassicsParams,
   GetFriendsOverviewParams,
@@ -104,6 +107,7 @@ import type {
   StoryUploadInput,
   StoryUploadResponse,
   SurprisePick,
+  UpdateCinemaOsStateParams,
   UpdateWatchlistEntryParams,
   UpsertRatingParams,
   UserProfile,
@@ -3224,6 +3228,169 @@ export const useClearViewingHistory = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getClearViewingHistoryMutationOptions(options));
+    }
+
+export const getGetCinemaOsStateUrl = (params?: GetCinemaOsStateParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/me/cinema-os?${stringifiedParams}` : `/api/users/me/cinema-os`
+}
+
+/**
+ * @summary Get the current profile's private Cinema OS state
+ */
+export const getCinemaOsState = async (params?: GetCinemaOsStateParams, options?: Parameters<typeof customFetch>[1]): Promise<CinemaOsStateResponse> => {
+
+  return customFetch<CinemaOsStateResponse>(getGetCinemaOsStateUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCinemaOsStateQueryKey = (params?: GetCinemaOsStateParams,) => {
+    return [
+    `/api/users/me/cinema-os`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCinemaOsStateQueryOptions = <TData = Awaited<ReturnType<typeof getCinemaOsState>>, TError = ErrorType<ErrorResponse>>(params?: GetCinemaOsStateParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCinemaOsState>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCinemaOsStateQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCinemaOsState>>> = ({ signal }) => getCinemaOsState(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCinemaOsState>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCinemaOsStateQueryResult = NonNullable<Awaited<ReturnType<typeof getCinemaOsState>>>
+export type GetCinemaOsStateQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the current profile's private Cinema OS state
+ */
+
+export function useGetCinemaOsState<TData = Awaited<ReturnType<typeof getCinemaOsState>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetCinemaOsStateParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCinemaOsState>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCinemaOsStateQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCinemaOsStateUrl = (params?: UpdateCinemaOsStateParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/users/me/cinema-os?${stringifiedParams}` : `/api/users/me/cinema-os`
+}
+
+/**
+ * @summary Save the current profile's private Cinema OS state
+ */
+export const updateCinemaOsState = async (cinemaOsStateInput: CinemaOsStateInput,
+    params?: UpdateCinemaOsStateParams, options?: Parameters<typeof customFetch>[1]): Promise<CinemaOsStateResponse> => {
+
+  return customFetch<CinemaOsStateResponse>(getUpdateCinemaOsStateUrl(params),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cinemaOsStateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateCinemaOsStateMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCinemaOsState>>, TError,{data: BodyType<CinemaOsStateInput>;params?: UpdateCinemaOsStateParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCinemaOsState>>, TError,{data: BodyType<CinemaOsStateInput>;params?: UpdateCinemaOsStateParams}, TContext> => {
+
+const mutationKey = ['updateCinemaOsState'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCinemaOsState>>, {data: BodyType<CinemaOsStateInput>;params?: UpdateCinemaOsStateParams}> = (props) => {
+          const {data,params} = props ?? {};
+
+          return  updateCinemaOsState(data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCinemaOsStateMutationResult = NonNullable<Awaited<ReturnType<typeof updateCinemaOsState>>>
+    export type UpdateCinemaOsStateMutationBody = BodyType<CinemaOsStateInput>
+    export type UpdateCinemaOsStateMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save the current profile's private Cinema OS state
+ */
+export const useUpdateCinemaOsState = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCinemaOsState>>, TError,{data: BodyType<CinemaOsStateInput>;params?: UpdateCinemaOsStateParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCinemaOsState>>,
+        TError,
+        {data: BodyType<CinemaOsStateInput>;params?: UpdateCinemaOsStateParams},
+        TContext
+      > => {
+      return useMutation(getUpdateCinemaOsStateMutationOptions(options));
     }
 
 export const getListProfilesUrl = () => {

@@ -38,3 +38,4 @@
 - [Worker Hyperdrive connection lifecycle](worker-hyperdrive-pool.md) — use short-lived pg clients in Workers; a global pool can cause intermittent 1101 hangs after warm multi-route traffic
 - [Local API preview proxy](local-api-preview-proxy.md) — local Vite previews must proxy /api and avoid absolute Railway URLs to prevent ephemeral-origin CORS failures
 - [Cloudflare custom-domain CORS](cloudflare-custom-domain-cors.md) — allow-list apex and www Pages hostnames or browser API/auth preflights fail while the site still loads
+- [Cinema OS private sync](cinema-os-private-sync.md) — keep personal Cinema OS modules in one profile-scoped upsert and migrate legacy device state only after a successful save

@@ -8,10 +8,7 @@
 
 export interface ReviewInput {
   movieId: number;
-  /**
-     * @minLength 10
-     * @maxLength 10000
-     */
+  /** @minLength 10 */
   content: string;
   /**
      * @minimum 1
@@ -20,5 +17,5 @@ export interface ReviewInput {
      */
   rating?: number | null;
   isCriticReview?: boolean;
-  containsSpoilers?: boolean;
+  verifiedWatch?: boolean;
 }

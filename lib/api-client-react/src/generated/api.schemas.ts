@@ -421,8 +421,6 @@ export interface MovieStats {
   movieId: number;
   averageRating: number;
   totalRatings: number;
-  /** Canonical public FILMIO score (Bayesian weighted score). */
-  weightedScore: number;
   totalReviews: number;
   criticReviews: number;
   audienceReviews: number;
@@ -438,7 +436,6 @@ export interface Review {
   rating?: number | null;
   isCriticReview: boolean;
   verifiedWatch: boolean;
-  containsSpoilers: boolean;
   likesCount: number;
   isLikedByMe: boolean;
   commentsCount: number;
@@ -456,10 +453,7 @@ export interface Review {
 
 export interface ReviewInput {
   movieId: number;
-  /**
-     * @minLength 10
-     * @maxLength 10000
-     */
+  /** @minLength 10 */
   content: string;
   /**
      * @minimum 1
@@ -468,14 +462,11 @@ export interface ReviewInput {
      */
   rating?: number | null;
   isCriticReview?: boolean;
-  containsSpoilers?: boolean;
+  verifiedWatch?: boolean;
 }
 
 export interface ReviewUpdate {
-  /**
-     * @minLength 10
-     * @maxLength 10000
-     */
+  /** @minLength 10 */
   content?: string;
   /**
      * @minimum 1
@@ -483,7 +474,7 @@ export interface ReviewUpdate {
      * @nullable
      */
   rating?: number | null;
-  containsSpoilers?: boolean;
+  verifiedWatch?: boolean;
 }
 
 export interface LikeResult {
@@ -929,6 +920,57 @@ export type ViewingHistoryInputMoviesItem = {
 export interface ViewingHistoryInput {
   /** @maxItems 12 */
   movies: ViewingHistoryInputMoviesItem[];
+}
+
+export interface CinemaOsAfterglow {
+  /** @nullable */
+  movieId: number | null;
+  /** @maxLength 500 */
+  movieTitle: string;
+  /** @maxLength 5000 */
+  note: string;
+  updatedAt: string;
+}
+
+export interface CinemaOsState {
+  afterglow: CinemaOsAfterglow;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  doubleFeature: (number | null)[];
+  /** @maxLength 5000 */
+  spoilerNote: string;
+  /** @minimum 0 */
+  passportCount: number;
+  /**
+     * @minimum 1
+     * @maximum 6
+     */
+  curriculumProgress: number;
+  updatedAt: string;
+}
+
+export interface CinemaOsStateInput {
+  afterglow: CinemaOsAfterglow;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  doubleFeature: (number | null)[];
+  /** @maxLength 5000 */
+  spoilerNote: string;
+  /** @minimum 0 */
+  passportCount: number;
+  /**
+     * @minimum 1
+     * @maximum 6
+     */
+  curriculumProgress: number;
+}
+
+export interface CinemaOsStateResponse {
+  state: CinemaOsState | null;
 }
 
 export type SignalKind = typeof SignalKind[keyof typeof SignalKind];
@@ -1588,6 +1630,20 @@ profileId?: ProfileIdQueryParameter;
 };
 
 export type ClearViewingHistoryParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type GetCinemaOsStateParams = {
+/**
+ * @minimum 1
+ */
+profileId?: ProfileIdQueryParameter;
+};
+
+export type UpdateCinemaOsStateParams = {
 /**
  * @minimum 1
  */

@@ -14,6 +14,7 @@ import adminSearchRouter from "./admin-search";
 import profilesRouter from "./profiles";
 import signalsRouter from "./signals";
 import freeClassicsRouter from "./free-classics";
+import cinemaOsRouter from "./cinema-os";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(newsRouter);
 router.use(postsRouter);
 router.use(adminSearchRouter);
 router.use(freeClassicsRouter);
+router.use(cinemaOsRouter);
 
 export default router;

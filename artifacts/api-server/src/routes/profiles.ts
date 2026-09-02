@@ -138,7 +138,7 @@ async function profileResponse(profile: typeof userProfilesTable.$inferSelect) {
   };
 }
 
-async function ensureDefaultProfile(userId: string) {
+export async function ensureDefaultProfile(userId: string) {
   const [existing] = await db
     .select()
     .from(userProfilesTable)

@@ -15,7 +15,6 @@ export interface Review {
   rating?: number | null;
   isCriticReview: boolean;
   verifiedWatch: boolean;
-  containsSpoilers: boolean;
   likesCount: number;
   isLikedByMe: boolean;
   commentsCount: number;

@@ -11,8 +11,6 @@ export interface MovieStats {
   movieId: number;
   averageRating: number;
   totalRatings: number;
-  /** Canonical public FILMIO score (Bayesian weighted score). */
-  weightedScore: number;
   totalReviews: number;
   criticReviews: number;
   audienceReviews: number;

@@ -337,7 +337,6 @@ export const GetMovieStatsResponse = zod.object({
   "movieId": zod.number().int(),
   "averageRating": zod.number(),
   "totalRatings": zod.number().int(),
-  "weightedScore": zod.number().describe('Canonical public FILMIO score (Bayesian weighted score).'),
   "totalReviews": zod.number().int(),
   "criticReviews": zod.number().int(),
   "audienceReviews": zod.number().int(),
@@ -423,7 +422,6 @@ export const ListReviewsResponseItem = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
-  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -441,19 +439,18 @@ export const ListReviewsResponse = zod.array(ListReviewsResponseItem)
  * @summary Create a review
  */
 export const createReviewBodyContentMin = 10;
-export const createReviewBodyContentMax = 10000;
 
 export const createReviewBodyRatingMax = 10;
 
 export const createReviewBodyIsCriticReviewDefault = false;
-export const createReviewBodyContainsSpoilersDefault = false;
+export const createReviewBodyVerifiedWatchDefault = false;
 
 export const CreateReviewBody = zod.object({
   "movieId": zod.number().int(),
-  "content": zod.string().min(createReviewBodyContentMin).max(createReviewBodyContentMax),
+  "content": zod.string().min(createReviewBodyContentMin),
   "rating": zod.number().int().min(1).max(createReviewBodyRatingMax).nullish(),
   "isCriticReview": zod.boolean().default(createReviewBodyIsCriticReviewDefault),
-  "containsSpoilers": zod.boolean().default(createReviewBodyContainsSpoilersDefault)
+  "verifiedWatch": zod.boolean().default(createReviewBodyVerifiedWatchDefault)
 })
 
 export const CreateReviewResponse = zod.object({
@@ -464,7 +461,6 @@ export const CreateReviewResponse = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
-  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -494,7 +490,6 @@ export const GetTrendingReviewsResponseItem = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
-  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -523,7 +518,6 @@ export const GetReviewResponse = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
-  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -544,16 +538,15 @@ export const UpdateReviewParams = zod.object({
 })
 
 export const updateReviewBodyContentMin = 10;
-export const updateReviewBodyContentMax = 10000;
 
 export const updateReviewBodyRatingMax = 10;
 
 
 
 export const UpdateReviewBody = zod.object({
-  "content": zod.string().min(updateReviewBodyContentMin).max(updateReviewBodyContentMax).optional(),
+  "content": zod.string().min(updateReviewBodyContentMin).optional(),
   "rating": zod.number().int().min(1).max(updateReviewBodyRatingMax).nullish(),
-  "containsSpoilers": zod.boolean().optional()
+  "verifiedWatch": zod.boolean().optional()
 })
 
 export const UpdateReviewResponse = zod.object({
@@ -564,7 +557,6 @@ export const UpdateReviewResponse = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
-  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -1029,6 +1021,118 @@ export const ClearViewingHistoryQueryParams = zod.object({
 })
 
 export const ClearViewingHistoryResponse = zod.void()
+
+
+/**
+ * @summary Get the current profile's private Cinema OS state
+ */
+
+
+
+export const GetCinemaOsStateQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
+export const getCinemaOsStateResponseStateOneAfterglowMovieTitleMax = 500;
+
+export const getCinemaOsStateResponseStateOneAfterglowNoteMax = 5000;
+
+export const getCinemaOsStateResponseStateOneDoubleFeatureMin = 2;
+export const getCinemaOsStateResponseStateOneDoubleFeatureMax = 2;
+
+export const getCinemaOsStateResponseStateOneSpoilerNoteMax = 5000;
+
+export const getCinemaOsStateResponseStateOnePassportCountMin = 0;
+
+export const getCinemaOsStateResponseStateOneCurriculumProgressMax = 6;
+
+
+
+export const GetCinemaOsStateResponse = zod.object({
+  "state": zod.union([zod.object({
+  "afterglow": zod.object({
+  "movieId": zod.number().int().nullable(),
+  "movieTitle": zod.string().max(getCinemaOsStateResponseStateOneAfterglowMovieTitleMax),
+  "note": zod.string().max(getCinemaOsStateResponseStateOneAfterglowNoteMax),
+  "updatedAt": zod.coerce.date()
+}),
+  "doubleFeature": zod.array(zod.number().int().nullable()).min(getCinemaOsStateResponseStateOneDoubleFeatureMin).max(getCinemaOsStateResponseStateOneDoubleFeatureMax),
+  "spoilerNote": zod.string().max(getCinemaOsStateResponseStateOneSpoilerNoteMax),
+  "passportCount": zod.number().int().min(getCinemaOsStateResponseStateOnePassportCountMin),
+  "curriculumProgress": zod.number().int().min(1).max(getCinemaOsStateResponseStateOneCurriculumProgressMax),
+  "updatedAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Save the current profile's private Cinema OS state
+ */
+
+
+
+export const UpdateCinemaOsStateQueryParams = zod.object({
+  "profileId": zod.coerce.number().int().min(1).optional()
+})
+
+export const updateCinemaOsStateBodyAfterglowMovieTitleMax = 500;
+
+export const updateCinemaOsStateBodyAfterglowNoteMax = 5000;
+
+export const updateCinemaOsStateBodyDoubleFeatureMin = 2;
+export const updateCinemaOsStateBodyDoubleFeatureMax = 2;
+
+export const updateCinemaOsStateBodySpoilerNoteMax = 5000;
+
+export const updateCinemaOsStateBodyPassportCountMin = 0;
+
+export const updateCinemaOsStateBodyCurriculumProgressMax = 6;
+
+
+
+export const UpdateCinemaOsStateBody = zod.object({
+  "afterglow": zod.object({
+  "movieId": zod.number().int().nullable(),
+  "movieTitle": zod.string().max(updateCinemaOsStateBodyAfterglowMovieTitleMax),
+  "note": zod.string().max(updateCinemaOsStateBodyAfterglowNoteMax),
+  "updatedAt": zod.coerce.date()
+}),
+  "doubleFeature": zod.array(zod.number().int().nullable()).min(updateCinemaOsStateBodyDoubleFeatureMin).max(updateCinemaOsStateBodyDoubleFeatureMax),
+  "spoilerNote": zod.string().max(updateCinemaOsStateBodySpoilerNoteMax),
+  "passportCount": zod.number().int().min(updateCinemaOsStateBodyPassportCountMin),
+  "curriculumProgress": zod.number().int().min(1).max(updateCinemaOsStateBodyCurriculumProgressMax)
+})
+
+export const updateCinemaOsStateResponseStateOneAfterglowMovieTitleMax = 500;
+
+export const updateCinemaOsStateResponseStateOneAfterglowNoteMax = 5000;
+
+export const updateCinemaOsStateResponseStateOneDoubleFeatureMin = 2;
+export const updateCinemaOsStateResponseStateOneDoubleFeatureMax = 2;
+
+export const updateCinemaOsStateResponseStateOneSpoilerNoteMax = 5000;
+
+export const updateCinemaOsStateResponseStateOnePassportCountMin = 0;
+
+export const updateCinemaOsStateResponseStateOneCurriculumProgressMax = 6;
+
+
+
+export const UpdateCinemaOsStateResponse = zod.object({
+  "state": zod.union([zod.object({
+  "afterglow": zod.object({
+  "movieId": zod.number().int().nullable(),
+  "movieTitle": zod.string().max(updateCinemaOsStateResponseStateOneAfterglowMovieTitleMax),
+  "note": zod.string().max(updateCinemaOsStateResponseStateOneAfterglowNoteMax),
+  "updatedAt": zod.coerce.date()
+}),
+  "doubleFeature": zod.array(zod.number().int().nullable()).min(updateCinemaOsStateResponseStateOneDoubleFeatureMin).max(updateCinemaOsStateResponseStateOneDoubleFeatureMax),
+  "spoilerNote": zod.string().max(updateCinemaOsStateResponseStateOneSpoilerNoteMax),
+  "passportCount": zod.number().int().min(updateCinemaOsStateResponseStateOnePassportCountMin),
+  "curriculumProgress": zod.number().int().min(1).max(updateCinemaOsStateResponseStateOneCurriculumProgressMax),
+  "updatedAt": zod.coerce.date()
+}),zod.null()])
+})
 
 
 /**
@@ -1957,7 +2061,6 @@ export const GetFeedResponseItem = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
-  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),

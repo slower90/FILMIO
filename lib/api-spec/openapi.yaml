@@ -137,7 +137,19 @@ paths:
           required: true
           schema:
             type: string
-            enum: [trending, popular, top-rated, tv-popular, tv-top-rated, tv-upcoming, upcoming, in-theaters, free, indian]
+            enum:
+              [
+                trending,
+                popular,
+                top-rated,
+                tv-popular,
+                tv-top-rated,
+                tv-upcoming,
+                upcoming,
+                in-theaters,
+                free,
+                indian,
+              ]
         - name: page
           in: query
           schema:
@@ -979,6 +991,58 @@ paths:
         "401":
           description: Unauthorized
 
+  /users/me/cinema-os:
+    get:
+      operationId: getCinemaOsState
+      tags: [users]
+      summary: Get the current profile's private Cinema OS state
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      responses:
+        "200":
+          description: Private Cinema OS state, or null when no state has been saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CinemaOsStateResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateCinemaOsState
+      tags: [users]
+      summary: Save the current profile's private Cinema OS state
+      parameters:
+        - $ref: "#/components/parameters/ProfileIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CinemaOsStateInput"
+      responses:
+        "200":
+          description: Saved private Cinema OS state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CinemaOsStateResponse"
+        "400":
+          description: Invalid Cinema OS state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /profiles:
     get:
       operationId: listProfiles
@@ -1805,7 +1869,19 @@ paths:
           required: true
           schema:
             type: string
-            enum: [tonight, 15-minutes, 90-minutes, 3-hours, obscure, emotional, visually-insane, everyone-missed, india, outside-taste]
+            enum:
+              [
+                tonight,
+                15-minutes,
+                90-minutes,
+                3-hours,
+                obscure,
+                emotional,
+                visually-insane,
+                everyone-missed,
+                india,
+                outside-taste,
+              ]
         - $ref: "#/components/parameters/ProfileIdQuery"
         - name: avoidMovieId
           in: query
@@ -2467,7 +2543,17 @@ components:
           format: date-time
         isOwner:
           type: boolean
-      required: [id, author, content, mediaUrl, mediaType, createdAt, expiresAt, isOwner]
+      required:
+        [
+          id,
+          author,
+          content,
+          mediaUrl,
+          mediaType,
+          createdAt,
+          expiresAt,
+          isOwner,
+        ]
 
     StoryInput:
       type: object
@@ -2601,7 +2687,18 @@ components:
           type: integer
         imdbId:
           type: ["string", "null"]
-      required: [id, title, overview, releaseDate, voteAverage, voteCount, genres, budget, revenue]
+      required:
+        [
+          id,
+          title,
+          overview,
+          releaseDate,
+          voteAverage,
+          voteCount,
+          genres,
+          budget,
+          revenue,
+        ]
 
     StorySource:
       type: object
@@ -2677,7 +2774,20 @@ components:
                 $ref: "#/components/schemas/Genre"
             imdbId:
               type: ["string", "null"]
-          required: [id, title, mediaType, releaseDate, posterPath, backdropPath, overview, tagline, runtime, genres, imdbId]
+          required:
+            [
+              id,
+              title,
+              mediaType,
+              releaseDate,
+              posterPath,
+              backdropPath,
+              overview,
+              tagline,
+              runtime,
+              genres,
+              imdbId,
+            ]
         headline:
           type: string
         dek:
@@ -2699,7 +2809,18 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MovieStoryTopic"
-      required: [status, movie, headline, dek, readTimeMinutes, updatedAt, sections, sources, topics]
+      required:
+        [
+          status,
+          movie,
+          headline,
+          dek,
+          readTimeMinutes,
+          updatedAt,
+          sections,
+          sources,
+          topics,
+        ]
 
     Genre:
       type: object
@@ -2742,7 +2863,18 @@ components:
             $ref: "#/components/schemas/Genre"
         voteAverage:
           type: number
-      required: [id, title, posterPath, backdropPath, overview, releaseDate, runtime, genres, voteAverage]
+      required:
+        [
+          id,
+          title,
+          posterPath,
+          backdropPath,
+          overview,
+          releaseDate,
+          runtime,
+          genres,
+          voteAverage,
+        ]
 
     SurprisePick:
       type: object
@@ -2768,7 +2900,18 @@ components:
           type: ["integer", "null"]
         metadata:
           $ref: "#/components/schemas/CatalogMetadata"
-      required: [lens, lensLabel, movie, explanation, signals, personalized, runtimeMatch, requestedRuntime, metadata]
+      required:
+        [
+          lens,
+          lensLabel,
+          movie,
+          explanation,
+          signals,
+          personalized,
+          runtimeMatch,
+          requestedRuntime,
+          metadata,
+        ]
 
     MoviePagedResult:
       type: object
@@ -2908,9 +3051,6 @@ components:
           type: number
         totalRatings:
           type: integer
-        weightedScore:
-          type: number
-          description: Canonical public FILMIO score (Bayesian weighted score).
         totalReviews:
           type: integer
         criticReviews:
@@ -2927,7 +3067,16 @@ components:
               count:
                 type: integer
             required: [score, count]
-      required: [movieId, averageRating, totalRatings, weightedScore, totalReviews, criticReviews, audienceReviews, ratingDistribution]
+      required:
+        [
+          movieId,
+          averageRating,
+          totalRatings,
+          totalReviews,
+          criticReviews,
+          audienceReviews,
+          ratingDistribution,
+        ]
 
     # ── Review schemas ──
     Review:
@@ -2947,8 +3096,6 @@ components:
           type: boolean
         verifiedWatch:
           type: boolean
-        containsSpoilers:
-          type: boolean
         likesCount:
           type: integer
         isLikedByMe:
@@ -2967,7 +3114,20 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, userId, movieId, content, isCriticReview, verifiedWatch, containsSpoilers, likesCount, isLikedByMe, commentsCount, createdAt, updatedAt]
+      required:
+        [
+          id,
+          userId,
+          movieId,
+          content,
+          isCriticReview,
+          verifiedWatch,
+          likesCount,
+          isLikedByMe,
+          commentsCount,
+          createdAt,
+          updatedAt,
+        ]
 
     ReviewInput:
       type: object
@@ -2977,7 +3137,6 @@ components:
         content:
           type: string
           minLength: 10
-          maxLength: 10000
         rating:
           type: ["integer", "null"]
           minimum: 1
@@ -2985,7 +3144,7 @@ components:
         isCriticReview:
           type: boolean
           default: false
-        containsSpoilers:
+        verifiedWatch:
           type: boolean
           default: false
       required: [movieId, content]
@@ -2996,12 +3155,11 @@ components:
         content:
           type: string
           minLength: 10
-          maxLength: 10000
         rating:
           type: ["integer", "null"]
           minimum: 1
           maximum: 10
-        containsSpoilers:
+        verifiedWatch:
           type: boolean
 
     LikeResult:
@@ -3202,7 +3360,23 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, userId, name, avatarKey, avatarUrl, kidsMode, language, maturity, autoplay, favoriteActors, favoriteDirectors, isDefault, createdAt, updatedAt]
+      required:
+        [
+          id,
+          userId,
+          name,
+          avatarKey,
+          avatarUrl,
+          kidsMode,
+          language,
+          maturity,
+          autoplay,
+          favoriteActors,
+          favoriteDirectors,
+          isDefault,
+          createdAt,
+          updatedAt,
+        ]
 
     ViewingProfileInput:
       type: object
@@ -3379,6 +3553,95 @@ components:
             required: [id, title]
       required: [movies]
 
+    CinemaOsAfterglow:
+      type: object
+      properties:
+        movieId:
+          type: ["integer", "null"]
+        movieTitle:
+          type: string
+          maxLength: 500
+        note:
+          type: string
+          maxLength: 5000
+        updatedAt:
+          type: string
+          format: date-time
+      required: [movieId, movieTitle, note, updatedAt]
+
+    CinemaOsState:
+      type: object
+      properties:
+        afterglow:
+          $ref: "#/components/schemas/CinemaOsAfterglow"
+        doubleFeature:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: ["integer", "null"]
+        spoilerNote:
+          type: string
+          maxLength: 5000
+        passportCount:
+          type: integer
+          minimum: 0
+        curriculumProgress:
+          type: integer
+          minimum: 1
+          maximum: 6
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        [
+          afterglow,
+          doubleFeature,
+          spoilerNote,
+          passportCount,
+          curriculumProgress,
+          updatedAt,
+        ]
+
+    CinemaOsStateInput:
+      type: object
+      properties:
+        afterglow:
+          $ref: "#/components/schemas/CinemaOsAfterglow"
+        doubleFeature:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: ["integer", "null"]
+        spoilerNote:
+          type: string
+          maxLength: 5000
+        passportCount:
+          type: integer
+          minimum: 0
+        curriculumProgress:
+          type: integer
+          minimum: 1
+          maximum: 6
+      required:
+        [
+          afterglow,
+          doubleFeature,
+          spoilerNote,
+          passportCount,
+          curriculumProgress,
+        ]
+
+    CinemaOsStateResponse:
+      type: object
+      properties:
+        state:
+          oneOf:
+            - $ref: "#/components/schemas/CinemaOsState"
+            - type: "null"
+      required: [state]
+
     # ── Signal schemas ──
     Signal:
       type: object
@@ -3387,7 +3650,14 @@ components:
           type: integer
         kind:
           type: string
-          enum: [review-agreement, review-conversation, rated-trending, director-release, taste-graph]
+          enum:
+            [
+              review-agreement,
+              review-conversation,
+              rated-trending,
+              director-release,
+              taste-graph,
+            ]
         label:
           type: string
           enum: [SIGNAL]
@@ -3405,7 +3675,19 @@ components:
           type: boolean
         createdAt:
           type: string
-      required: [id, kind, label, body, movieId, movieTitle, moviePosterPath, href, isRead, createdAt]
+      required:
+        [
+          id,
+          kind,
+          label,
+          body,
+          movieId,
+          movieTitle,
+          moviePosterPath,
+          href,
+          isRead,
+          createdAt,
+        ]
 
     SignalsResponse:
       type: object
@@ -3449,7 +3731,18 @@ components:
           type: boolean
         createdAt:
           type: string
-      required: [id, clerkId, isProfessional, credibilityScore, followersCount, followingCount, reviewsCount, isFollowedByMe, createdAt]
+      required:
+        [
+          id,
+          clerkId,
+          isProfessional,
+          credibilityScore,
+          followersCount,
+          followingCount,
+          reviewsCount,
+          isFollowedByMe,
+          createdAt,
+        ]
 
     UserProfileUpdate:
       type: object
@@ -3478,7 +3771,15 @@ components:
           type: integer
         credibilityScore:
           type: number
-      required: [reviewsCount, ratingsCount, followersCount, followingCount, watchlistCount, credibilityScore]
+      required:
+        [
+          reviewsCount,
+          ratingsCount,
+          followersCount,
+          followingCount,
+          watchlistCount,
+          credibilityScore,
+        ]
 
     FollowResult:
       type: object
@@ -3580,7 +3881,19 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, professionalId, projectName, role, year, movieId, collaborators, description, createdAt, updatedAt]
+      required:
+        [
+          id,
+          professionalId,
+          projectName,
+          role,
+          year,
+          movieId,
+          collaborators,
+          description,
+          createdAt,
+          updatedAt,
+        ]
 
     ProfessionalInfluence:
       type: object
@@ -3632,7 +3945,18 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, professionalId, title, organization, category, year, link, createdAt, updatedAt]
+      required:
+        [
+          id,
+          professionalId,
+          title,
+          organization,
+          category,
+          year,
+          link,
+          createdAt,
+          updatedAt,
+        ]
 
     ProfessionalAwardInput:
       type: object
@@ -3670,7 +3994,17 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, professionalId, title, publication, url, year, createdAt, updatedAt]
+      required:
+        [
+          id,
+          professionalId,
+          title,
+          publication,
+          url,
+          year,
+          createdAt,
+          updatedAt,
+        ]
 
     ProfessionalInterviewInput:
       type: object
@@ -3719,7 +4053,17 @@ components:
             avatarUrl:
               type: ["string", "null"]
           required: [id, displayName, avatarUrl]
-      required: [id, professionalId, question, answer, status, answeredAt, createdAt, asker]
+      required:
+        [
+          id,
+          professionalId,
+          question,
+          answer,
+          status,
+          answeredAt,
+          createdAt,
+          asker,
+        ]
 
     ProfessionalQuestionInput:
       type: object
@@ -3780,7 +4124,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProfessionalQuestion"
-      required: [work, auditions, media, influences, awards, interviews, questions]
+      required:
+        [work, auditions, media, influences, awards, interviews, questions]
 
     ProfessionalProfile:
       type: object
@@ -3836,7 +4181,8 @@ components:
             $ref: "#/components/schemas/ProfessionalQuestion"
         createdAt:
           type: string
-      required: [id, userId, roles, skills, availabilityStatus, verified, createdAt]
+      required:
+        [id, userId, roles, skills, availabilityStatus, verified, createdAt]
 
     ProfessionalProfileInput:
       type: object
@@ -3980,7 +4326,22 @@ components:
           enum: [iframe, video]
         licenseLabel:
           type: string
-      required: [identifier, title, description, year, creator, posterUrl, embedUrl, mediaUrl, source, sourceLabel, sourceUrl, playback, licenseLabel]
+      required:
+        [
+          identifier,
+          title,
+          description,
+          year,
+          creator,
+          posterUrl,
+          embedUrl,
+          mediaUrl,
+          source,
+          sourceLabel,
+          sourceUrl,
+          playback,
+          licenseLabel,
+        ]
 
     FreeClassicsResponse:
       type: object
@@ -4023,3 +4384,4 @@ components:
         totalResults:
           type: integer
       required: [results, totalResults]
+
