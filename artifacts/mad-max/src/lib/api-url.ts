@@ -1,5 +1,8 @@
 import { getAuthToken } from "@workspace/api-client-react";
 
+export const DEFAULT_API_BASE_URL =
+  "https://filmio-api-workers.py3912458.workers.dev";
+
 const apiBaseUrl = (
   (import.meta as ImportMeta & { env?: { VITE_API_BASE_URL?: string } }).env
     ?.VITE_API_BASE_URL ?? ""
@@ -14,7 +17,11 @@ function shouldUseConfiguredApiBase() {
 
 export function apiUrl(path: string) {
   if (/^https?:\/\//i.test(path)) return path;
-  return `${shouldUseConfiguredApiBase() ? apiBaseUrl : ""}${path}`;
+  const base =
+    shouldUseConfiguredApiBase() && (apiBaseUrl || typeof window !== "undefined")
+      ? apiBaseUrl || DEFAULT_API_BASE_URL
+      : "";
+  return `${base}${path}`;
 }
 
 export async function apiFetch(path: string, init?: RequestInit) {

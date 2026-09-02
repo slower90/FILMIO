@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Star, Plus, Check } from "lucide-react";
 import { tmdbPosterUrl } from "@/lib/utils";
 import { createWatchlistAddPayload } from "@/lib/authenticated-flow-contracts";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useUser } from "@clerk/react";
@@ -131,7 +132,16 @@ function MovieCard({
     if (isSaved) {
       removeFromWatchlist.mutate(
         { movieId: movie.id, params: profileId ? { profileId } : undefined },
-        { onSuccess },
+        {
+          onSuccess,
+          onError: () =>
+            toast({
+              variant: "destructive",
+              title: "Watchlist was not updated",
+              description:
+                "Your session or viewing profile could not be verified. Please sign in again and retry.",
+            }),
+        },
       );
     } else {
       addToWatchlist.mutate(
@@ -145,7 +155,16 @@ function MovieCard({
           }),
           params: profileId ? { profileId } : undefined,
         },
-        { onSuccess },
+        {
+          onSuccess,
+          onError: () =>
+            toast({
+              variant: "destructive",
+              title: "Movie was not saved",
+              description:
+                "Your session or viewing profile could not be verified. Please sign in again and retry.",
+            }),
+        },
       );
     }
   };

@@ -4,6 +4,7 @@ import { ThemeProvider } from 'next-themes';
 
 import { setBaseUrl } from '@workspace/api-client-react';
 import App from './App';
+import { DEFAULT_API_BASE_URL } from './lib/api-url';
 
 import './index.css';
 
@@ -15,9 +16,7 @@ const isLocalPreview =
 // Local previews use Vite's same-origin /api proxy. This avoids asking the
 // production Cloudflare Worker API to allow every ephemeral Replit preview
 // origin while keeping the absolute API URL for deployed frontend bundles.
-if (apiBaseUrl && !isLocalPreview) {
-  setBaseUrl(apiBaseUrl);
-}
+setBaseUrl(!isLocalPreview ? apiBaseUrl || DEFAULT_API_BASE_URL : null);
 
 type RootErrorBoundaryState = {
   hasError: boolean;

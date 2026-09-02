@@ -57,6 +57,13 @@ jobs:
             echo "::error::Missing GitHub Actions secret VITE_CLERK_PUBLISHABLE_KEY"
             exit 1
           }
+          case "$VITE_CLERK_PUBLISHABLE_KEY" in
+            pk_live_*) ;;
+            *)
+              echo "::error::VITE_CLERK_PUBLISHABLE_KEY must be a production Clerk key (pk_live_*)"
+              exit 1
+              ;;
+          esac
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

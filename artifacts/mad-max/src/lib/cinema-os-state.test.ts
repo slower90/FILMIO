@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  getGetTrendingMoviesQueryKey,
-  getGetTrendingMoviesUrl,
+  getGetRecommendationsQueryKey,
+  getGetRecommendationsUrl,
 } from "@workspace/api-client-react";
 import {
   CINEMA_OS_TEST_IDS,
@@ -187,14 +187,14 @@ test("profile activity keeps signed-out, loading, error, empty, and ready states
   );
 });
 
-test("Cinema OS uses the generated trending route and page query contract", () => {
+test("Cinema OS uses the generated recommendations route and profile query contract", () => {
   assert.equal(
-    getGetTrendingMoviesUrl({ page: 1 }),
-    "/api/movies/trending?page=1",
+    getGetRecommendationsUrl({ limit: 8, profileId: 42 }),
+    "/api/recommendations?limit=8&profileId=42",
   );
-  assert.deepEqual(getGetTrendingMoviesQueryKey({ page: 1 }), [
-    "/api/movies/trending",
-    { page: 1 },
+  assert.deepEqual(getGetRecommendationsQueryKey({ limit: 8, profileId: 42 }), [
+    "/api/recommendations",
+    { limit: 8, profileId: 42 },
   ]);
 });
 

@@ -28,13 +28,13 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import {
-  getGetTrendingMoviesQueryKey,
+  getGetRecommendationsQueryKey,
   getGetCinemaOsStateQueryKey,
   getGetViewingHistoryQueryKey,
   getGetWatchlistQueryKey,
   getListMyRatingsQueryKey,
   useGetCinemaOsState,
-  useGetTrendingMovies,
+  useGetRecommendations,
   useGetViewingHistory,
   useGetWatchlist,
   useListMyRatings,
@@ -342,11 +342,17 @@ export default function CinemaOS() {
     },
   });
   const { mutateAsync: saveCinemaOsAsync } = useUpdateCinemaOsState();
-  const cinemaSignal = useGetTrendingMovies(
-    { page: 1 },
+  const recommendationParams = activeProfile
+    ? { limit: 8, profileId: activeProfile.id }
+    : { limit: 8 };
+  const cinemaSignal = useGetRecommendations(
+    recommendationParams,
     {
       query: {
-        queryKey: getGetTrendingMoviesQueryKey({ page: 1 }),
+        queryKey: getGetRecommendationsQueryKey(recommendationParams),
+        enabled:
+          isLoaded &&
+          (!isSignedIn || (isReady && !!activeProfile)),
         staleTime: 5 * 60 * 1000,
       },
     },
@@ -370,7 +376,7 @@ export default function CinemaOS() {
     },
   });
 
-  const films = cinemaSignal.data?.results ?? [];
+  const films = cinemaSignal.data ?? [];
   const leadFilm = films[0];
   const selectedFirst = films.find((film) => film.id === doubleFeature[0]);
   const selectedSecond = films.find((film) => film.id === doubleFeature[1]);

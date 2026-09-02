@@ -42,6 +42,7 @@ import { useActiveProfile } from "@/lib/profile-context";
 import { MovieScoreFingerprint } from "@/components/movie-score-fingerprint";
 import { LazyBlurImage } from "@/components/lazy-blur-image";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/hooks/use-toast";
 import {
   fetchMovieOverview,
   getMovieOverviewQueryKey,
@@ -178,6 +179,13 @@ export default function MovieDetail() {
             queryClient.invalidateQueries({
               queryKey: getGetWatchlistQueryKey(),
             }),
+          onError: () =>
+            toast({
+              variant: "destructive",
+              title: "Watchlist was not updated",
+              description:
+                "Your session or viewing profile could not be verified. Please sign in again and retry.",
+            }),
         },
       );
       return;
@@ -198,6 +206,13 @@ export default function MovieDetail() {
         onSuccess: () =>
           queryClient.invalidateQueries({
             queryKey: getGetWatchlistQueryKey(),
+          }),
+        onError: () =>
+          toast({
+            variant: "destructive",
+            title: "Movie was not saved",
+            description:
+              "Your session or viewing profile could not be verified. Please sign in again and retry.",
           }),
       },
     );

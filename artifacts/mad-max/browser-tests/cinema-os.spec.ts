@@ -28,26 +28,12 @@ const movies = [
   },
 ];
 
-const movieResponse = {
-  results: movies,
-  page: 1,
-  totalPages: 1,
-  totalResults: movies.length,
-};
-
-const emptyMovieResponse = {
-  results: [],
-  page: 1,
-  totalPages: 0,
-  totalResults: 0,
-};
-
-async function installTrendingFixture(
+async function installRecommendationFixture(
   page: Page,
-  response: typeof movieResponse | typeof emptyMovieResponse,
+  response: typeof movies,
   { responseGate }: { responseGate?: Promise<void> } = {},
 ) {
-  await page.route("**/api/movies/trending**", async (route) => {
+  await page.route("**/api/recommendations**", async (route) => {
     if (responseGate) await responseGate;
     await route.fulfill({
       status: 200,
@@ -68,7 +54,7 @@ test.describe("Cinema OS browser behavior", () => {
   test("signed-out visitors can read the signal and use private local modules", async ({
     page,
   }) => {
-    await installTrendingFixture(page, movieResponse);
+    await installRecommendationFixture(page, movies);
     await page.goto("/cinema-os");
 
     await expect(page.getByTestId("heading-cinema-os")).toBeVisible();
@@ -167,7 +153,7 @@ test.describe("Cinema OS browser behavior", () => {
     const responseGate = new Promise<void>((resolve) => {
       releaseResponse = resolve;
     });
-    await installTrendingFixture(page, movieResponse, { responseGate });
+    await installRecommendationFixture(page, movies, { responseGate });
     await page.goto("/cinema-os");
 
     await expect(
@@ -180,7 +166,7 @@ test.describe("Cinema OS browser behavior", () => {
   test("a loaded empty catalogue renders safe signal and pairing states", async ({
     page,
   }) => {
-    await installTrendingFixture(page, emptyMovieResponse);
+    await installRecommendationFixture(page, []);
     await page.goto("/cinema-os");
 
     await expect(page.getByTestId("status-cinema-os-signed-out")).toBeVisible();
