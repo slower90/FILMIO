@@ -26,3 +26,16 @@ in the repository.
 GitHub is the deployment trigger and source repository; it does not serve runtime
 traffic. Users continue to reach the application through Cloudflare Pages and the
 Cloudflare Worker.
+
+## Post-deploy smoke checks
+
+Every successful deployment checks both the Pages homepage and the public Worker
+contract (`/api/healthz`, the movie catalog, reviews, and the CORS preflight).
+It also confirms that `/api/users/me` and `/api/watchlist` reject anonymous
+requests with `401`.
+
+To enable the signed-in Clerk checks, add a short-lived test session bearer
+token as the GitHub Actions secret `FILMIO_SMOKE_BEARER_TOKEN`. The workflow
+then verifies that the session can read `/api/users/me` and `/api/watchlist`.
+The token must be supplied through GitHub Secrets; never commit or paste it
+into the repository.

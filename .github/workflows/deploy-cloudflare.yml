@@ -22,6 +22,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       VITE_API_BASE_URL: https://filmio-api-workers.py3912458.workers.dev
       VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+      FILMIO_SMOKE_BEARER_TOKEN: ${{ secrets.FILMIO_SMOKE_BEARER_TOKEN }}
       BASE_PATH: /
       PORT: "5173"
       NODE_ENV: production
@@ -80,3 +81,9 @@ jobs:
 
       - name: Deploy Cloudflare Pages
         run: pnpm dlx wrangler@4.128.0 pages deploy artifacts/mad-max/dist/public --project-name filmio
+
+      - name: Run post-deploy smoke checks
+        env:
+          FILMIO_SITE_URL: https://vishnuva.in
+          FILMIO_API_URL: https://filmio-api-workers.py3912458.workers.dev
+        run: pnpm run smoke:cloudflare
