@@ -39,6 +39,12 @@ import {
 } from "@workspace/api-client-react";
 import { Navbar } from "@/components/navbar";
 import { SurpriseMe } from "@/components/surprise-me";
+import {
+  CINEMA_OS_TEST_IDS,
+  getProfileActivityState,
+  readCinemaLocal,
+  saveCinemaLocal,
+} from "@/lib/cinema-os-state";
 import { withMovieTitle } from "@/lib/movie-links";
 import { useActiveProfile } from "@/lib/profile-context";
 import { tmdbPosterUrl } from "@/lib/utils";
@@ -72,16 +78,6 @@ const CURATOR_TRACKS = [
   { title: "New Indian cinema", note: "A route through voices that refuse one language.", mark: "B / 04" },
   { title: "After the twist", note: "When a reveal is only the beginning of the conversation.", mark: "C / 02" },
 ];
-
-function readLocal<T>(key: string, fallback: T, isValid: (value: unknown) => value is T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const parsed: unknown = JSON.parse(window.localStorage.getItem(key) ?? "null");
-    return isValid(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function isAfterglow(value: unknown): value is AfterglowEntry {
   if (!value || typeof value !== "object") return false;
@@ -171,15 +167,26 @@ export default function CinemaOS() {
   const { activeProfile, isReady } = useActiveProfile();
   const profileParams = activeProfile ? { profileId: activeProfile.id } : undefined;
   const [afterglow, setAfterglow] = useState<AfterglowEntry>(() =>
-    readLocal(STORAGE_KEYS.afterglow, { movieId: null, movieTitle: "", note: "", updatedAt: "" }, isAfterglow),
+    readCinemaLocal(
+      typeof window === "undefined" ? undefined : window.localStorage,
+      STORAGE_KEYS.afterglow,
+      { movieId: null, movieTitle: "", note: "", updatedAt: "" },
+      isAfterglow,
+    ),
   );
   const [doubleFeature, setDoubleFeature] = useState<[number | null, number | null]>(() =>
-    readLocal(STORAGE_KEYS.doubleFeature, [null, null], isPair),
+    readCinemaLocal(typeof window === "undefined" ? undefined : window.localStorage, STORAGE_KEYS.doubleFeature, [null, null], isPair),
   );
   const [spoilerOpen, setSpoilerOpen] = useState(false);
-  const [spoilerNote, setSpoilerNote] = useState(() => readLocal(STORAGE_KEYS.spoilerVault, "", isString));
-  const [passportCount, setPassportCount] = useState(() => readLocal(STORAGE_KEYS.passport, 0, isNumber));
-  const [curriculumProgress, setCurriculumProgress] = useState(() => readLocal(STORAGE_KEYS.curriculum, 1, isNumber));
+  const [spoilerNote, setSpoilerNote] = useState(() =>
+    readCinemaLocal(typeof window === "undefined" ? undefined : window.localStorage, STORAGE_KEYS.spoilerVault, "", isString),
+  );
+  const [passportCount, setPassportCount] = useState(() =>
+    readCinemaLocal(typeof window === "undefined" ? undefined : window.localStorage, STORAGE_KEYS.passport, 0, isNumber),
+  );
+  const [curriculumProgress, setCurriculumProgress] = useState(() =>
+    readCinemaLocal(typeof window === "undefined" ? undefined : window.localStorage, STORAGE_KEYS.curriculum, 1, isNumber),
+  );
   const [savedMessage, setSavedMessage] = useState("");
   const cinemaSignal = useGetTrendingMovies({ page: 1 }, {
     query: { queryKey: getGetTrendingMoviesQueryKey({ page: 1 }), staleTime: 5 * 60 * 1000 },
@@ -208,12 +215,22 @@ export default function CinemaOS() {
     ),
     [afterglow.movieId, afterglow.movieTitle, films, leadFilm],
   );
-  const profileActivityLoading = isSignedIn === true && (!isReady || historyQuery.isLoading || ratingsQuery.isLoading || watchlistQuery.isLoading);
-  const profileActivityError = isSignedIn === true && Boolean(historyQuery.error || ratingsQuery.error || watchlistQuery.error);
   const watchedCount = historyQuery.data?.length ?? 0;
   const ratedCount = ratingsQuery.data?.length ?? 0;
   const queuedCount = watchlistQuery.data?.filter((entry) => entry.status === "want_to_watch").length ?? 0;
-  const dnaHasActivity = watchedCount > 0 || ratedCount > 0 || queuedCount > 0;
+  const profileActivityState = getProfileActivityState({
+    isSignedIn: isSignedIn === true,
+    isReady,
+    historyLoading: historyQuery.isLoading,
+    ratingsLoading: ratingsQuery.isLoading,
+    watchlistLoading: watchlistQuery.isLoading,
+    historyError: Boolean(historyQuery.error),
+    ratingsError: Boolean(ratingsQuery.error),
+    watchlistError: Boolean(watchlistQuery.error),
+    watchedCount,
+    ratedCount,
+    queuedCount,
+  });
   const dnaMeters = [
     ["Watched", Math.min(100, watchedCount * 12)],
     ["Rated", Math.min(100, ratedCount * 10)],
@@ -234,24 +251,24 @@ export default function CinemaOS() {
       updatedAt: new Date().toISOString(),
     };
     setAfterglow(next);
-    window.localStorage.setItem(STORAGE_KEYS.afterglow, JSON.stringify(next));
+    saveCinemaLocal(window.localStorage, STORAGE_KEYS.afterglow, next);
     setSavedMessage("Afterglow saved on this device.");
   };
 
   const saveDoubleFeature = () => {
-    window.localStorage.setItem(STORAGE_KEYS.doubleFeature, JSON.stringify(doubleFeature));
+    saveCinemaLocal(window.localStorage, STORAGE_KEYS.doubleFeature, doubleFeature);
     setSavedMessage("Double feature held for this device.");
   };
 
   const saveSpoilerNote = () => {
-    window.localStorage.setItem(STORAGE_KEYS.spoilerVault, JSON.stringify(spoilerNote));
+    saveCinemaLocal(window.localStorage, STORAGE_KEYS.spoilerVault, spoilerNote);
     setSavedMessage("Spoiler Vault updated on this device.");
   };
 
   const markCurriculum = () => {
     const next = Math.min(curriculumProgress + 1, 6);
     setCurriculumProgress(next);
-    window.localStorage.setItem(STORAGE_KEYS.curriculum, JSON.stringify(next));
+    saveCinemaLocal(window.localStorage, STORAGE_KEYS.curriculum, next);
     setSavedMessage("Curriculum progress updated.");
   };
 
@@ -296,7 +313,7 @@ export default function CinemaOS() {
             <div className="filmio-skeleton h-20" />
           </div>
         ) : !isSignedIn ? (
-          <div className="flex flex-col gap-3 border-b border-primary/30 bg-primary/[0.045] px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-testid="status-cinema-os-signed-out">
+          <div className="flex flex-col gap-3 border-b border-primary/30 bg-primary/[0.045] px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6" data-testid={CINEMA_OS_TEST_IDS.signedOutStatus}>
             <div className="flex items-start gap-3">
               <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               <p className="text-xs leading-relaxed text-muted-foreground">You can sketch a cinema journey here. Sign in when you want your FILMIO profile, watch room, and taste graph in one place.</p>
@@ -318,18 +335,18 @@ export default function CinemaOS() {
               <span className="text-[0.6rem] font-bold uppercase tracking-[0.17em] text-muted-foreground">Not a ranking</span>
             </div>
             {cinemaSignal.isLoading ? (
-              <div className="mt-7 grid grid-cols-[5.5rem_1fr] gap-5" data-testid="status-cinema-os-signal-loading" role="status">
+              <div className="mt-7 grid grid-cols-[5.5rem_1fr] gap-5" data-testid={CINEMA_OS_TEST_IDS.signalLoadingStatus} role="status">
                 <div className="filmio-skeleton aspect-[2/3]" />
                 <div className="space-y-3 pt-2"><div className="filmio-skeleton h-3 w-24" /><div className="filmio-skeleton h-10 w-4/5" /><div className="filmio-skeleton h-16 w-full" /></div>
               </div>
             ) : cinemaSignal.isError ? (
-              <div className="mt-7 border-l-2 border-destructive/60 px-4 py-4" data-testid="status-cinema-os-signal-error">
+              <div className="mt-7 border-l-2 border-destructive/60 px-4 py-4" data-testid={CINEMA_OS_TEST_IDS.signalErrorStatus}>
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.13em] text-destructive"><CircleAlert className="h-4 w-4" /> Signal interrupted</p>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">The desk could not connect to the live catalogue. Your local notes are still safe.</p>
-                <button type="button" onClick={() => void cinemaSignal.refetch()} className="mt-4 inline-flex min-h-10 items-center gap-2 border border-border px-3 text-[0.62rem] font-bold uppercase tracking-wider hover:border-primary hover:text-primary" data-testid="button-cinema-os-retry"><RefreshCw className="h-3.5 w-3.5" /> Retry signal</button>
+                <button type="button" onClick={() => void cinemaSignal.refetch()} className="mt-4 inline-flex min-h-10 items-center gap-2 border border-border px-3 text-[0.62rem] font-bold uppercase tracking-wider hover:border-primary hover:text-primary" data-testid={CINEMA_OS_TEST_IDS.signalRetryButton}><RefreshCw className="h-3.5 w-3.5" /> Retry signal</button>
               </div>
             ) : !leadFilm ? (
-              <div className="mt-7 border-l-2 border-primary/60 px-4 py-4" data-testid="status-cinema-os-signal-empty">
+              <div className="mt-7 border-l-2 border-primary/60 px-4 py-4" data-testid={CINEMA_OS_TEST_IDS.signalEmptyStatus}>
                 <p className="text-xs font-bold uppercase tracking-[0.13em] text-primary">A quiet catalogue</p>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">There is no live film signal to place here yet. Start with Tonight Mode when the catalogue returns.</p>
               </div>
@@ -359,16 +376,16 @@ export default function CinemaOS() {
             <div className="cinema-os-panel grid gap-0 sm:grid-cols-[1.1fr_0.9fr]">
               <div className="p-6 sm:p-8">
                 <p className="text-[0.62rem] font-bold uppercase tracking-[0.17em] text-primary">Current read</p>
-                {profileActivityLoading ? (
+                {profileActivityState === "loading" ? (
                   <div className="mt-5 space-y-3" role="status" data-testid="status-cinema-os-dna-loading">
                     <div className="filmio-skeleton h-10 w-full max-w-lg" />
                     <div className="filmio-skeleton h-4 w-3/4" />
                   </div>
-                ) : profileActivityError ? (
+                ) : profileActivityState === "error" ? (
                   <p className="mt-5 max-w-lg text-sm leading-7 text-muted-foreground" role="alert" data-testid="status-cinema-os-dna-error">Your private signals could not be read right now. Your local notes are still safe; try the Cinema Graph when your viewing room is available.</p>
                 ) : !isSignedIn ? (
                   <p className="mt-5 max-w-lg font-display text-3xl font-medium uppercase leading-[0.98] tracking-[-0.05em] sm:text-5xl" data-testid="status-cinema-os-dna-signed-out">Sign in to turn your choices into a pattern.</p>
-                ) : !dnaHasActivity ? (
+                ) : profileActivityState === "empty" ? (
                   <p className="mt-5 max-w-lg font-display text-3xl font-medium uppercase leading-[0.98] tracking-[-0.05em] sm:text-5xl" data-testid="status-cinema-os-dna-empty">Your pattern begins with the first film you rate or keep.</p>
                 ) : (
                   <p className="mt-5 max-w-lg font-display text-3xl font-medium uppercase leading-[0.98] tracking-[-0.05em] sm:text-5xl" data-testid="text-cinema-os-dna-summary">
@@ -412,8 +429,8 @@ export default function CinemaOS() {
             </div>
             <div className="cinema-os-panel p-5 sm:p-7">
               <label htmlFor="afterglow-note" className="text-[0.62rem] font-bold uppercase tracking-[0.17em] text-primary">One honest sentence</label>
-              <textarea id="afterglow-note" value={afterglow.note} onChange={(event) => setAfterglow((current) => ({ ...current, note: event.target.value }))} placeholder="What stayed with you?" rows={6} className="cinema-os-input mt-4 resize-y" data-testid="textarea-cinema-os-afterglow" />
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-[0.61rem] text-muted-foreground" data-testid="status-cinema-os-save">{savedMessage || (afterglow.updatedAt ? `Last saved ${new Date(afterglow.updatedAt).toLocaleDateString()}.` : "Nothing saved yet.")}</p><button type="button" onClick={saveAfterglow} className="inline-flex min-h-11 items-center justify-center gap-2 bg-primary px-4 text-[0.63rem] font-bold uppercase tracking-[0.15em] text-primary-foreground hover:bg-primary/85" data-testid="button-cinema-os-save-afterglow"><Check className="h-4 w-4" /> Save afterglow</button></div>
+              <textarea id="afterglow-note" value={afterglow.note} onChange={(event) => setAfterglow((current) => ({ ...current, note: event.target.value }))} placeholder="What stayed with you?" rows={6} className="cinema-os-input mt-4 resize-y" data-testid={CINEMA_OS_TEST_IDS.afterglowInput} />
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-[0.61rem] text-muted-foreground" data-testid="status-cinema-os-save">{savedMessage || (afterglow.updatedAt ? `Last saved ${new Date(afterglow.updatedAt).toLocaleDateString()}.` : "Nothing saved yet.")}</p><button type="button" onClick={saveAfterglow} className="inline-flex min-h-11 items-center justify-center gap-2 bg-primary px-4 text-[0.63rem] font-bold uppercase tracking-[0.15em] text-primary-foreground hover:bg-primary/85" data-testid={CINEMA_OS_TEST_IDS.afterglowSaveButton}><Check className="h-4 w-4" /> Save afterglow</button></div>
             </div>
           </div>
         </section>
@@ -427,7 +444,7 @@ export default function CinemaOS() {
               {[0, 1].map((slot) => (
                 <div key={slot} className="cinema-os-panel p-5 sm:p-7" data-testid={`panel-cinema-os-feature-${slot + 1}`}>
                   <div className="flex items-center justify-between gap-3"><span className="cinema-os-index">Film {String(slot + 1).padStart(2, "0")}</span><span className="text-[0.6rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{slot === 0 ? "The question" : "The echo"}</span></div>
-                  <select value={doubleFeature[slot] ?? ""} onChange={(event) => setDoubleFeature((current) => { const next: [number | null, number | null] = [...current]; next[slot] = event.target.value ? Number(event.target.value) : null; return next; })} className="cinema-os-input mt-5" aria-label={`Choose film ${slot + 1}`} data-testid={`select-cinema-os-feature-${slot + 1}`}>
+                  <select value={doubleFeature[slot] ?? ""} onChange={(event) => setDoubleFeature((current) => { const next: [number | null, number | null] = [...current]; next[slot] = event.target.value ? Number(event.target.value) : null; return next; })} className="cinema-os-input mt-5" aria-label={`Choose film ${slot + 1}`} data-testid={CINEMA_OS_TEST_IDS.featureSelect(slot + 1)}>
                     <option value="">Choose from the live signal</option>
                     {films.slice(0, 8).map((film) => <option key={film.id} value={film.id}>{film.title}</option>)}
                   </select>
@@ -439,7 +456,7 @@ export default function CinemaOS() {
           )}
           <div className="mt-6 flex flex-col gap-4 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-lg text-xs leading-6 text-muted-foreground" data-testid="text-cinema-os-feature-status">{featureReady ? `${selectedFirst?.title} meets ${selectedSecond?.title}.` : "Choose two different films to give the evening a shape."}</p>
-            <button type="button" onClick={saveDoubleFeature} disabled={!featureReady} className="inline-flex min-h-11 items-center justify-center gap-2 border border-primary/55 px-4 text-[0.63rem] font-bold uppercase tracking-[0.15em] text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40" data-testid="button-cinema-os-save-feature"><Bookmark className="h-4 w-4" /> Hold this pairing</button>
+            <button type="button" onClick={saveDoubleFeature} disabled={!featureReady} className="inline-flex min-h-11 items-center justify-center gap-2 border border-primary/55 px-4 text-[0.63rem] font-bold uppercase tracking-[0.15em] text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40" data-testid={CINEMA_OS_TEST_IDS.featureSaveButton}><Bookmark className="h-4 w-4" /> Hold this pairing</button>
           </div>
         </section>
 
@@ -447,7 +464,7 @@ export default function CinemaOS() {
           <ModuleHeader index="05" eyebrow="Context, not clutter" title="A few ways further in." note="Open a door when you want more than the title: craft, spoilers, company, or a place to watch." icon={Layers3} />
           <div className="mt-9 grid gap-px overflow-hidden border border-border/70 bg-border/70 md:grid-cols-2">
             <div className="cinema-os-module bg-card p-6 sm:p-8"><Eye className="h-5 w-5 text-primary" /><h3 className="mt-5 font-display text-2xl font-medium uppercase">Craft Lens</h3><p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Look closer at the work: framing, edit, sound, performance, and the choices hiding in plain sight.</p><OsLink href={leadFilm ? withMovieTitle(`/movies/${leadFilm.id}`, leadFilm.title) : "/discover"} testId="link-cinema-os-craft-lens">Open a film</OsLink></div>
-            <div className="cinema-os-module bg-card p-6 sm:p-8"><LockKeyhole className="h-5 w-5 text-primary" /><h3 className="mt-5 font-display text-2xl font-medium uppercase">Spoiler Vault</h3><p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Write the thing you cannot say out loud yet. It stays collapsed until you decide otherwise.</p><button type="button" onClick={() => setSpoilerOpen((open) => !open)} className="cinema-os-small-link mt-4" aria-expanded={spoilerOpen} data-testid="button-cinema-os-spoiler-toggle">{spoilerOpen ? "Close vault" : "Open vault"} <ChevronRight className={`h-3.5 w-3.5 transition-transform ${spoilerOpen ? "rotate-90" : ""}`} /></button>{spoilerOpen && <div className="mt-4 border-t border-border/60 pt-4"><textarea value={spoilerNote} onChange={(event) => setSpoilerNote(event.target.value)} rows={4} className="cinema-os-input" placeholder="Spoilers live here." data-testid="textarea-cinema-os-spoiler" /><button type="button" onClick={saveSpoilerNote} className="mt-3 inline-flex min-h-10 items-center gap-2 border border-border px-3 text-[0.6rem] font-bold uppercase tracking-wider hover:border-primary hover:text-primary" data-testid="button-cinema-os-save-spoiler">Save vault note</button></div>}</div>
+            <div className="cinema-os-module bg-card p-6 sm:p-8"><LockKeyhole className="h-5 w-5 text-primary" /><h3 className="mt-5 font-display text-2xl font-medium uppercase">Spoiler Vault</h3><p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Write the thing you cannot say out loud yet. It stays collapsed until you decide otherwise.</p><button type="button" onClick={() => setSpoilerOpen((open) => !open)} className="cinema-os-small-link mt-4" aria-expanded={spoilerOpen} data-testid={CINEMA_OS_TEST_IDS.spoilerToggleButton}>{spoilerOpen ? "Close vault" : "Open vault"} <ChevronRight className={`h-3.5 w-3.5 transition-transform ${spoilerOpen ? "rotate-90" : ""}`} /></button>{spoilerOpen && <div className="mt-4 border-t border-border/60 pt-4"><textarea value={spoilerNote} onChange={(event) => setSpoilerNote(event.target.value)} rows={4} className="cinema-os-input" placeholder="Spoilers live here." data-testid={CINEMA_OS_TEST_IDS.spoilerInput} /><button type="button" onClick={saveSpoilerNote} className="mt-3 inline-flex min-h-10 items-center gap-2 border border-border px-3 text-[0.6rem] font-bold uppercase tracking-wider hover:border-primary hover:text-primary" data-testid={CINEMA_OS_TEST_IDS.spoilerSaveButton}>Save vault note</button></div>}</div>
             <div className="cinema-os-module bg-card p-6 sm:p-8"><Users className="h-5 w-5 text-primary" /><h3 className="mt-5 font-display text-2xl font-medium uppercase">Watch Room</h3><p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">Bring another person into the choice. Compare taste, make a plan, and start the same film together.</p><OsLink href="/friends" testId="link-cinema-os-watch-room">Enter Watch Room</OsLink></div>
             <div className="cinema-os-module bg-card p-6 sm:p-8"><GitCompare className="h-5 w-5 text-primary" /><h3 className="mt-5 font-display text-2xl font-medium uppercase">Taste Compatibility</h3><p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">A conversation starter for two cinema universes. Find the overlap without flattening either taste.</p><OsLink href="/friends" testId="link-cinema-os-compatibility">Compare with a friend</OsLink></div>
           </div>
@@ -457,8 +474,8 @@ export default function CinemaOS() {
           <ModuleHeader index="06" eyebrow="The journey" title="Your cinema has more than one horizon." note="Move outward from tonight: across places, through time, toward people, and into the work itself." icon={Map} />
           <div className="mt-9 grid gap-4 lg:grid-cols-[1.1fr_0.9fr_0.9fr]">
             <div className="cinema-os-panel min-h-[17rem] p-6 sm:p-8"><Map className="h-5 w-5 text-primary" /><p className="mt-7 text-[0.62rem] font-bold uppercase tracking-[0.17em] text-primary">Cinema Atlas</p><h3 className="mt-3 max-w-sm font-display text-4xl font-medium uppercase leading-[0.92] tracking-[-0.05em]">Follow the film across borders.</h3><p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">A geography of the stories you seek, and the places your taste has not reached yet.</p><OsLink href="/discover" testId="link-cinema-os-atlas" /></div>
-            <div className="cinema-os-panel min-h-[17rem] p-6 sm:p-8"><Ticket className="h-5 w-5 text-primary" /><p className="mt-7 text-[0.62rem] font-bold uppercase tracking-[0.17em] text-primary">Cinema Passport</p><div className="mt-3 flex items-end gap-2"><span className="font-display text-6xl font-medium leading-none text-foreground" data-testid="text-cinema-os-passport-count">{passportCount}</span><span className="pb-1 text-[0.62rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">stamps</span></div><p className="mt-4 text-sm leading-6 text-muted-foreground">Keep a private count of the places your watching has taken you.</p><button type="button" onClick={() => { const next = passportCount + 1; setPassportCount(next); window.localStorage.setItem(STORAGE_KEYS.passport, JSON.stringify(next)); setSavedMessage("Passport stamp added."); }} className="cinema-os-small-link mt-4" data-testid="button-cinema-os-passport-stamp">Add a stamp <Check className="h-3.5 w-3.5" /></button></div>
-            <div className="cinema-os-panel min-h-[17rem] p-6 sm:p-8"><BookOpen className="h-5 w-5 text-primary" /><p className="mt-7 text-[0.62rem] font-bold uppercase tracking-[0.17em] text-primary">Personal Curriculum</p><h3 className="mt-3 font-display text-3xl font-medium uppercase leading-[0.92]">A route, not a syllabus.</h3><p className="mt-4 text-sm leading-6 text-muted-foreground">Six considered steps, chosen to widen the eye without losing the thread.</p><div className="mt-5 h-1 bg-muted"><div className="h-1 bg-primary transition-all" style={{ width: `${(curriculumProgress / 6) * 100}%` }} /></div><button type="button" onClick={markCurriculum} disabled={curriculumProgress >= 6} className="cinema-os-small-link mt-4 disabled:opacity-45" data-testid="button-cinema-os-curriculum-progress">{curriculumProgress >= 6 ? "Route complete" : `Mark step ${curriculumProgress}` } <ChevronRight className="h-3.5 w-3.5" /></button></div>
+            <div className="cinema-os-panel min-h-[17rem] p-6 sm:p-8"><Ticket className="h-5 w-5 text-primary" /><p className="mt-7 text-[0.62rem] font-bold uppercase tracking-[0.17em] text-primary">Cinema Passport</p><div className="mt-3 flex items-end gap-2"><span className="font-display text-6xl font-medium leading-none text-foreground" data-testid="text-cinema-os-passport-count">{passportCount}</span><span className="pb-1 text-[0.62rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">stamps</span></div><p className="mt-4 text-sm leading-6 text-muted-foreground">Keep a private count of the places your watching has taken you.</p><button type="button" onClick={() => { const next = passportCount + 1; setPassportCount(next); saveCinemaLocal(window.localStorage, STORAGE_KEYS.passport, next); setSavedMessage("Passport stamp added."); }} className="cinema-os-small-link mt-4" data-testid={CINEMA_OS_TEST_IDS.passportStampButton}>Add a stamp <Check className="h-3.5 w-3.5" /></button></div>
+            <div className="cinema-os-panel min-h-[17rem] p-6 sm:p-8"><BookOpen className="h-5 w-5 text-primary" /><p className="mt-7 text-[0.62rem] font-bold uppercase tracking-[0.17em] text-primary">Personal Curriculum</p><h3 className="mt-3 font-display text-3xl font-medium uppercase leading-[0.92]">A route, not a syllabus.</h3><p className="mt-4 text-sm leading-6 text-muted-foreground">Six considered steps, chosen to widen the eye without losing the thread.</p><div className="mt-5 h-1 bg-muted"><div className="h-1 bg-primary transition-all" style={{ width: `${(curriculumProgress / 6) * 100}%` }} /></div><button type="button" onClick={markCurriculum} disabled={curriculumProgress >= 6} className="cinema-os-small-link mt-4 disabled:opacity-45" data-testid={CINEMA_OS_TEST_IDS.curriculumProgressButton}>{curriculumProgress >= 6 ? "Route complete" : `Mark step ${curriculumProgress}` } <ChevronRight className="h-3.5 w-3.5" /></button></div>
           </div>
         </section>
 
