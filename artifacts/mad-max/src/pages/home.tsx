@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navbar } from "@/components/navbar";
 import { MovieRow, type RowMovie } from "@/components/movie-row";
 import { HeroCarousel, type HeroMovie } from "@/components/hero-carousel";
@@ -21,12 +21,6 @@ import { apiFetch } from "@/lib/api-url";
 import { IndianPosterFeature } from "@/components/indian-poster-feature";
 import { LazyBlurImage } from "@/components/lazy-blur-image";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const FreeClassicsSection = lazy(() =>
-  import("@/components/free-classics").then(({ FreeClassicsSection: Section }) => ({
-    default: Section,
-  })),
-);
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -138,51 +132,6 @@ function useNearViewportWithMargin(
   }, [ref]);
 
   return ready;
-}
-
-function DeferredFreeClassicsSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const ready = useNearViewportWithMargin(sectionRef, "0px");
-
-  return (
-    <div ref={sectionRef}>
-      {ready ? (
-        <Suspense
-          fallback={
-            <section
-              className="border-y border-border/30 py-10"
-              aria-label="Loading Free Classics"
-            >
-              <div className="container mx-auto px-4">
-                <div className="mb-5 flex items-end justify-between border-l-2 border-primary pl-3">
-                  <div>
-                    <Skeleton className="h-3 w-36" />
-                    <Skeleton className="mt-2 h-8 w-48" />
-                  </div>
-                </div>
-                <div className="flex gap-3 overflow-hidden">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div key={index} className="w-[9.2rem] flex-none sm:w-40 md:w-44">
-                      <Skeleton className="aspect-[2/3] rounded-[0.35rem]" />
-                      <Skeleton className="mt-2 h-3 w-3/4" />
-                      <Skeleton className="mt-1 h-2.5 w-1/2" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          }
-        >
-          <FreeClassicsSection />
-        </Suspense>
-      ) : (
-        <section
-          className="border-y border-border/30 py-10"
-          aria-label="Free Classics"
-        />
-      )}
-    </div>
-  );
 }
 
 // Indian cinema rows (origin country IN, optionally by original language)
@@ -505,7 +454,6 @@ export default function Home() {
         isLoading={loadingTrending}
         isUpcomingLoading={loadingUpcoming}
       />
-      <DeferredFreeClassicsSection />
       <IndianPosterFeature />
       <section className="container mx-auto px-4 py-5" aria-label="One-film discovery">
         <div className="flex flex-col gap-4 border-y border-primary/20 bg-primary/[0.035] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">

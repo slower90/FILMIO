@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-url";
 import type { MoviePagedResult } from "@workspace/api-client-react";
 
-type Collection = "trending" | "popular" | "top-rated" | "tv-popular" | "tv-top-rated" | "tv-upcoming" | "upcoming" | "in-theaters" | "free" | "indian";
+type Collection = "trending" | "popular" | "top-rated" | "tv-popular" | "tv-top-rated" | "tv-upcoming" | "upcoming" | "in-theaters" | "indian";
 
 const COLLECTIONS: Record<Collection, { title: string; eyebrow: string; description: string; mediaType: "movie" | "tv" }> = {
   trending: { title: "Live Signal", eyebrow: "Moving through cinema", description: "The movies finding their way into the shared atmosphere this week.", mediaType: "movie" },
@@ -19,7 +19,6 @@ const COLLECTIONS: Record<Collection, { title: string; eyebrow: string; descript
   "tv-upcoming": { title: "Series Coming Soon", eyebrow: "Next transmissions", description: "Television releases worth keeping on your radar.", mediaType: "tv" },
   upcoming: { title: "Coming Into Focus", eyebrow: "Plan your next screen", description: "Upcoming films arriving in the Indian release region.", mediaType: "movie" },
   "in-theaters": { title: "India, Right Now", eyebrow: "On the big screen", description: "Movies currently playing across the Indian release region.", mediaType: "movie" },
-  free: { title: "Free to Watch", eyebrow: "Open screening room", description: "Films identified as free or ad-supported by the configured catalogue provider.", mediaType: "movie" },
   indian: { title: "Indian Cinema", eyebrow: "Made for India", description: "Indian-origin films across languages and regions.", mediaType: "movie" },
 };
 

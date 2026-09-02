@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RatingStars } from "@/components/rating-stars";
 import { ReviewCard } from "@/components/review-card";
-import { Clock, Calendar, Star, Play, Plus, Check, Clapperboard, BookOpen } from "lucide-react";
+import { Clock, Calendar, Star, Play, Plus, Check, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1037,26 +1037,6 @@ export default function MovieDetail() {
           />
         </div>
       )}
-
-      <Link
-        href="/free-movies"
-        className="group mx-auto mt-12 flex max-w-5xl items-center justify-between gap-6 overflow-hidden rounded-md border border-primary/40 bg-gradient-to-r from-primary/15 via-card to-primary/5 px-6 py-7 transition-all hover:border-primary hover:shadow-[0_18px_45px_-24px_hsl(var(--primary)/0.8)] md:px-10"
-         aria-label="Find where to stream more movies"
-      >
-        <div className="flex items-center gap-5">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-primary/50 bg-background/70 text-primary transition-transform group-hover:scale-110">
-            <Clapperboard className="h-7 w-7" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">FILMIO</p>
-            <h2 className="mt-1 font-display text-xl font-bold uppercase tracking-wider md:text-2xl">
-               Find where to stream
-            </h2>
-             <p className="mt-1 text-sm text-muted-foreground">Explore official OTT availability, including no-cost and ad-supported options in India.</p>
-          </div>
-        </div>
-        <span className="hidden shrink-0 text-2xl text-primary transition-transform group-hover:translate-x-1 sm:block">→</span>
-      </Link>
 
       {/* ── More in [Genre] ───────────────────────────────────────────────── */}
       {firstGenre && (filteredGenre.length > 0 || loadingGenre) && (

@@ -305,7 +305,7 @@ export function FreeClassicsSection({ fullPage = false }: { fullPage?: boolean }
              description={sourceFilter === "all" ? "Nothing matches exactly. Try a source filter or browse the wider open screening room." : "Nothing matches exactly from this source. Try All sources or choose another legal screening room."}
              actions={[
                ...(sourceFilter !== "all" ? [{ label: "Try all sources", onClick: () => setSourceFilter("all"), testId: "button-empty-free-classics-all" }] : []),
-               { label: "Browse free films", href: "/browse?collection=free", testId: "link-empty-free-classics-browse" },
+               { label: "Browse the catalogue", href: "/browse?collection=trending", testId: "link-empty-free-classics-browse" },
              ]}
            />
         ) : (

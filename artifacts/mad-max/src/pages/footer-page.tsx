@@ -35,14 +35,13 @@ const pages: Record<string, PageConfig> = {
     sections: [
       {
         title: "Movies, TV & Anime",
-        body: "Discovery, search, genres, free viewing, and the FILMIO Journal.",
+          body: "Discovery, search, genres, classic cinema, and the FILMIO Journal.",
         links: [
           { label: "Discover", href: "/discover" },
           { label: "Search", href: "/search" },
           { label: "Browse", href: "/browse" },
           { label: "Genres", href: "/genres" },
           { label: "Anime", href: "/anime" },
-          { label: "Free Movies", href: "/free-movies" },
           { label: "Free Classics", href: "/free-classics" },
           { label: "Film News", href: "/news" },
         ],

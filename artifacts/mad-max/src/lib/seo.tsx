@@ -6,7 +6,7 @@ export const SITE_URL = "https://vishnuva.in";
 const DEFAULT_TITLE =
   "FILMIO - Discover, Rate & Review Movies, TV Shows & Anime | Free Classic Movies";
 const DEFAULT_DESCRIPTION =
-  "Discover free movies online, watch free classic movies, and explore Indian films, TV shows, and anime with FILMIO ratings, reviews, trailers, and watch options.";
+  "Discover movies, watch free classic films, and explore Indian films, TV shows, and anime with FILMIO ratings, reviews, trailers, and watch options.";
 
 const routeMetadata: Record<string, { title: string; description: string }> = {
   "/discover": {
@@ -36,10 +36,6 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   "/signals": {
     title: "Personal Signals | FILMIO",
     description: "A quiet personal radar for the movie moments worth seeing on FILMIO.",
-  },
-  "/free-movies": {
-    title: "Free Movies to Watch in India | FILMIO",
-    description: "Find free movies online through legal providers, browse public-domain cinema, and use FILMIO ratings, reviews, trailers, and watch options.",
   },
   "/free-classics": {
     title: "Watch Free Classic Movies Online - Public Domain Cinema | FILMIO",

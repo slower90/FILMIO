@@ -39,7 +39,6 @@ const Signals = lazy(() => import('@/pages/signals'));
 const Events = lazy(() => import('@/pages/events'));
 const FooterPage = lazy(() => import('@/pages/footer-page'));
 const Pricing = lazy(() => import('@/pages/pricing'));
-const FreeMovies = lazy(() => import('@/pages/free-movies'));
 const FreeClassics = lazy(() => import('@/pages/free-classics'));
 const FreeClassicDetail = lazy(() => import('@/pages/free-classic-detail'));
 const Browse = lazy(() => import('@/pages/browse'));
@@ -496,7 +495,6 @@ function ClerkProviderWithRoutes() {
           <Route path="/professionals/community" component={IndustryCommunity} />
           <Route path="/professionals/:id" component={PublicProfessionalDetail} />
           <Route path="/pricing" component={Pricing} />
-          <Route path="/free-movies" component={FreeMovies} />
           <Route path="/free-classics" component={FreeClassics} />
           <Route path="/free-classics/:source/:identifier" component={FreeClassicDetail} />
           <Route path="/browse" component={Browse} />
