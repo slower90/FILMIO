@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { GetFreeClassicsResponse } from "@workspace/api-zod";
+import { logger } from "../lib/logger";
 
 const INTERNET_ARCHIVE_SEARCH_URL = "https://archive.org/advancedsearch.php";
 const ARCHIVE_COLLECTION_QUERIES = {
@@ -602,7 +603,7 @@ export function createFreeClassicsRouter(options: FreeClassicsRouteOptions = {})
         await refreshCache();
       } else if (currentTime - cache.fetchedAt > cacheTtlMs) {
         void refreshCache().catch((error) => {
-          req.log?.warn({ err: error }, "Free Classics background refresh failed");
+          logger.warn({ err: error }, "Free Classics background refresh failed");
         });
       }
 
@@ -632,7 +633,7 @@ export function createFreeClassicsRouter(options: FreeClassicsRouteOptions = {})
         }),
       );
     } catch (error) {
-      req.log?.error({ err: error }, "Free Classics catalog unavailable");
+      logger.error({ err: error }, "Free Classics catalog unavailable");
       res.status(502).json({ error: "Free Classics catalog is unavailable" });
     }
   });
@@ -653,7 +654,7 @@ export function createFreeClassicsRouter(options: FreeClassicsRouteOptions = {})
       }
       res.json(item);
     } catch (error) {
-      req.log?.error({ err: error }, "Free Classics item unavailable");
+      logger.error({ err: error }, "Free Classics item unavailable");
       res.status(502).json({ error: "Free Classics catalog is unavailable" });
     }
   });
