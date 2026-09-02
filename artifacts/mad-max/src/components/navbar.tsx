@@ -245,6 +245,7 @@ interface DrawerProps {
 
 const DRAWER_LINKS = [
   { href: "/about-vishnuva", label: "About Vishnuva", icon: Sparkles },
+  { href: "/cinema-os", label: "Cinema OS", icon: Film },
   { href: "/discover", label: "Discover", icon: TrendingUp },
   { href: "/genres", label: "Browse by Genre", icon: Film },
   { href: "/anime", label: "Anime", icon: Tv },

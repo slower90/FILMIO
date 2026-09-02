@@ -13,6 +13,10 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
     title: "Discover Movies & TV Shows in India | FILMIO",
     description: "Explore trending movies, Indian cinema, TV shows, and hidden gems with FILMIO ratings, reviews, trailers, and watch options.",
   },
+  "/cinema-os": {
+    title: "Cinema OS | Your Personal Cinema Companion | FILMIO",
+    description: "Choose what to watch, understand your taste, keep an afterglow, and build a personal cinema journey with FILMIO.",
+  },
   "/anime": {
     title: "Best Anime to Watch & Review | FILMIO",
     description: "Find anime worth watching, explore genres and new releases, and read ratings and reviews from the FILMIO community.",
