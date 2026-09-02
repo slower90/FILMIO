@@ -62,3 +62,9 @@ Cloudflare can reject a valid GitHub commit payload based on its raw JSON repres
 **Why:** The remaining source files were rejected through REST, GraphQL, Git Data, Contents, and native Octokit until the transport representation changed; the guarded Unicode-escaped mutation produced exact local blob SHAs.
 
 **How to apply:** Keep the branch-head guard and post-response ref audit unchanged, but construct large base64 GraphQL variables with JSON Unicode escapes when ordinary serialized payloads receive an HTML 403.
+
+Remote branch parity must include transitive source dependencies, not only the files named in the latest feature commit. A successful API commit can still leave an older branch tree missing a newly imported schema/module or holding a truncated stylesheet.
+
+**Why:** A deployment failed because the remote tree lacked catalog fallback dependencies and contained a shorter stylesheet, even though the feature files themselves had matching blobs and local builds passed.
+
+**How to apply:** Before declaring a deployment sync complete, compare presence and blob SHAs for the changed files plus their imports/assets; update missing dependencies with a guarded Git Data commit while preserving remote-only paths.

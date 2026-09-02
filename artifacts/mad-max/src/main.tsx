@@ -8,7 +8,14 @@ import App from './App';
 import './index.css';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-if (apiBaseUrl) {
+const isLocalPreview =
+  typeof window !== "undefined" &&
+  /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0)$/.test(window.location.hostname);
+
+// Local previews use Vite's same-origin /api proxy. This avoids asking the
+// production Cloudflare Worker API to allow every ephemeral Replit preview
+// origin while keeping the absolute API URL for deployed frontend bundles.
+if (apiBaseUrl && !isLocalPreview) {
   setBaseUrl(apiBaseUrl);
 }
 

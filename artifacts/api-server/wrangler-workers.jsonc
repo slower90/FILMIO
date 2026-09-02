@@ -1,0 +1,22 @@
+{
+  "name": "filmio-api-workers",
+  "main": "src/worker-full.ts",
+  "compatibility_date": "2026-09-02",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "nodejs_compat_populate_process_env"
+  ],
+  "workers_dev": true,
+  "vars": {
+    "NODE_ENV": "production",
+    "CORS_ORIGINS": "https://filmio-3nh.pages.dev,https://vishnuva.in,https://www.vishnuva.in",
+    "SITE_URL": "https://filmio-3nh.pages.dev",
+    "CLERK_PROXY_HOST": "filmio-3nh.pages.dev"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "066f362981d04dedbfc8a9999235ec0e"
+    }
+  ]
+}

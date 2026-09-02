@@ -45,6 +45,15 @@ export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
 }
 
+/**
+ * Return the current session token for callers that need a raw Response
+ * instead of customFetch's parsed result. This keeps hand-written API calls
+ * on the same auth transport as generated API calls.
+ */
+export async function getAuthToken(): Promise<string | null> {
+  return _authTokenGetter ? await _authTokenGetter() : null;
+}
+
 function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
 }

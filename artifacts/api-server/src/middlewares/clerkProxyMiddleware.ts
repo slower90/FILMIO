@@ -20,7 +20,8 @@
  */
 
 import type { IncomingHttpHeaders } from 'http';
-import type { RequestHandler } from 'express';
+import type { Request as ExpressRequest, RequestHandler } from 'express';
+import { isDevelopmentFromSecretKey } from '@clerk/shared/keys';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const CLERK_FAPI = 'https://frontend-api.clerk.dev';
@@ -46,20 +47,117 @@ export const CLERK_PROXY_PATH = '/api/__clerk';
 export function getClerkProxyHost(req: {
   headers: IncomingHttpHeaders;
 }): string | undefined {
+  // A Workers request is received on the workers.dev hostname, but Clerk
+  // validates the proxy against the public frontend hostname. Keep this
+  // explicit so the Worker can serve the same Clerk instance as Pages.
+  if (process.env.WORKERS_RUNTIME === "1") {
+    const configuredHost = process.env.CLERK_PROXY_HOST?.trim();
+    if (configuredHost) {
+      try {
+        const parsed = new URL(
+          configuredHost.includes("://")
+            ? configuredHost
+            : `https://${configuredHost}`,
+        );
+        return parsed.hostname;
+      } catch {
+        // Fall through to the request host rather than sending an invalid
+        // Clerk-Proxy-Url header.
+      }
+    }
+  }
+
   const forwarded = req.headers['x-forwarded-host'];
   const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
   const firstHop = raw?.split(',')[0]?.trim();
   return firstHop || req.headers.host?.trim() || undefined;
 }
 
+type WorkerRequest = ExpressRequest & {
+  originalUrl?: string;
+  on: (event: string, listener: (...args: any[]) => void) => void;
+};
+
+async function readNodeRequestBody(req: WorkerRequest): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  return new Promise((resolve, reject) => {
+    req.on("data", (chunk: Buffer | string) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
+}
+
+function workerClerkProxyMiddleware(secretKey: string): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      const workerRequest = req as WorkerRequest;
+      const originalUrl = workerRequest.originalUrl ?? req.url;
+      const upstreamPath = originalUrl.startsWith(CLERK_PROXY_PATH)
+        ? originalUrl.slice(CLERK_PROXY_PATH.length) || "/"
+        : req.url || "/";
+      const protocol = req.header("x-forwarded-proto") || "https";
+      const host = getClerkProxyHost(req) || "";
+      const forwardedFor = req.header("x-forwarded-for") || req.ip || "";
+      const headers = new Headers();
+
+      for (const [name, value] of Object.entries(req.headers)) {
+        if (["connection", "content-length", "host", "transfer-encoding"].includes(name)) continue;
+        if (value !== undefined) {
+          headers.set(name, Array.isArray(value) ? value.join(", ") : value);
+        }
+      }
+      headers.set("Clerk-Proxy-Url", `${protocol}://${host}${CLERK_PROXY_PATH}`);
+      headers.set("Clerk-Secret-Key", secretKey);
+      if (forwardedFor) headers.set("X-Forwarded-For", forwardedFor.split(",")[0].trim());
+
+      const method = req.method.toUpperCase();
+      const body = ["GET", "HEAD"].includes(method)
+        ? undefined
+        : await readNodeRequestBody(workerRequest);
+      const upstream = await fetch(`${CLERK_FAPI}${upstreamPath}`, {
+        method,
+        headers,
+        body,
+      });
+
+      res.statusCode = upstream.status;
+      upstream.headers.forEach((value, name) => {
+        if (!["connection", "keep-alive", "transfer-encoding"].includes(name)) {
+          res.setHeader(name, value);
+        }
+      });
+      if (method === "HEAD" || upstream.status === 204) {
+        res.end();
+        return;
+      }
+      res.end(Buffer.from(await upstream.arrayBuffer()));
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
 export function clerkProxyMiddleware(): RequestHandler {
+  if (process.env.WORKERS_RUNTIME === "1") {
+    const secretKey = process.env.CLERK_SECRET_KEY;
+    // Replit-managed development keys talk to Clerk's development FAPI
+    // directly. Proxying them through a workers.dev host causes Clerk to
+    // return host_invalid and is not needed for local/test instances.
+    if (!secretKey || isDevelopmentFromSecretKey(secretKey)) {
+      return (_req, _res, next) => next();
+    }
+    return workerClerkProxyMiddleware(secretKey);
+  }
+
   // Only run proxy in production — Clerk proxying doesn't work for dev instances
   if (process.env.NODE_ENV !== 'production') {
     return (_req, _res, next) => next();
   }
 
   const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) {
+  if (!secretKey || isDevelopmentFromSecretKey(secretKey)) {
     return (_req, _res, next) => next();
   }
 

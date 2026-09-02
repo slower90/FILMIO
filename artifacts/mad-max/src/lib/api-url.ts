@@ -1,13 +1,27 @@
+import { getAuthToken } from "@workspace/api-client-react";
+
 const apiBaseUrl = (
   (import.meta as ImportMeta & { env?: { VITE_API_BASE_URL?: string } }).env
     ?.VITE_API_BASE_URL ?? ""
 ).replace(/\/$/, "");
 
-export function apiUrl(path: string) {
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${apiBaseUrl}${path}`;
+function shouldUseConfiguredApiBase() {
+  if (typeof window === "undefined" || !window.location) return true;
+  return !/^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0)$/.test(
+    window.location.hostname,
+  );
 }
 
-export function apiFetch(path: string, init?: RequestInit) {
-  return fetch(apiUrl(path), init);
+export function apiUrl(path: string) {
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${shouldUseConfiguredApiBase() ? apiBaseUrl : ""}${path}`;
+}
+
+export async function apiFetch(path: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers);
+  if (!headers.has("authorization")) {
+    const token = await getAuthToken();
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
+  return fetch(apiUrl(path), { ...init, headers });
 }

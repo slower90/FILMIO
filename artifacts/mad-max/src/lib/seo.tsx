@@ -53,6 +53,10 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
     title: "FILMIO Membership | Film Community",
     description: "See FILMIO membership options for deeper film discovery, reviews, and connections with the movie community.",
   },
+  "/about-vishnuva": {
+    title: "About Vishnuva Group | Building Tomorrow's Everyday Life",
+    description: "Meet Vishnuva Group, the India-focused parent company behind FILMIO, working across movement, storytelling, and visibility.",
+  },
   "/help": {
     title: "FILMIO Help Center | Search, Ratings & Watchlists",
     description: "Get help searching movies, TV, and anime, rating and reviewing titles, building watchlists, and setting up FILMIO professional profiles.",

@@ -22,6 +22,10 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH ?? (isBuild ? "/" : undefined);
+const apiProxyTarget = (
+  process.env.VITE_API_BASE_URL ??
+  "https://filmio-api-workers.py3912458.workers.dev"
+).replace(/\/+$/, "");
 
 if (!basePath) {
   throw new Error(
@@ -93,6 +97,13 @@ export default defineConfig({
     strictPort: true,
     host: '0.0.0.0',
     allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        secure: true,
+      },
+    },
     fs: {
       strict: true,
     },

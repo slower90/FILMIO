@@ -14,7 +14,9 @@ export const requireAuth = async (
   next: NextFunction,
 ): Promise<void> => {
   const auth = getAuth(req);
-  const clerkId = auth?.userId;
+  const claimUserId = auth?.sessionClaims?.userId;
+  const clerkId =
+    typeof claimUserId === "string" ? claimUserId : auth?.userId;
   if (!clerkId) {
     res.status(401).json({ error: "Unauthorized" });
     return;

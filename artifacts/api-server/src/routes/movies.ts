@@ -19,6 +19,7 @@ import {
   upsertSearchCatalog,
 } from "../lib/smart-search";
 import { searchMeilisearch } from "../lib/meilisearch";
+import { logger } from "../lib/logger";
 import { freeClassicPath, getFreeClassicsForSitemap } from "./free-classics";
 import {
   findLocalCatalogMovieById,
@@ -1038,7 +1039,7 @@ router.get("/movies/catalog", async (req, res): Promise<void> => {
       totalResults: data.total_results ?? mapped.length,
     });
   } catch (error) {
-    req.log?.error({ err: error, collection, page }, "Catalog page unavailable");
+    logger.error({ err: error, collection, page }, "Catalog page unavailable");
     res.status(502).json({ error: "Catalog page unavailable" });
   }
 });

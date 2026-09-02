@@ -246,6 +246,14 @@ test("prerenders static support metadata", async () => {
   assert.ok(jsonLdTypes(jsonLdFrom(html)).includes("WebPage"));
 });
 
+test("prerenders the Vishnuva company roadmap metadata", async () => {
+  const html = await renderRoute("/about-vishnuva");
+  assert.match(html, /<title>About Vishnuva Group \| Building Tomorrow&#39;s Everyday Life<\/title>/);
+  assert.match(html, /<h1>Vishnuva Group — Building Tomorrow&#39;s Everyday Life<\/h1>/);
+  assert.match(html, /Phase 1: Vishnuva Logistics \/ Movement/);
+  assert.ok(jsonLdTypes(jsonLdFrom(html)).includes("WebPage"));
+});
+
 test("keeps the TV Journal type=tv query in canonical and structured data", async () => {
   const html = await renderRoute("/blog/movies/505/the-night-shift?type=tv");
   const jsonLd = jsonLdFrom(html);

@@ -33,3 +33,8 @@
 - [Web API authentication across origins](web-api-auth.md) — separate-origin web deployments must forward the Clerk session token instead of relying only on cookies
 - [Video.js wrapper styling](videojs-wrapper-styling.md) — data-vjs-player consumes its wrapper; attach persistent player CSS hooks to the ancestor that remains
 - [Craft dimension signals](craft-dimension-signals.md) — derive visible craft scores from FILMIO evidence + public Reddit discussion, never fabricate unavailable data
+- [Cloudflare credential handling](cloudflare-secret-redaction.md) — Replit Secrets may be redacted in agent shells; refresh the Cloudflare API-key connector for Pages/Workers operations
+- [Clerk public-domain proxy mode](clerk-public-domain-proxy.md) — development keys must use direct FAPI; only production keys should enable the Worker proxy with the Pages hostname
+- [Worker Hyperdrive connection lifecycle](worker-hyperdrive-pool.md) — use short-lived pg clients in Workers; a global pool can cause intermittent 1101 hangs after warm multi-route traffic
+- [Local API preview proxy](local-api-preview-proxy.md) — local Vite previews must proxy /api and avoid absolute Railway URLs to prevent ephemeral-origin CORS failures
+- [Cloudflare custom-domain CORS](cloudflare-custom-domain-cors.md) — allow-list apex and www Pages hostnames or browser API/auth preflights fail while the site still loads

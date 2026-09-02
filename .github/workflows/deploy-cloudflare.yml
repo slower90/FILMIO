@@ -1,0 +1,82 @@
+name: Deploy FILMIO to Cloudflare
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and deploy production
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      VITE_API_BASE_URL: https://filmio-api-workers.py3912458.workers.dev
+      VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+      BASE_PATH: /
+      PORT: "5173"
+      NODE_ENV: production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Validate deployment secrets
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || {
+            echo "::error::Missing GitHub Actions secret CLOUDFLARE_API_TOKEN"
+            exit 1
+          }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || {
+            echo "::error::Missing GitHub Actions secret CLOUDFLARE_ACCOUNT_ID"
+            exit 1
+          }
+          test -n "$VITE_CLERK_PUBLISHABLE_KEY" || {
+            echo "::error::Missing GitHub Actions secret VITE_CLERK_PUBLISHABLE_KEY"
+            exit 1
+          }
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck workspace libraries
+        run: pnpm run typecheck:libs
+
+      - name: Typecheck frontend
+        run: pnpm --filter @workspace/mad-max run typecheck
+
+      - name: Typecheck API
+        run: pnpm --filter @workspace/api-server run typecheck
+
+      - name: Build frontend
+        run: pnpm --filter @workspace/mad-max run build
+
+      - name: Build API Worker bundle
+        run: pnpm dlx wrangler@4.128.0 deploy --config artifacts/api-server/wrangler-workers.jsonc --dry-run
+
+      - name: Deploy API Worker
+        run: pnpm dlx wrangler@4.128.0 deploy --config artifacts/api-server/wrangler-workers.jsonc
+
+      - name: Deploy Cloudflare Pages
+        run: pnpm dlx wrangler@4.128.0 pages deploy artifacts/mad-max/dist/public --project-name filmio

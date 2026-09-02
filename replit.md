@@ -14,7 +14,8 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Production deployment safety
 
-- Frontend and backend are deployed on Railway.
+- Frontend is deployed on Cloudflare Pages and the backend is deployed on a Cloudflare Worker.
+- The `main` branch GitHub Actions workflow builds and deploys both Cloudflare artifacts after each push.
 - Supabase is the production data store; do not migrate or replace it with Replit Database.
 - Treat production availability as a hard requirement: prefer backward-compatible, zero-downtime changes.
 - Before pushing deployment-related changes, run the relevant typechecks/builds and verify API contracts.

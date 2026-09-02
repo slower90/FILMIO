@@ -155,6 +155,35 @@ test("maps the OMDb search adapter into the existing movie and TV result shape",
   }
 });
 
+test("maps OMDb detail credits without inventing trailers or providers", async () => {
+  const client = new CatalogClient({
+    providers: [createOmdbProvider("server-only-test-key")],
+    timeoutMs: 50,
+  });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({
+    Response: "True",
+    imdbID: "tt456",
+    Title: "A Fallback Film",
+    Actors: "Actor One, Actor Two",
+    Director: "Director One",
+    Writer: "Writer One",
+    Plot: "A verified fallback plot.",
+    Released: "04 Feb 2027",
+    Runtime: "100 min",
+    Type: "movie",
+  })) as typeof fetch;
+  try {
+    const result = await client.fetch<Record<string, any>>("/movie/tt456");
+    assert.deepEqual(result.credits.cast.map((person: any) => person.name), ["Actor One", "Actor Two"]);
+    assert.deepEqual(result.credits.crew.map((person: any) => person.job), ["Director", "Writer"]);
+    assert.deepEqual(result.videos, { results: [] });
+    assert.deepEqual(result["watch/providers"], { results: {} });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("maps a compatible provider's camelCase records without replacing missing fields with guesses", async () => {
   const client = new CatalogClient({
     providers: [createCompatibleProvider({ name: "approved-backup", baseUrl: "https://catalog.test" })],

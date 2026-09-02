@@ -3,9 +3,9 @@ import express, {
   type NextFunction,
   type Request,
   type Response,
+  type RequestHandler,
 } from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import { pool } from "@workspace/db";
@@ -30,18 +30,42 @@ const AUTH_MUTATION_RATE_LIMIT = configuredLimit(
   "RATE_LIMIT_AUTH_MUTATION_PER_MINUTE",
   30,
 );
-const limiterTableReady = pool
-  .query(
-    `
+let limiterTableReady: Promise<boolean> | null = null;
+
+function ensureLimiterTable(): Promise<boolean> {
+  if (!limiterTableReady) {
+    limiterTableReady = pool
+      .query(
+        `
   CREATE TABLE IF NOT EXISTS api_rate_limit_windows (
     bucket_key TEXT PRIMARY KEY,
     window_start BIGINT NOT NULL,
     request_count INTEGER NOT NULL
   )
 `,
-  )
-  .then(() => true);
+      )
+      .then(() => true);
+  }
+  return limiterTableReady;
+}
+
 let cleanupCounter = 0;
+
+const workerRequestLogger: RequestHandler = (req, res, next) => {
+  const startedAt = Date.now();
+  res.on("finish", () => {
+    logger.info(
+      {
+        method: req.method,
+        url: req.url?.split("?")[0],
+        statusCode: res.statusCode,
+        durationMs: Date.now() - startedAt,
+      },
+      "HTTP request",
+    );
+  });
+  next();
+};
 
 function clientAddress(req: Request): string {
   return req.ip || req.socket.remoteAddress || "unknown";
@@ -60,7 +84,9 @@ function authenticatedUserId(req: Request): string | null {
     return req.header("x-test-user") ?? null;
   }
   try {
-    return getAuth(req).userId ?? null;
+    const auth = getAuth(req);
+    const claimUserId = auth.sessionClaims?.userId;
+    return (typeof claimUserId === "string" ? claimUserId : auth.userId) ?? null;
   } catch {
     return null;
   }
@@ -124,7 +150,7 @@ async function rateLimit(
   }
 
   try {
-    await limiterTableReady;
+    await ensureLimiterTable();
     const results = await Promise.all(
       limits.map(({ key, limit }) => consumeSharedLimit(key, limit, now)),
     );
@@ -183,25 +209,7 @@ async function rateLimit(
   }
 }
 
-app.use(
-  pinoHttp({
-    logger,
-    serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
-      },
-      res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
-      },
-    },
-  }),
-);
+app.use(workerRequestLogger);
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);

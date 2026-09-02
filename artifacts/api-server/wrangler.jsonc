@@ -1,0 +1,13 @@
+{
+  "name": "filmio-api-poc",
+  "main": "src/worker-poc.ts",
+  "compatibility_date": "2026-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "066f362981d04dedbfc8a9999235ec0e"
+    }
+  ]
+}

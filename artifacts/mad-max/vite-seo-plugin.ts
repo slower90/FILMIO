@@ -130,6 +130,12 @@ const staticSeoPages: Record<string, { title: string; description: string; headi
     heading: "FILMIO Membership",
     body: "Explore FILMIO membership options for deeper film discovery and community connections.",
   },
+  "/about-vishnuva": {
+    title: "About Vishnuva Group | Building Tomorrow's Everyday Life",
+    description: "Meet Vishnuva Group, the India-focused parent company behind FILMIO, working across movement, storytelling, and visibility.",
+    heading: "Vishnuva Group — Building Tomorrow's Everyday Life",
+    body: "From movement to entertainment to visibility — one group, three missions. Phase 1: Vishnuva Logistics / Movement. Phase 2: Vishnuva Studios / Storytelling. Phase 3: Vishnuva Marketing / Visibility.",
+  },
   "/help": {
     title: "FILMIO Help Center | Search, Ratings & Watchlists",
     description: "Get help searching movies, rating and reviewing titles, building watchlists, and setting up FILMIO professional profiles and auditions.",
@@ -698,7 +704,7 @@ async function prerenderStaticRoutes() {
     return;
   }
 
-  const routes = await getSitemapPaths();
+  const routes = [...new Set(["/about-vishnuva", ...(await getSitemapPaths())])];
   if (!routes.length) {
     console.warn("[filmio-seo] no sitemap routes available; keeping the SPA shell only");
     return;
