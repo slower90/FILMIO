@@ -39,3 +39,4 @@
 - [Local API preview proxy](local-api-preview-proxy.md) — local Vite previews must proxy /api and avoid absolute Railway URLs to prevent ephemeral-origin CORS failures
 - [Cloudflare custom-domain CORS](cloudflare-custom-domain-cors.md) — allow-list apex and www Pages hostnames or browser API/auth preflights fail while the site still loads
 - [Cinema OS private sync](cinema-os-private-sync.md) — keep personal Cinema OS modules in one profile-scoped upsert and migrate legacy device state only after a successful save
+- [Production Clerk build guard](production-clerk-key.md) — Cloudflare Pages must embed a matching pk_live key; fail CI before publishing a pk_test auth bundle
