@@ -16,4 +16,5 @@ export interface ReviewUpdate {
      */
   rating?: number | null;
   verifiedWatch?: boolean;
+  containsSpoilers?: boolean;
 }

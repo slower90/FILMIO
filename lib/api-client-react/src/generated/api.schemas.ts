@@ -420,6 +420,7 @@ export type MovieStatsRatingDistributionItem = {
 export interface MovieStats {
   movieId: number;
   averageRating: number;
+  weightedScore: number;
   totalRatings: number;
   totalReviews: number;
   criticReviews: number;
@@ -436,6 +437,7 @@ export interface Review {
   rating?: number | null;
   isCriticReview: boolean;
   verifiedWatch: boolean;
+  containsSpoilers: boolean;
   likesCount: number;
   isLikedByMe: boolean;
   commentsCount: number;
@@ -463,6 +465,7 @@ export interface ReviewInput {
   rating?: number | null;
   isCriticReview?: boolean;
   verifiedWatch?: boolean;
+  containsSpoilers?: boolean;
 }
 
 export interface ReviewUpdate {
@@ -475,6 +478,7 @@ export interface ReviewUpdate {
      */
   rating?: number | null;
   verifiedWatch?: boolean;
+  containsSpoilers?: boolean;
 }
 
 export interface LikeResult {

@@ -10,6 +10,7 @@ import type { MovieStatsRatingDistributionItem } from './movieStatsRatingDistrib
 export interface MovieStats {
   movieId: number;
   averageRating: number;
+  weightedScore: number;
   totalRatings: number;
   totalReviews: number;
   criticReviews: number;

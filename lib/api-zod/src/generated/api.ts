@@ -336,6 +336,7 @@ export const GetMovieStatsParams = zod.object({
 export const GetMovieStatsResponse = zod.object({
   "movieId": zod.number().int(),
   "averageRating": zod.number(),
+  "weightedScore": zod.number(),
   "totalRatings": zod.number().int(),
   "totalReviews": zod.number().int(),
   "criticReviews": zod.number().int(),
@@ -422,6 +423,7 @@ export const ListReviewsResponseItem = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
+  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -444,13 +446,15 @@ export const createReviewBodyRatingMax = 10;
 
 export const createReviewBodyIsCriticReviewDefault = false;
 export const createReviewBodyVerifiedWatchDefault = false;
+export const createReviewBodyContainsSpoilersDefault = false;
 
 export const CreateReviewBody = zod.object({
   "movieId": zod.number().int(),
   "content": zod.string().min(createReviewBodyContentMin),
   "rating": zod.number().int().min(1).max(createReviewBodyRatingMax).nullish(),
   "isCriticReview": zod.boolean().default(createReviewBodyIsCriticReviewDefault),
-  "verifiedWatch": zod.boolean().default(createReviewBodyVerifiedWatchDefault)
+  "verifiedWatch": zod.boolean().default(createReviewBodyVerifiedWatchDefault),
+  "containsSpoilers": zod.boolean().default(createReviewBodyContainsSpoilersDefault)
 })
 
 export const CreateReviewResponse = zod.object({
@@ -461,6 +465,7 @@ export const CreateReviewResponse = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
+  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -490,6 +495,7 @@ export const GetTrendingReviewsResponseItem = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
+  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -518,6 +524,7 @@ export const GetReviewResponse = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
+  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -546,7 +553,8 @@ export const updateReviewBodyRatingMax = 10;
 export const UpdateReviewBody = zod.object({
   "content": zod.string().min(updateReviewBodyContentMin).optional(),
   "rating": zod.number().int().min(1).max(updateReviewBodyRatingMax).nullish(),
-  "verifiedWatch": zod.boolean().optional()
+  "verifiedWatch": zod.boolean().optional(),
+  "containsSpoilers": zod.boolean().optional()
 })
 
 export const UpdateReviewResponse = zod.object({
@@ -557,6 +565,7 @@ export const UpdateReviewResponse = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
+  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),
@@ -2061,6 +2070,7 @@ export const GetFeedResponseItem = zod.object({
   "rating": zod.number().int().nullish(),
   "isCriticReview": zod.boolean(),
   "verifiedWatch": zod.boolean(),
+  "containsSpoilers": zod.boolean(),
   "likesCount": zod.number().int(),
   "isLikedByMe": zod.boolean(),
   "commentsCount": zod.number().int(),

@@ -18,4 +18,5 @@ export interface ReviewInput {
   rating?: number | null;
   isCriticReview?: boolean;
   verifiedWatch?: boolean;
+  containsSpoilers?: boolean;
 }
