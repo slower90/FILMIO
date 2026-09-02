@@ -68,3 +68,9 @@ Remote branch parity must include transitive source dependencies, not only the f
 **Why:** A deployment failed because the remote tree lacked catalog fallback dependencies and contained a shorter stylesheet, even though the feature files themselves had matching blobs and local builds passed.
 
 **How to apply:** Before declaring a deployment sync complete, compare presence and blob SHAs for the changed files plus their imports/assets; update missing dependencies with a guarded Git Data commit while preserving remote-only paths.
+
+When the GitHub connector's content-write endpoints are blocked but a user-approved PAT is available through Replit Secrets, normal Git transport can publish the workspace without exposing the token.
+
+**Why:** The connector and GraphQL mutation path can fail at the Replit/Cloudflare edge even when the repository reports write permission; authenticated Git transport uses a different path and can upload the full pack successfully.
+
+**How to apply:** Never print or paste the token; use a temporary non-persistent `GIT_ASKPASS`. If local and remote histories diverge but the local tree is the intended complete snapshot, create a commit with `git commit-tree <local-tree> -p <verified-remote-head>` and push it normally, after confirming the workspace is clean and the remote head has not advanced.
