@@ -3,7 +3,9 @@ import { BarChart3, CircleHelp, ExternalLink, MessageCircle, RefreshCw, Sparkles
 import type { CraftDimensionsResponse } from "@/lib/craft-dimensions";
 
 export type FingerprintStats = {
+  averageRating?: number;
   totalRatings: number;
+  weightedScore?: number;
   totalReviews?: number;
   ratingDistribution?: Array<{ score: number; count: number }>;
 };
@@ -134,7 +136,6 @@ export function MovieScoreFingerprint({
   const redditPosts = autoSignal?.sources.reddit.posts ?? [];
   const redditStatus = autoSignal?.sources.reddit.status ?? "not_found";
   const redditSearchUrl = `https://www.reddit.com/search/?q=${encodeURIComponent(`"${title}" review`)}`;
-  const autoScore = autoSignal?.overallScore ?? score;
   const filmioSource = autoSignal?.sources.filmio;
   const updatedAt = autoSignal?.updatedAt
     ? new Date(autoSignal.updatedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
@@ -151,13 +152,13 @@ export function MovieScoreFingerprint({
             Cinema fingerprint
           </h2>
         </div>
-        <span className="movie-score-source">FILMIO auto / 10-point signal</span>
+        <span className="movie-score-source">FILMIO audience / 10-point score</span>
       </div>
 
       <div className="movie-score-fingerprint-main">
         <div className="movie-score-visual">
-          <ScoreRing score={autoScore} />
-          <span className="movie-score-visual-caption">{autoScore > 0 ? "FILMIO auto score" : "No score yet"}</span>
+          <ScoreRing score={score} />
+          <span className="movie-score-visual-caption">{score > 0 ? "FILMIO audience score" : "No score yet"}</span>
           <div className={`movie-score-contour ${!hasAudienceShape ? "movie-score-contour--empty" : ""}`}>
             <svg viewBox="0 0 220 220" role="img" aria-label={hasAudienceShape ? "Audience rating distribution contour" : "Audience contour awaiting ratings"}>
               {[0.32, 0.62, 0.9].map((radius) => (
@@ -214,9 +215,24 @@ export function MovieScoreFingerprint({
           </div>
           <p className="movie-score-explainer">
             {hasMeasuredDimensions
-              ? `Auto-scored from ${filmioSource?.totalRatings ?? stats?.totalRatings ?? 0} FILMIO rating${(filmioSource?.totalRatings ?? stats?.totalRatings ?? 0) === 1 ? "" : "s"}, written reviews, and public Reddit discussion.`
+              ? `Craft signals use ${filmioSource?.totalRatings ?? stats?.totalRatings ?? 0} FILMIO rating${(filmioSource?.totalRatings ?? stats?.totalRatings ?? 0) === 1 ? "" : "s"}, written reviews, and public Reddit discussion. They are context, not a replacement for the audience score.`
               : "Scores appear automatically when FILMIO ratings or public Reddit craft discussion gives the model enough signal."}
           </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 border-t border-border/60 pt-4 text-xs sm:grid-cols-3">
+        <div>
+          <p className="text-muted-foreground">FILMIO audience score</p>
+          <p className="mt-1 text-lg font-semibold text-foreground">{score > 0 ? score.toFixed(1) : "—"}<span className="text-xs text-muted-foreground"> / 10</span></p>
+        </div>
+        <div>
+          <p className="text-muted-foreground">Raw average</p>
+          <p className="mt-1 text-lg font-semibold text-foreground">{stats?.averageRating && stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "—"}<span className="text-xs text-muted-foreground"> / 10</span></p>
+        </div>
+        <div>
+          <p className="text-muted-foreground">Method</p>
+          <p className="mt-1 leading-relaxed text-foreground">Bayesian confidence adjustment across {stats?.totalRatings ?? 0} ratings.</p>
         </div>
       </div>
 

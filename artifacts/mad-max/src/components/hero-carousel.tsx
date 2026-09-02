@@ -270,7 +270,9 @@ export function HeroCarousel({ movies }: { movies: HeroMovie[] }) {
                <div data-hero-item className="mb-5 flex flex-wrap items-center gap-2.5 text-sm">
                 <span className="flex items-center gap-1.5 rounded-sm border border-primary/40 bg-[hsl(var(--ink)/0.48)] px-2.5 py-1.5 font-bold text-primary backdrop-blur-sm">
                   <Star className="w-4 h-4 fill-primary text-primary" />
-                  FILMIO {getPrismDisplayRating(movie.voteAverage, currentRating).toFixed(1)}
+                 FILMIO {getPrismDisplayRating(movie.voteAverage, currentRating) > 0
+                   ? getPrismDisplayRating(movie.voteAverage, currentRating).toFixed(1)
+                   : "—"}
               </span>
                 {year && <span className="tabular-nums border-l border-foreground/25 pl-3 text-foreground/70">{year}</span>}
                 <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/55">Community perspective</span>

@@ -125,6 +125,7 @@ export default function MovieDetail() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [rating, setRating] = useState("");
   const [reviewContent, setReviewContent] = useState("");
+  const [containsSpoilers, setContainsSpoilers] = useState(false);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const upsertRating = useUpsertRating();
@@ -222,6 +223,7 @@ export default function MovieDetail() {
       movieId,
       rating,
       reviewContent: content,
+      containsSpoilers,
       profileId: activeProfile?.id,
       upsertRating,
       createReview,
@@ -243,6 +245,7 @@ export default function MovieDetail() {
         clearForm: () => {
           setReviewContent("");
           setRating("");
+          setContainsSpoilers(false);
         },
       },
     });
@@ -351,7 +354,11 @@ export default function MovieDetail() {
   const displayRating = getPrismDisplayRating(
     movie.voteAverage,
     stats
-      ? { averageRating: stats.averageRating, totalRatings: stats.totalRatings }
+      ? {
+          averageRating: stats.averageRating,
+          totalRatings: stats.totalRatings,
+          weightedScore: stats.weightedScore,
+        }
       : undefined,
   );
   const hasRatings = (stats?.totalRatings ?? 0) > 0;
@@ -731,6 +738,19 @@ export default function MovieDetail() {
                     disabled={upsertRating.isPending || createReview.isPending}
                   />
                 </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded border border-border/70 bg-background/60 px-3 py-3 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={containsSpoilers}
+                    onChange={(event) => setContainsSpoilers(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]"
+                    disabled={upsertRating.isPending || createReview.isPending}
+                  />
+                  <span>
+                    <span className="block font-semibold text-foreground">This review contains spoilers</span>
+                    <span className="mt-1 block">Other viewers will see a spoiler gate before the text.</span>
+                  </span>
+                </label>
                 {formError && (
                   <p className="text-sm text-destructive" role="alert">
                     {formError}

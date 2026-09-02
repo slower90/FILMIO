@@ -7,7 +7,10 @@
  */
 
 export interface ReviewUpdate {
-  /** @minLength 10 */
+  /**
+     * @minLength 10
+     * @maxLength 10000
+     */
   content?: string;
   /**
      * @minimum 1
@@ -15,5 +18,5 @@ export interface ReviewUpdate {
      * @nullable
      */
   rating?: number | null;
-  verifiedWatch?: boolean;
+  containsSpoilers?: boolean;
 }

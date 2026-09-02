@@ -3,27 +3,24 @@ import { apiFetch } from "@/lib/api-url";
 export type PrismRating = {
   averageRating: number;
   totalRatings: number;
+  weightedScore: number;
 };
 
 export type PrismRatings = Record<string, PrismRating>;
 
 /**
- * FILMIO is the only rating shown in the UI. TMDB supplies the initial
- * baseline, and each FILMIO user average is blended with that baseline once
- * users start rating the title.
+ * FILMIO is the only rating shown in the UI. External ratings are discovery
+ * metadata only; the public FILMIO score is its own Bayesian aggregate.
  */
 export function getPrismDisplayRating(
-  tmdbVoteAverage: number | null | undefined,
+  _externalVoteAverage: number | null | undefined,
   rating: PrismRating | undefined,
 ): number {
-  const tmdbRating =
-    typeof tmdbVoteAverage === "number" && Number.isFinite(tmdbVoteAverage)
-      ? Math.max(0, Math.min(10, tmdbVoteAverage))
-      : 0;
-
-  if (!rating || rating.totalRatings <= 0) return tmdbRating;
-  if (tmdbRating <= 0) return rating.averageRating;
-  return (tmdbRating + rating.averageRating) / 2;
+  if (!rating || rating.totalRatings <= 0) return 0;
+  if (Number.isFinite(rating.weightedScore) && rating.weightedScore > 0) {
+    return Math.max(0, Math.min(10, rating.weightedScore));
+  }
+  return Math.max(0, Math.min(10, rating.averageRating));
 }
 
 export async function fetchPrismRatings(movieIds: number[]): Promise<PrismRatings> {
@@ -32,8 +29,19 @@ export async function fetchPrismRatings(movieIds: number[]): Promise<PrismRating
 
   const response = await apiFetch(`/api/movies/ratings?ids=${ids.join(",")}`);
   if (!response.ok) throw new Error("Unable to load FILMIO ratings");
-  const data = await response.json() as { ratings?: PrismRatings };
-  return data.ratings ?? {};
+  const data = await response.json() as {
+    ratings?: Record<string, Omit<PrismRating, "weightedScore"> & { weightedScore?: number }>;
+  };
+  const ratings = Object.fromEntries(
+    Object.entries(data.ratings ?? {}).map(([id, value]) => [
+      id,
+      {
+        ...value,
+        weightedScore: value.weightedScore ?? value.averageRating,
+      },
+    ]),
+  );
+  return ratings;
 }
 
 export function formatPrismRating(
@@ -42,5 +50,6 @@ export function formatPrismRating(
   tmdbVoteAverage?: number | null,
 ): string {
   const rating = ratings?.[String(movieId)];
-  return getPrismDisplayRating(tmdbVoteAverage, rating).toFixed(1);
+  const score = getPrismDisplayRating(tmdbVoteAverage, rating);
+  return score > 0 ? score.toFixed(1) : "—";
 }

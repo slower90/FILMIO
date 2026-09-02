@@ -336,7 +336,7 @@ const appendManagedUpcomingMovies = async (movies: ReturnType<typeof mapMovie>[]
 
 const getPrismRatings = async (movieIds: number[]) => {
   const ids = [...new Set(movieIds)].filter((id) => Number.isInteger(id) && id > 0);
-  if (ids.length === 0) return new Map<number, { averageRating: number; totalRatings: number }>();
+  if (ids.length === 0) return new Map<number, { averageRating: number; totalRatings: number; weightedScore: number }>();
 
   const rows = await db
     .select({
@@ -351,10 +351,14 @@ const getPrismRatings = async (movieIds: number[]) => {
   return new Map(
     rows.map((row) => [
       row.movieId,
-      {
-        averageRating: row.averageRating ? parseFloat(String(row.averageRating)) : 0,
-        totalRatings: Number(row.totalRatings ?? 0),
-      },
+      (() => {
+        const averageRating = row.averageRating ? parseFloat(String(row.averageRating)) : 0;
+        const totalRatings = Number(row.totalRatings ?? 0);
+        const weightedScore = totalRatings > 0
+          ? (totalRatings * averageRating + 10 * 6) / (totalRatings + 10)
+          : 6;
+        return { averageRating, totalRatings, weightedScore: parseFloat(weightedScore.toFixed(2)) };
+      })(),
     ]),
   );
 };
@@ -728,8 +732,8 @@ router.get("/movies/search-smart", async (req, res): Promise<void> => {
       if (!prismRatings) return 0;
       const aRating = prismRatings.get(a.id);
       const bRating = prismRatings.get(b.id);
-      const aScore = aRating?.totalRatings ? aRating.averageRating : -1;
-      const bScore = bRating?.totalRatings ? bRating.averageRating : -1;
+      const aScore = aRating?.totalRatings ? aRating.weightedScore : -1;
+      const bScore = bRating?.totalRatings ? bRating.weightedScore : -1;
       return bScore - aScore;
     });
 
@@ -1440,6 +1444,15 @@ router.get("/movies/:movieId/stats", async (req, res): Promise<void> => {
     .from(reviewsTable)
     .where(eq(reviewsTable.movieId, movieId));
 
+  const averageRating = ratingStats.averageRating
+    ? parseFloat(String(ratingStats.averageRating))
+    : 0;
+  const totalRatings = Number(ratingStats.totalRatings ?? 0);
+  const weightedScore = totalRatings > 0
+    ? (totalRatings * averageRating + 10 * 6) / (totalRatings + 10)
+    : 6;
+  const score = parseFloat(weightedScore.toFixed(2));
+
   const distribution = await db
     .select({
       score: ratingsTable.score,
@@ -1452,10 +1465,9 @@ router.get("/movies/:movieId/stats", async (req, res): Promise<void> => {
 
   res.json({
     movieId,
-    averageRating: ratingStats.averageRating
-      ? parseFloat(String(ratingStats.averageRating))
-      : 0,
-    totalRatings: Number(ratingStats.totalRatings),
+    averageRating,
+    totalRatings,
+    weightedScore: score,
     totalReviews: Number(reviewStats.totalReviews),
     criticReviews: Number(reviewStats.criticReviews),
     audienceReviews: Number(reviewStats.audienceReviews),

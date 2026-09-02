@@ -60,7 +60,7 @@ function MovieCard({
   profileId,
 }: {
   movie: RowMovie;
-  rating?: { averageRating: number; totalRatings: number };
+  rating?: { averageRating: number; totalRatings: number; weightedScore: number };
   isSignedIn: boolean;
   isSaved: boolean;
   profileId?: number;
@@ -103,8 +103,8 @@ function MovieCard({
         title="FILMIO rating"
         aria-label={
           rating && rating.totalRatings > 0
-            ? `FILMIO rating ${getPrismDisplayRating(movie.voteAverage, rating).toFixed(1)} out of 10`
-            : "FILMIO rating 0.0 out of 10"
+            ? `FILMIO rating ${getPrismDisplayRating(movie.voteAverage, rating).toFixed(1)} out of 10 from ${rating.totalRatings} ratings`
+            : "FILMIO rating not available yet"
         }
       >
         <Star className="h-2.5 w-2.5 fill-primary text-primary" />
@@ -112,7 +112,9 @@ function MovieCard({
           FILMIO
         </span>
         <span className="text-[10px] font-bold leading-none text-[hsl(var(--editorial-cream))]">
-          {getPrismDisplayRating(movie.voteAverage, rating).toFixed(1)}
+          {getPrismDisplayRating(movie.voteAverage, rating) > 0
+            ? getPrismDisplayRating(movie.voteAverage, rating).toFixed(1)
+            : "—"}
         </span>
       </div>
        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[hsl(var(--ink)/0.48)] via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
@@ -168,6 +170,11 @@ function MovieCard({
         {movie.title}
       </p>
       {year && <p className="tabular-nums mt-0.5 text-[10px] text-muted-foreground">{year}</p>}
+      {movie.recommendationReason && (
+        <p className="mt-1 line-clamp-2 text-[9px] font-medium uppercase leading-snug tracking-[0.08em] text-primary/80">
+          {movie.recommendationReason}
+        </p>
+      )}
       {isSignedIn ? (
         <button
           type="button"

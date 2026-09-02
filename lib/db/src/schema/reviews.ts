@@ -10,6 +10,7 @@ export const reviewsTable = pgTable("reviews", {
   rating: integer("rating"),
   isCriticReview: boolean("is_critic_review").notNull().default(false),
   verifiedWatch: boolean("verified_watch").notNull().default(false),
+  containsSpoilers: boolean("contains_spoilers").notNull().default(false),
   likesCount: integer("likes_count").notNull().default(0),
   commentsCount: integer("comments_count").notNull().default(0),
   movieTitle: text("movie_title"),

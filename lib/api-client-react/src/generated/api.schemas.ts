@@ -421,6 +421,8 @@ export interface MovieStats {
   movieId: number;
   averageRating: number;
   totalRatings: number;
+  /** Canonical public FILMIO score (Bayesian weighted score). */
+  weightedScore: number;
   totalReviews: number;
   criticReviews: number;
   audienceReviews: number;
@@ -436,6 +438,7 @@ export interface Review {
   rating?: number | null;
   isCriticReview: boolean;
   verifiedWatch: boolean;
+  containsSpoilers: boolean;
   likesCount: number;
   isLikedByMe: boolean;
   commentsCount: number;
@@ -453,7 +456,10 @@ export interface Review {
 
 export interface ReviewInput {
   movieId: number;
-  /** @minLength 10 */
+  /**
+     * @minLength 10
+     * @maxLength 10000
+     */
   content: string;
   /**
      * @minimum 1
@@ -462,11 +468,14 @@ export interface ReviewInput {
      */
   rating?: number | null;
   isCriticReview?: boolean;
-  verifiedWatch?: boolean;
+  containsSpoilers?: boolean;
 }
 
 export interface ReviewUpdate {
-  /** @minLength 10 */
+  /**
+     * @minLength 10
+     * @maxLength 10000
+     */
   content?: string;
   /**
      * @minimum 1
@@ -474,7 +483,7 @@ export interface ReviewUpdate {
      * @nullable
      */
   rating?: number | null;
-  verifiedWatch?: boolean;
+  containsSpoilers?: boolean;
 }
 
 export interface LikeResult {

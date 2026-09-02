@@ -2908,6 +2908,9 @@ components:
           type: number
         totalRatings:
           type: integer
+        weightedScore:
+          type: number
+          description: Canonical public FILMIO score (Bayesian weighted score).
         totalReviews:
           type: integer
         criticReviews:
@@ -2924,7 +2927,7 @@ components:
               count:
                 type: integer
             required: [score, count]
-      required: [movieId, averageRating, totalRatings, totalReviews, criticReviews, audienceReviews, ratingDistribution]
+      required: [movieId, averageRating, totalRatings, weightedScore, totalReviews, criticReviews, audienceReviews, ratingDistribution]
 
     # ── Review schemas ──
     Review:
@@ -2944,6 +2947,8 @@ components:
           type: boolean
         verifiedWatch:
           type: boolean
+        containsSpoilers:
+          type: boolean
         likesCount:
           type: integer
         isLikedByMe:
@@ -2962,7 +2967,7 @@ components:
           type: string
         updatedAt:
           type: string
-      required: [id, userId, movieId, content, isCriticReview, verifiedWatch, likesCount, isLikedByMe, commentsCount, createdAt, updatedAt]
+      required: [id, userId, movieId, content, isCriticReview, verifiedWatch, containsSpoilers, likesCount, isLikedByMe, commentsCount, createdAt, updatedAt]
 
     ReviewInput:
       type: object
@@ -2972,6 +2977,7 @@ components:
         content:
           type: string
           minLength: 10
+          maxLength: 10000
         rating:
           type: ["integer", "null"]
           minimum: 1
@@ -2979,7 +2985,7 @@ components:
         isCriticReview:
           type: boolean
           default: false
-        verifiedWatch:
+        containsSpoilers:
           type: boolean
           default: false
       required: [movieId, content]
@@ -2990,11 +2996,12 @@ components:
         content:
           type: string
           minLength: 10
+          maxLength: 10000
         rating:
           type: ["integer", "null"]
           minimum: 1
           maximum: 10
-        verifiedWatch:
+        containsSpoilers:
           type: boolean
 
     LikeResult:

@@ -90,7 +90,9 @@ export function TopTen({ movies, isLoading }: TopTenProps) {
                         {year && <span>{year}</span>}
                         <span className="inline-flex items-center gap-1 text-primary font-semibold">
                           <Star className="w-3 h-3 fill-primary" />
-                          FILMIO {getPrismDisplayRating(movie.voteAverage, prismRatings?.[String(movie.id)]).toFixed(1)}
+                           FILMIO {getPrismDisplayRating(movie.voteAverage, prismRatings?.[String(movie.id)]) > 0
+                             ? getPrismDisplayRating(movie.voteAverage, prismRatings?.[String(movie.id)]).toFixed(1)
+                             : "—"}
                         </span>
                       </div>
                     </div>

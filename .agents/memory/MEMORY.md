@@ -8,7 +8,7 @@
 - [E2EE envelope sender key](e2ee-envelope.md) — recipient-side ECDH needs the sender public key carried in each encrypted envelope
 - [MAD MAX rating source](mad-max-rating-source.md) — show only platform-owned 1–10 averages; external scores are metadata/discovery only
 - [Genre-first personalization](genre-first-personalization.md) — home recommendations use actual genre/mood pools, not age brackets
-- [MAD MAX blended ratings](mad-max-blended-ratings.md) — show only MAD MAX while blending TMDB baseline with the platform's user average
+- [FILMIO canonical ratings](mad-max-blended-ratings.md) — show the platform's Bayesian score; external scores remain clearly labeled reference metadata
 - [Catalog resilience](catalog-resilience.md) — ordered compatible fallback is opt-in and route response contracts stay stable
 - [Post-merge setup timing](post-merge-setup.md) — dependency reconciliation and database push need a buffered timeout, not the default 20 seconds
 - [Personalized discovery](personalized-discovery.md) — rank for movie-fit with transparent signals, diversity, and bounded feeds rather than compulsive engagement

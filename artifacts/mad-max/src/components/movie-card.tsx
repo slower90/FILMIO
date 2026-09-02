@@ -52,7 +52,7 @@ export function MovieCard({ movie, showDescription = false, mediaType = "movie" 
             <div className="mb-2 flex items-center gap-1 text-primary">
               <Star className="h-4 w-4 fill-primary text-primary" />
               <span className="tabular-nums text-sm font-bold">
-                FILMIO {displayRating.toFixed(1)}
+                 FILMIO {displayRating > 0 ? displayRating.toFixed(1) : "—"}
               </span>
             </div>
             <p className="text-xs text-muted-foreground line-clamp-3">{movie.overview}</p>

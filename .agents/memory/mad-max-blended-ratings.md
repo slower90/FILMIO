@@ -1,10 +1,10 @@
 ---
-name: MAD MAX blended ratings
-description: The visible rating combines a TMDB baseline with MAD MAX user ratings while exposing only the MAD MAX brand.
+name: FILMIO canonical ratings
+description: The visible rating is FILMIO's own Bayesian aggregate; external scores remain metadata only.
 ---
 
-The UI should always show a MAD MAX score. Before platform ratings exist, use the TMDB 0–10 vote average as the baseline; once user ratings exist, display the average of the TMDB baseline and MAD MAX user average. Never expose TMDB as a separate visible rating source.
+The UI should show only the FILMIO score. Use the platform's Bayesian weighted score when ratings exist and show an explicit empty state for unrated titles. Keep TMDB and other provider scores visibly labeled as reference metadata, never as FILMIO.
 
-**Why:** The product needs a useful score immediately while keeping MAD MAX as the only rating identity users see.
+**Why:** The platform's trust model depends on separating FILMIO community judgment from third-party discovery signals.
 
-**How to apply:** Keep the blend calculation shared across hero, cards, Top 10, genre results, and movie detail, and refresh the platform stats after a rating submission.
+**How to apply:** Keep the canonical score shared across hero, cards, Top 10, genre results, mobile detail, and movie detail; refresh platform stats after rating submissions.

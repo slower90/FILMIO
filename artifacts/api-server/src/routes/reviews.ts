@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, reviewsTable, reviewLikesTable, commentsTable, usersTable } from "@workspace/db";
+import { db, reviewsTable, reviewLikesTable, commentsTable, usersTable, viewingHistoryTable } from "@workspace/db";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middlewares/auth";
 import {
@@ -9,6 +9,14 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+const REVIEW_CONTENT_MAX_LENGTH = 10_000;
+
+const validReviewContent = (content: string) => {
+  const normalized = content.trim();
+  return normalized.length >= 10 && normalized.length <= REVIEW_CONTENT_MAX_LENGTH
+    ? normalized
+    : null;
+};
 
 const enrichReviews = async (reviews: any[], currentUserId: string | null) => {
   if (!reviews.length) return [];
@@ -74,15 +82,28 @@ router.post("/reviews", requireAuth as any, async (req: any, res): Promise<void>
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const content = validReviewContent(parsed.data.content);
+  if (content === null) {
+    res.status(400).json({ error: "Review content must be between 10 and 10000 characters." });
+    return;
+  }
   const [review] = await db
     .insert(reviewsTable)
     .values({
       userId: req.userId,
       movieId: parsed.data.movieId,
-      content: parsed.data.content,
+      content,
       rating: parsed.data.rating ?? null,
       isCriticReview: parsed.data.isCriticReview ?? false,
-      verifiedWatch: parsed.data.verifiedWatch ?? false,
+      containsSpoilers: parsed.data.containsSpoilers ?? false,
+      verifiedWatch: Boolean((await db
+        .select({ id: viewingHistoryTable.id })
+        .from(viewingHistoryTable)
+        .where(and(
+          eq(viewingHistoryTable.userId, req.userId),
+          eq(viewingHistoryTable.movieId, parsed.data.movieId),
+        ))
+        .limit(1))[0]),
     })
     .returning();
   const [enriched] = await enrichReviews([review], req.userId);
@@ -91,7 +112,7 @@ router.post("/reviews", requireAuth as any, async (req: any, res): Promise<void>
 
 // GET /reviews/trending — must be before /:id
 router.get("/reviews/trending", optionalAuth as any, async (req: any, res): Promise<void> => {
-  const limit = Number(req.query.limit) || 10;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
   const reviews = await db
     .select()
     .from(reviewsTable)
@@ -123,6 +144,15 @@ router.patch("/reviews/:id", requireAuth as any, async (req: any, res): Promise<
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const updateData = { ...parsed.data } as Record<string, unknown>;
+  if (parsed.data.content !== undefined) {
+    const content = validReviewContent(parsed.data.content);
+    if (content === null) {
+      res.status(400).json({ error: "Review content must be between 10 and 10000 characters." });
+      return;
+    }
+    updateData.content = content;
+  }
   const [existing] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, id));
   if (!existing) {
     res.status(404).json({ error: "Review not found" });
@@ -134,7 +164,7 @@ router.patch("/reviews/:id", requireAuth as any, async (req: any, res): Promise<
   }
   const [updated] = await db
     .update(reviewsTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...updateData, updatedAt: new Date() })
     .where(eq(reviewsTable.id, id))
     .returning();
   const [enriched] = await enrichReviews([updated], req.userId);
@@ -172,7 +202,7 @@ router.post("/reviews/:id/like", requireAuth as any, async (req: any, res): Prom
     await db.delete(reviewLikesTable).where(eq(reviewLikesTable.id, existing.id));
     await db
       .update(reviewsTable)
-      .set({ likesCount: sql`${reviewsTable.likesCount} - 1` })
+      .set({ likesCount: sql`GREATEST(${reviewsTable.likesCount} - 1, 0)` })
       .where(eq(reviewsTable.id, id));
     const [r] = await db.select().from(reviewsTable).where(eq(reviewsTable.id, id));
     res.json({ liked: false, likesCount: r?.likesCount ?? 0 });
@@ -222,6 +252,14 @@ router.post("/reviews/:id/comments", requireAuth as any, async (req: any, res): 
   const parsed = CreateCommentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [review] = await db
+    .select({ id: reviewsTable.id })
+    .from(reviewsTable)
+    .where(eq(reviewsTable.id, id));
+  if (!review) {
+    res.status(404).json({ error: "Review not found" });
     return;
   }
   const [comment] = await db

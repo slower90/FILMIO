@@ -2,12 +2,14 @@ export type ReviewFormInput = {
   isSignedIn: boolean;
   rating: string;
   reviewContent: string;
+  containsSpoilers?: boolean;
 };
 
 export function validateReviewForm({
   isSignedIn,
   rating,
   reviewContent,
+  containsSpoilers,
 }: ReviewFormInput): string | null {
   if (!isSignedIn) return "Please sign in to submit a rating or review.";
 
@@ -42,6 +44,7 @@ export function submitRatingAndReview({
   movieId,
   rating,
   reviewContent,
+  containsSpoilers,
   profileId,
   upsertRating,
   createReview,
@@ -50,6 +53,7 @@ export function submitRatingAndReview({
   movieId: number;
   rating: string;
   reviewContent: string;
+  containsSpoilers?: boolean;
   profileId?: number;
   upsertRating: Mutation;
   createReview: Mutation;
@@ -74,7 +78,14 @@ export function submitRatingAndReview({
           return;
         }
         createReview.mutate(
-          { data: { movieId, rating: score, content } },
+          {
+            data: {
+              movieId,
+              rating: score,
+              content,
+              ...(containsSpoilers !== undefined ? { containsSpoilers } : {}),
+            },
+          },
           {
             onSuccess: () => {
               effects.invalidateAudienceReviews();

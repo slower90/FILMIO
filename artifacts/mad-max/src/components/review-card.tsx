@@ -4,9 +4,10 @@ import {
   useListComments,
   useCreateComment,
   getListCommentsQueryKey,
+  useLikeReview,
 } from "@workspace/api-client-react";
 import { RatingStars } from "./rating-stars";
-import { Heart, MessageSquare, BadgeCheck } from "lucide-react";
+import { Heart, MessageSquare, BadgeCheck, Eye, EyeOff } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { tmdbPosterUrl } from "@/lib/utils";
 import { withMovieTitle } from "@/lib/movie-links";
@@ -33,6 +34,7 @@ export function ReviewCard({ review, showMovie = true }: ReviewCardProps) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [spoilerRevealed, setSpoilerRevealed] = useState(false);
   const commentsQuery = useListComments(review.id, {
     query: {
       queryKey: getListCommentsQueryKey(review.id),
@@ -40,6 +42,7 @@ export function ReviewCard({ review, showMovie = true }: ReviewCardProps) {
     },
   });
   const createComment = useCreateComment();
+  const likeReview = useLikeReview();
   const submitComment = () => {
     const content = comment.trim();
     const validationError = validateCommentSubmission(!!isSignedIn, content);
@@ -125,13 +128,48 @@ export function ReviewCard({ review, showMovie = true }: ReviewCardProps) {
         </Link>
       )}
 
-      <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
-        {review.content}
-      </p>
+      {review.containsSpoilers && !spoilerRevealed ? (
+        <div className="rounded border border-primary/25 bg-primary/[0.04] px-4 py-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+            <EyeOff className="h-4 w-4" />
+            Spoiler protected
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">Reveal this review only if you have seen the film.</p>
+          <button
+            type="button"
+            onClick={() => setSpoilerRevealed(true)}
+            className="mt-3 inline-flex min-h-10 items-center gap-2 rounded border border-primary/40 px-3 text-xs font-bold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary/10"
+          >
+            <Eye className="h-4 w-4" />
+            Reveal review
+          </button>
+        </div>
+      ) : (
+        <div>
+          {review.containsSpoilers && (
+            <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
+              <Eye className="h-3.5 w-3.5" /> Spoilers revealed
+            </p>
+          )}
+          <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+            {review.content}
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center gap-4 mt-auto pt-2 border-t border-border/50">
         <button
+          type="button"
+          onClick={() => {
+            if (!isSignedIn || likeReview.isPending) return;
+            likeReview.mutate(
+              { id: review.id },
+              { onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/reviews"] }) },
+            );
+          }}
+          disabled={!isSignedIn || likeReview.isPending}
           className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${review.isLikedByMe ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+          aria-label={isSignedIn ? `${review.isLikedByMe ? "Unlike" : "Like"} review` : "Sign in to like this review"}
         >
           <Heart
             className={`w-4 h-4 ${review.isLikedByMe ? "fill-primary" : ""}`}
