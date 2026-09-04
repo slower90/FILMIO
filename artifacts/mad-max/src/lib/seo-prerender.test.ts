@@ -235,8 +235,8 @@ test("prerenders Free Classics collection and Movie schema", async () => {
 
 test("keeps the homepage metadata aligned with the SEO brief", async () => {
   const html = await readFile(path.resolve(import.meta.dirname, "../../index.html"), "utf8");
-  assert.match(html, /<title>FILMIO - Discover, Rate &amp; Review Movies, TV Shows &amp; Anime \| Free Classic Movies<\/title>/);
-  assert.match(html, /<meta name="description" content="Discover movies, watch free classic films, and explore Indian films, TV shows, and anime with FILMIO ratings, reviews, trailers, and watch options\." \/>/);
+  assert.match(html, /<title>FILMIO \| Discover Movies, Ratings &amp; Reviews<\/title>/);
+  assert.match(html, /<meta name="description" content="Discover what to watch on FILMIO with platform ratings, trusted reviews, trailers, cast, and official viewing options for movies, TV, and anime\." \/>/);
 });
 
 test("prerenders static support metadata", async () => {

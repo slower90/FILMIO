@@ -3,10 +3,9 @@ import { useLocation } from "wouter";
 
 const SITE_NAME = "FILMIO";
 export const SITE_URL = "https://vishnuva.in";
-const DEFAULT_TITLE =
-  "FILMIO - Discover, Rate & Review Movies, TV Shows & Anime | Free Classic Movies";
+const DEFAULT_TITLE = "FILMIO | Discover Movies, Ratings & Reviews";
 const DEFAULT_DESCRIPTION =
-  "Discover movies, watch free classic films, and explore Indian films, TV shows, and anime with FILMIO ratings, reviews, trailers, and watch options.";
+  "Discover what to watch on FILMIO with platform ratings, trusted reviews, trailers, cast, and official viewing options for movies, TV, and anime.";
 
 const routeMetadata: Record<string, { title: string; description: string }> = {
   "/discover": {
